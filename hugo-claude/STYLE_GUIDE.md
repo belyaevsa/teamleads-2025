@@ -28,6 +28,26 @@ Use spaces around en-dashes:
 
 ## Russian Typography
 
+### Date Format
+
+**ALWAYS use dd.mm.yyyy format (Russian standard)**
+
+| Format | Example | Usage |
+|--------|---------|-------|
+| **dd.mm.yyyy** ✅ | 20.01.2025 | Standard Russian date format |
+| **YYYY-MM-DD** ❌ | 2025-01-20 | **DO NOT USE** in user-facing content |
+
+**Examples:**
+- ✅ `20.01.2025` (preferred)
+- ✅ `03.03.2025`
+- ❌ `2025-01-20`
+- ❌ `01/20/2025`
+
+**Notes:**
+- Use leading zeros for single-digit days and months
+- Dots as separators (not slashes or hyphens)
+- ISO format (YYYY-MM-DD) is acceptable only for internal/technical data sorting
+
 ### Quotation Marks
 
 Use typographic quotes (« »), not straight quotes:
@@ -147,5 +167,5 @@ find . -type f \( -name "*.html" -o -name "*.md" -o -name "*.json" \) \
 
 ---
 
-**Last updated:** 2025-12-27
+**Last updated:** 27.12.2025
 **Applies to:** All content, layouts, and data files

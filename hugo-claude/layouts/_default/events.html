@@ -1,0 +1,420 @@
+{{ define "main" }}
+{{ $data := .Site.Data.metrics }}
+
+<!-- Hero Section -->
+{{ partial "components/page-hero.html" (dict "title" "Мы не только говорим" "subtitle" "Мы делаем" "emoji" "🚀" "gradient" "management") }}
+
+<!-- HackLoad 2025 - Main Event Section -->
+<section class="relative py-16 px-4">
+  <div class="container mx-auto max-w-7xl">
+
+    <!-- HackLoad Hero Card -->
+    <div class="bento-card p-0 overflow-hidden border-2 border-yellow-400/30 mb-16">
+      <div class="bg-gradient-to-br from-yellow-400/10 via-management-orange-start/5 to-telegram-blue/10 p-8 md:p-12">
+        <div class="flex flex-col lg:flex-row gap-8 items-start">
+          <!-- Left: Main Info -->
+          <div class="flex-1">
+            <div class="flex items-center gap-4 mb-6">
+              <div class="text-6xl md:text-7xl">🏆</div>
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="px-3 py-1 bg-yellow-400/20 text-yellow-400 rounded-full text-xs font-bold">ГЛАВНОЕ СОБЫТИЕ 2025</span>
+                  <span class="px-3 py-1 bg-green-400/20 text-green-400 rounded-full text-xs font-bold">ЗАВЕРШЕНО</span>
+                </div>
+                <h2 class="text-4xl md:text-5xl font-heading font-bold text-starlight">
+                  <span class="text-gradient-management">HackLoad</span> 2025
+                </h2>
+              </div>
+            </div>
+
+            <p class="text-xl md:text-2xl text-slate-300 mb-6 leading-relaxed">
+              Первый казахстанский хакатон по <strong class="text-telegram-blue">высоконагруженным системам</strong>
+            </p>
+
+            <p class="text-lg text-slate-400 mb-8">
+              Организован <strong class="text-starlight">волонтёрами из сообщества</strong> «Тимлид не кодит».
+              Идея родилась в апреле в чате, а уже в августе прошло полноценное мероприятие с лекциями, заданиями и призами.
+            </p>
+
+            <!-- Key Stats Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div class="text-center p-4 bg-deep-space/50 rounded-lg">
+                <div class="font-data text-3xl font-bold text-yellow-400 mb-1">31</div>
+                <div class="text-slate-400 text-sm">команда</div>
+              </div>
+              <div class="text-center p-4 bg-deep-space/50 rounded-lg">
+                <div class="font-data text-3xl font-bold text-telegram-blue mb-1">100+</div>
+                <div class="text-slate-400 text-sm">участников</div>
+              </div>
+              <div class="text-center p-4 bg-deep-space/50 rounded-lg">
+                <div class="font-data text-3xl font-bold text-green-400 mb-1">7</div>
+                <div class="text-slate-400 text-sm">лекций</div>
+              </div>
+              <div class="text-center p-4 bg-deep-space/50 rounded-lg">
+                <div class="font-data text-3xl font-bold text-ai-purple-start mb-1">6</div>
+                <div class="text-slate-400 text-sm">финалистов</div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap gap-4">
+              <a href="https://hackload.kz" target="_blank" rel="noopener noreferrer"
+                 class="px-6 py-3 bg-telegram-blue hover:bg-telegram-blue/80 text-white rounded-lg font-bold transition-all inline-flex items-center gap-2">
+                <span>hackload.kz</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                </svg>
+              </a>
+              <a href="https://github.com/hackload-kz" target="_blank" rel="noopener noreferrer"
+                 class="px-6 py-3 bento-card hover:border-telegram-blue/50 text-starlight rounded-lg font-bold transition-all inline-flex items-center gap-2">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                <span>Open Source</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Right: Timeline -->
+          <div class="w-full lg:w-80 flex-shrink-0">
+            <div class="bento-card p-6 bg-deep-space/70">
+              <h3 class="font-heading font-bold text-lg text-starlight mb-4 flex items-center gap-2">
+                <span class="text-xl">📅</span> Хронология
+              </h3>
+              <div class="space-y-4 text-sm">
+                <div class="flex gap-3">
+                  <div class="w-2 h-2 rounded-full bg-slate-500 mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <div class="text-slate-400">23.04.2025</div>
+                    <div class="text-starlight">Идея родилась в чате</div>
+                  </div>
+                </div>
+                <div class="flex gap-3">
+                  <div class="w-2 h-2 rounded-full bg-slate-500 mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <div class="text-slate-400">16.05.2025</div>
+                    <div class="text-starlight">Запуск hackload.kz</div>
+                  </div>
+                </div>
+                <div class="flex gap-3">
+                  <div class="w-2 h-2 rounded-full bg-telegram-blue mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <div class="text-slate-400">02.07.2025</div>
+                    <div class="text-starlight">Открытие регистрации</div>
+                  </div>
+                </div>
+                <div class="flex gap-3">
+                  <div class="w-2 h-2 rounded-full bg-ai-purple-start mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <div class="text-slate-400">03–13.08.2025</div>
+                    <div class="text-starlight">7 образовательных лекций</div>
+                  </div>
+                </div>
+                <div class="flex gap-3">
+                  <div class="w-2 h-2 rounded-full bg-yellow-400 mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <div class="text-slate-400">15–24.08.2025</div>
+                    <div class="text-starlight font-bold">Хакатон!</div>
+                  </div>
+                </div>
+                <div class="flex gap-3">
+                  <div class="w-2 h-2 rounded-full bg-green-400 mt-1.5 flex-shrink-0"></div>
+                  <div>
+                    <div class="text-slate-400">24.08.2025</div>
+                    <div class="text-starlight">Финал и награждение</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- The Challenge Section -->
+    <div class="grid md:grid-cols-2 gap-8 mb-16">
+      <div class="bento-card p-8 border-l-4 border-telegram-blue">
+        <div class="text-5xl mb-4">🎯</div>
+        <h3 class="font-heading font-bold text-2xl text-starlight mb-4">Задача</h3>
+        <p class="text-slate-300 mb-4">
+          Разработать <strong class="text-telegram-blue">билетный сервис</strong>, способный обработать
+          <strong class="text-yellow-400">100 000 запросов</strong> на покупку билетов.
+        </p>
+        <p class="text-slate-400 text-sm">
+          Реальная задача, с которой сталкиваются сервисы вроде Ticketon при старте продаж
+          билетов на популярные концерты. Когда тысячи людей одновременно пытаются купить билет.
+        </p>
+      </div>
+
+      <div class="bento-card p-8 border-l-4 border-ai-purple-start">
+        <div class="text-5xl mb-4">🏗️</div>
+        <h3 class="font-heading font-bold text-2xl text-starlight mb-4">Что нужно было сделать</h3>
+        <ul class="space-y-2 text-slate-300">
+          <li class="flex items-start gap-2">
+            <span class="text-ai-purple-start">•</span>
+            <span>Интеграция с платёжным провайдером</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-ai-purple-start">•</span>
+            <span>Интеграция с провайдером билетов</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-ai-purple-start">•</span>
+            <span>Масштабируемая архитектура</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-ai-purple-start">•</span>
+            <span>Эффективное использование ресурсов</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Organizers Section -->
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      <span class="text-gradient-ai">Организаторы</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Волонтёры из сообщества «Тимлид не кодит», которые сделали хакатон возможным
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+      <div class="bento-card p-6 text-center">
+        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-telegram-blue to-ai-purple-start flex items-center justify-center text-3xl">
+          👨‍💻
+        </div>
+        <h4 class="font-heading font-bold text-lg text-starlight mb-1">Stanislav Belyaev</h4>
+        <p class="text-slate-400 text-sm">Идеолог и координатор</p>
+      </div>
+      <div class="bento-card p-6 text-center">
+        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-400 to-management-orange-start flex items-center justify-center text-3xl">
+          👨‍💻
+        </div>
+        <h4 class="font-heading font-bold text-lg text-starlight mb-1">Andrii Kurdiumov</h4>
+        <p class="text-slate-400 text-sm">Архитектура и код</p>
+      </div>
+      <div class="bento-card p-6 text-center">
+        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-400 to-telegram-blue flex items-center justify-center text-3xl">
+          👨‍💻
+        </div>
+        <h4 class="font-heading font-bold text-lg text-starlight mb-1">Dmitriy Melnik</h4>
+        <p class="text-slate-400 text-sm">Лекции и контент</p>
+      </div>
+      <div class="bento-card p-6 text-center">
+        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-ai-purple-start to-management-orange-start flex items-center justify-center text-3xl">
+          👨‍💻
+        </div>
+        <h4 class="font-heading font-bold text-lg text-starlight mb-1">Теймур Шайкемелов</h4>
+        <p class="text-slate-400 text-sm">Организация</p>
+      </div>
+    </div>
+
+    <!-- Educational Program -->
+    <div class="bento-card p-8 mb-16 border-2 border-ai-purple-start/30">
+      <div class="flex items-start gap-4 mb-6">
+        <div class="text-5xl">📚</div>
+        <div>
+          <h3 class="font-heading font-bold text-2xl text-starlight mb-2">Образовательная программа</h3>
+          <p class="text-slate-400">7 лекций перед хакатоном для подготовки участников</p>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="p-4 bg-deep-space/50 rounded-lg">
+          <div class="text-sm text-slate-400 mb-1">Лекция 1</div>
+          <div class="text-starlight font-bold">Масштабирование под высокую нагрузку</div>
+        </div>
+        <div class="p-4 bg-deep-space/50 rounded-lg">
+          <div class="text-sm text-slate-400 mb-1">Лекция 2</div>
+          <div class="text-starlight font-bold">Архитектура распределённых систем</div>
+        </div>
+        <div class="p-4 bg-deep-space/50 rounded-lg">
+          <div class="text-sm text-slate-400 mb-1">Лекция 3</div>
+          <div class="text-starlight font-bold">Базы данных и кэширование</div>
+        </div>
+        <div class="p-4 bg-deep-space/50 rounded-lg">
+          <div class="text-sm text-slate-400 mb-1">Лекция 4</div>
+          <div class="text-starlight font-bold">Нагрузочное тестирование</div>
+        </div>
+        <div class="p-4 bg-deep-space/50 rounded-lg">
+          <div class="text-sm text-slate-400 mb-1">Лекция 5</div>
+          <div class="text-starlight font-bold">Интеграция платёжных провайдеров</div>
+        </div>
+        <div class="p-4 bg-deep-space/50 rounded-lg">
+          <div class="text-sm text-slate-400 mb-1">Лекция 6</div>
+          <div class="text-starlight font-bold">Экономика и эффективность</div>
+        </div>
+        <div class="p-4 bg-deep-space/50 rounded-lg md:col-span-2 lg:col-span-1">
+          <div class="text-sm text-slate-400 mb-1">Лекция 7</div>
+          <div class="text-starlight font-bold">Работа с облачной платформой PS.KZ</div>
+        </div>
+      </div>
+
+      <p class="text-slate-400 text-sm mt-6">
+        <span class="text-yellow-400">💡</span> Все лекции доступны на YouTube. Трансляции проходили в Zoom для участников.
+      </p>
+    </div>
+
+    <!-- Results Section -->
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      <span class="text-gradient-management">Результаты</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      До финиша дошли 6 команд из 31 зарегистрированной
+    </p>
+
+    <div class="grid md:grid-cols-2 gap-8 mb-16">
+      <div class="bento-card p-8">
+        <div class="text-5xl mb-4">📊</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-4">Статистика</h3>
+        <ul class="space-y-3 text-slate-300">
+          <li class="flex items-center justify-between">
+            <span>Зарегистрировано команд</span>
+            <span class="font-data text-lg text-telegram-blue font-bold">31</span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span>Дошли до финиша</span>
+            <span class="font-data text-lg text-green-400 font-bold">6</span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span>Участников (3–4 чел/команда)</span>
+            <span class="font-data text-lg text-ai-purple-start font-bold">100+</span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span>Дней хакатона</span>
+            <span class="font-data text-lg text-yellow-400 font-bold">10</span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span>Образовательных лекций</span>
+            <span class="font-data text-lg text-management-orange-start font-bold">7</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="bento-card p-8">
+        <div class="text-5xl mb-4">🎓</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-4">Чему научились</h3>
+        <ul class="space-y-2 text-slate-300">
+          <li class="flex items-start gap-2">
+            <span class="text-green-400">✓</span>
+            <span>Проектирование высоконагруженных систем</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400">✓</span>
+            <span>Работа с облачной инфраструктурой</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400">✓</span>
+            <span>Интеграция платёжных систем</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400">✓</span>
+            <span>Нагрузочное тестирование</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400">✓</span>
+            <span>Командная работа под давлением</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Open Source Note -->
+    <div class="bento-card p-8 bg-gradient-to-br from-telegram-blue/10 to-ai-purple-start/10 border-2 border-telegram-blue/30 mb-16">
+      <div class="flex items-start gap-4">
+        <div class="text-5xl">🌐</div>
+        <div>
+          <h3 class="font-heading font-bold text-2xl text-starlight mb-3">100% Open Source</h3>
+          <p class="text-slate-300 mb-4">
+            Вся инфраструктура хакатона опубликована в открытом доступе.
+            Платформа регистрации, система тестирования, задания — всё доступно на GitHub.
+          </p>
+          <a href="https://github.com/hackload-kz" target="_blank" rel="noopener noreferrer"
+             class="text-telegram-blue hover:text-ai-purple-start transition-colors inline-flex items-center gap-2">
+            <span>github.com/hackload-kz</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quote from Chat -->
+    <div class="bento-card p-8 border-l-4 border-yellow-400 mb-16">
+      <blockquote class="text-xl md:text-2xl text-slate-300 italic mb-4">
+        «В HackLoad мы верим в создание возможностей для разработчиков решать реальные задачи
+        в совместной, образовательной среде. Наше мероприятие направлено на развитие как навыков, так и сообщества.»
+      </blockquote>
+      <div class="text-slate-400">
+        — Слоган хакатона
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Other Community Events -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-deep-space/50 to-transparent">
+  <div class="container mx-auto max-w-7xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      Другие <span class="text-gradient-ai">Активности</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Сообщество активно участвует и продвигает IT-мероприятия в Казахстане
+    </p>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="bento-card p-6">
+        <div class="text-4xl mb-4">📅</div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-2">Календарь IT-событий</h3>
+        <p class="text-slate-400 text-sm mb-4">
+          Регулярные обновления о хакатонах, акселераторах и питчах в Казахстане
+        </p>
+        <div class="text-xs text-slate-500">Публикуется ежемесячно</div>
+      </div>
+
+      <div class="bento-card p-6">
+        <div class="text-4xl mb-4">💬</div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-2">Анонсы мероприятий</h3>
+        <p class="text-slate-400 text-sm mb-4">
+          Участники делятся информацией о конференциях, митапах и образовательных событиях
+        </p>
+        <div class="text-xs text-slate-500">SMARTALA, Decentrathon и другие</div>
+      </div>
+
+      <div class="bento-card p-6">
+        <div class="text-4xl mb-4">🎯</div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-2">Планы на будущее</h3>
+        <p class="text-slate-400 text-sm mb-4">
+          Идеи новых хакатонов и образовательных инициатив активно обсуждаются в чате
+        </p>
+        <div class="text-xs text-slate-500">Присоединяйтесь к обсуждению</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA: Join Community -->
+<section class="relative py-20 px-4">
+  <div class="container mx-auto max-w-4xl">
+    <div class="bento-card p-12 text-center border-2 border-telegram-blue/30">
+      <div class="text-6xl mb-6">🤝</div>
+      <h2 class="text-3xl md:text-4xl font-heading font-bold text-starlight mb-6">
+        Хотите участвовать в следующем событии?
+      </h2>
+      <p class="text-lg text-slate-400 mb-8 max-w-2xl mx-auto">
+        Присоединяйтесь к сообществу «Тимлид не кодит». Здесь рождаются идеи и находятся люди для их реализации.
+      </p>
+      <a href="https://t.me/teamleads_kz" target="_blank" rel="noopener noreferrer"
+         class="inline-flex items-center gap-3 px-8 py-4 bg-telegram-blue hover:bg-telegram-blue/80 text-white rounded-lg font-bold transition-all text-lg">
+        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+        </svg>
+        Присоединиться к @teamleads_kz
+      </a>
+    </div>
+  </div>
+</section>
+
+{{ end }}
