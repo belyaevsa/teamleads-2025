@@ -1,0 +1,53 @@
+baseURL = 'https://teamleads.kz/'
+languageCode = 'ru-RU'
+title = 'Тимлид не кодит - Итоги 2025'
+theme = ''
+enableRobotsTXT = true
+enableGitInfo = false
+
+[params]
+  description = '12 месяцев, 26 600 сообщений, одно сообщество'
+  author = 'Тимлид не кодит Community'
+  year = 2025
+
+[build]
+  writeStats = true
+
+[minify]
+  disableCSS = false
+  disableHTML = false
+  disableJS = true
+  disableJSON = false
+  disableSVG = false
+  disableXML = false
+  minifyOutput = true
+  [minify.tdewolff]
+    [minify.tdewolff.html]
+      keepWhitespace = false
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+
+[outputs]
+  home = ["HTML", "RSS"]
+
+[sitemap]
+  changefreq = 'weekly'
+  filename = 'sitemap.xml'
+  priority = 0.5
+
+[caches]
+  [caches.getjson]
+    dir = ':cacheDir/:project'
+    maxAge = '24h'
+  [caches.getcsv]
+    dir = ':cacheDir/:project'
+    maxAge = '24h'
+  [caches.images]
+    dir = ':resourceDir/_gen'
+    maxAge = -1
+  [caches.assets]
+    dir = ':resourceDir/_gen'
+    maxAge = -1

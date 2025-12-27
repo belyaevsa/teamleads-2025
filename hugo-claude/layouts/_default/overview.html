@@ -1,0 +1,398 @@
+{{ define "main" }}
+{{ $data := .Site.Data.metrics }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- Page Header -->
+<section class="relative py-16 px-4">
+  <div class="container mx-auto max-w-7xl">
+    <div class="text-center mb-12">
+      <h1 class="text-5xl md:text-6xl font-heading font-bold text-starlight mb-4">
+        <span class="text-gradient-ai">Цифры не врут</span>
+      </h1>
+      <p class="text-xl text-slate-400 max-w-3xl mx-auto">
+        Как мы росли и о чём спорили
+      </p>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
+      <div class="bento-card p-6 text-center">
+        <div class="font-data text-4xl font-bold text-telegram-blue mb-2">{{ $data.growth_stats.avg_daily_messages }}</div>
+        <div class="text-slate-400 text-sm">Сообщений в день</div>
+      </div>
+      <div class="bento-card p-6 text-center">
+        <div class="font-data text-4xl font-bold text-ai-purple-start mb-2">{{ $data.active_days }}</div>
+        <div class="text-slate-400 text-sm">Активных дней</div>
+      </div>
+      <div class="bento-card p-6 text-center">
+        <div class="font-data text-4xl font-bold text-management-orange-start mb-2">{{ $data.growth_stats.max_daily_messages }}</div>
+        <div class="text-slate-400 text-sm">Максимум за день</div>
+      </div>
+      <div class="bento-card p-6 text-center">
+        <div class="font-data text-4xl font-bold text-green-400 mb-2">+{{ $data.growth_stats.fastest_growth_value }}%</div>
+        <div class="text-slate-400 text-sm">Рост в {{ $data.growth_stats.fastest_growth_month }}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Hourly Activity Chart -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-transparent to-deep-space/50">
+  <div class="container mx-auto max-w-7xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      Активность по <span class="text-gradient-ai">Часам</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Когда тимлиды наиболее активны в течение дня
+    </p>
+
+    <div class="relative">
+      <canvas id="hourly-chart" style="max-height: 400px;"></canvas>
+    </div>
+
+    <!-- Insights -->
+    <div class="grid md:grid-cols-3 gap-6 mt-12">
+      <div class="bento-card p-6">
+        <div class="text-3xl mb-3">🌅</div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-2">Утро (6:00-12:00)</h3>
+        <div class="font-data text-2xl text-telegram-blue mb-2">{{ $data.hourly_activity.morning_peak | lang.FormatNumber 0 }}</div>
+        <p class="text-slate-400 text-sm">Утренний пик активности</p>
+      </div>
+      <div class="bento-card p-6">
+        <div class="text-3xl mb-3">☀️</div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-2">День (12:00-18:00)</h3>
+        <div class="font-data text-2xl text-ai-purple-start mb-2">{{ $data.hourly_activity.afternoon | lang.FormatNumber 0 }}</div>
+        <p class="text-slate-400 text-sm">Пик рабочего дня</p>
+      </div>
+      <div class="bento-card p-6">
+        <div class="text-3xl mb-3">🌙</div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-2">Вечер (18:00-00:00)</h3>
+        <div class="font-data text-2xl text-management-orange-start mb-2">{{ $data.hourly_activity.evening | lang.FormatNumber 0 }}</div>
+        <p class="text-slate-400 text-sm">Вечерняя активность</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Monthly Comparison -->
+<section class="relative py-16 px-4">
+  <div class="container mx-auto max-w-7xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      Сравнение <span class="text-gradient-management">по Месяцам</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Динамика сообщений и участников в течение года
+    </p>
+
+    <div class="relative">
+      <canvas id="monthly-comparison-chart" style="max-height: 450px;"></canvas>
+    </div>
+
+    <!-- Monthly Insights -->
+    <div class="grid md:grid-cols-2 gap-6 mt-12">
+      <div class="bento-card p-6 border-l-4 border-green-500">
+        <h3 class="font-heading font-bold text-lg text-starlight mb-3">📈 Период роста</h3>
+        <p class="text-slate-300 mb-3">
+          <strong class="text-green-400">Апрель-Май:</strong> +192% роста сообщений.
+          Май стал переломным месяцем с 3 644 сообщениями.
+        </p>
+        <p class="text-slate-400 text-sm">
+          Присоединились 47 новых активных участников
+        </p>
+      </div>
+      <div class="bento-card p-6 border-l-4 border-red-500">
+        <h3 class="font-heading font-bold text-lg text-starlight mb-3">📉 Летний спад</h3>
+        <p class="text-slate-300 mb-3">
+          <strong class="text-red-400">Июль-Август:</strong> Снижение активности на 76%.
+          Август показал минимум — 857 сообщений.
+        </p>
+        <p class="text-slate-400 text-sm">
+          Типичный сезонный паттерн для IT-сообществ
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Key Milestones Timeline -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-deep-space/50 to-transparent">
+  <div class="container mx-auto max-w-7xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      Ключевые <span class="text-gradient-ai">Вехи</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Самые важные моменты 2025 года
+    </p>
+
+    <div class="space-y-8">
+      {{ range $data.timeline_milestones }}
+      <div class="bento-card p-6 hover:border-telegram-blue/50 transition-all">
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-telegram-blue to-ai-purple-start flex items-center justify-center font-heading font-bold text-lg">
+            {{ index (split .month "") 0 }}{{ index (split .month "") 1 }}
+          </div>
+          <div class="flex-1">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-heading font-bold text-xl text-starlight">{{ .title }}</h3>
+              <div class="font-data text-2xl text-telegram-blue">{{ .messages | lang.FormatNumber 0 }}</div>
+            </div>
+            <p class="text-slate-400 mb-2">{{ .month }} 2025</p>
+            <p class="text-slate-300">{{ .highlight }}</p>
+          </div>
+        </div>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+</section>
+
+<!-- Hourly Activity Chart Script -->
+<script>
+(function() {
+  const ctx = document.getElementById('hourly-chart');
+  if (!ctx) return;
+
+  const labels = {{ $data.hourly_activity.labels }};
+  const messages = {{ $data.hourly_activity.messages }};
+
+  if (!Array.isArray(labels) || !Array.isArray(messages)) {
+    console.error('Invalid hourly activity data');
+    return;
+  }
+
+  // Create gradient
+  const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, 'rgba(168, 85, 247, 0.5)');
+  gradient.addColorStop(1, 'rgba(168, 85, 247, 0.0)');
+
+  const config = {
+    type: 'line',
+    data: {
+      labels: labels.map(h => h + ':00'),
+      datasets: [{
+        label: 'Сообщений',
+        data: messages,
+        fill: true,
+        backgroundColor: gradient,
+        borderColor: '#A855F7',
+        borderWidth: 3,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: '#A855F7',
+        pointBorderColor: 'rgba(255, 255, 255, 0.8)',
+        pointBorderWidth: 2,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          titleColor: '#F8FAFC',
+          bodyColor: '#94A3B8',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 12,
+          displayColors: false,
+          titleFont: { family: 'Inter', size: 14, weight: 'bold' },
+          bodyFont: { family: 'JetBrains Mono', size: 12 },
+          callbacks: {
+            title: function(context) {
+              return 'Час: ' + context[0].label;
+            },
+            label: function(context) {
+              return context.parsed.y.toLocaleString('ru-RU') + ' сообщений';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#64748B',
+            font: { family: 'Inter', size: 11 },
+            maxRotation: 45,
+            minRotation: 45
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(148, 163, 184, 0.1)',
+            drawBorder: false
+          },
+          ticks: {
+            color: '#64748B',
+            font: { family: 'JetBrains Mono', size: 11 },
+            callback: function(value) {
+              return value.toLocaleString('ru-RU');
+            }
+          }
+        }
+      },
+      animation: {
+        duration: 2000,
+        easing: 'easeInOutQuart'
+      }
+    }
+  };
+
+  new Chart(ctx, config);
+})();
+</script>
+
+<!-- Monthly Comparison Chart Script -->
+<script>
+(function() {
+  const ctx = document.getElementById('monthly-comparison-chart');
+  if (!ctx) return;
+
+  const labels = {{ $data.monthly_data.labels }};
+  const messages = {{ $data.monthly_data.messages }};
+  const contributors = {{ $data.monthly_data.contributors }};
+
+  if (!Array.isArray(labels) || !Array.isArray(messages) || !Array.isArray(contributors)) {
+    console.error('Invalid monthly comparison data');
+    return;
+  }
+
+  const config = {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Сообщения',
+          data: messages,
+          backgroundColor: 'rgba(36, 129, 204, 0.7)',
+          borderColor: '#2481CC',
+          borderWidth: 2,
+          borderRadius: 6,
+          yAxisID: 'y'
+        },
+        {
+          label: 'Участники',
+          data: contributors,
+          type: 'line',
+          borderColor: '#F97316',
+          backgroundColor: 'rgba(249, 115, 22, 0.1)',
+          borderWidth: 3,
+          tension: 0.4,
+          pointRadius: 5,
+          pointBackgroundColor: '#F97316',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            color: '#94A3B8',
+            font: { family: 'Inter', size: 13 },
+            padding: 15,
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          titleColor: '#F8FAFC',
+          bodyColor: '#94A3B8',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 12,
+          titleFont: { family: 'Inter', size: 14, weight: 'bold' },
+          bodyFont: { family: 'JetBrains Mono', size: 12 },
+          callbacks: {
+            label: function(context) {
+              const label = context.dataset.label || '';
+              const value = context.parsed.y;
+              if (label === 'Сообщения') {
+                return label + ': ' + value.toLocaleString('ru-RU');
+              }
+              return label + ': ' + value;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#94A3B8',
+            font: { family: 'Inter', size: 12, weight: 'bold' }
+          }
+        },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(148, 163, 184, 0.1)',
+            drawBorder: false
+          },
+          ticks: {
+            color: '#2481CC',
+            font: { family: 'JetBrains Mono', size: 11 },
+            callback: function(value) {
+              return value.toLocaleString('ru-RU');
+            }
+          },
+          title: {
+            display: true,
+            text: 'Сообщения',
+            color: '#2481CC',
+            font: { family: 'Inter', size: 12, weight: 'bold' }
+          }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          beginAtZero: true,
+          grid: { drawOnChartArea: false },
+          ticks: {
+            color: '#F97316',
+            font: { family: 'JetBrains Mono', size: 11 }
+          },
+          title: {
+            display: true,
+            text: 'Участники',
+            color: '#F97316',
+            font: { family: 'Inter', size: 12, weight: 'bold' }
+          }
+        }
+      },
+      animation: {
+        duration: 1500,
+        easing: 'easeInOutQuart',
+        delay: function(context) {
+          return context.dataIndex * 80;
+        }
+      }
+    }
+  };
+
+  new Chart(ctx, config);
+})();
+</script>
+
+{{ end }}

@@ -1,0 +1,5 @@
+sentiment,count,percentage,ci_lower,ci_upper
+positive,418,8.36,7.59,9.13
+negative,578,11.56,10.67,12.45
+question,609,12.18,11.27,13.09
+neutral,3395,67.90,66.61,69.19

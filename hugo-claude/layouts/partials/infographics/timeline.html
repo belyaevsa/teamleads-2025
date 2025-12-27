@@ -1,0 +1,201 @@
+{{ $data := .Site.Data.metrics }}
+
+<section class="relative py-20 px-4 overflow-hidden">
+  <div class="container mx-auto max-w-7xl">
+
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      Таймлайн Роста <span class="text-gradient-ai">2025</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-16 max-w-2xl mx-auto">
+      Кумулятивное количество сообщений
+    </p>
+
+    <!-- Chart Container -->
+    <div class="relative">
+      <canvas id="timeline-chart" class="w-full" style="max-height: 400px;"></canvas>
+
+      <!-- Final Value Display -->
+      <div class="absolute top-4 right-4 text-right">
+        <div class="font-data text-4xl md:text-5xl font-bold text-starlight" data-count="{{ $data.total_messages }}">0</div>
+        <div class="text-slate-400 text-sm">всего сообщений</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+(function() {
+  const ctx = document.getElementById('timeline-chart');
+  if (!ctx) return;
+
+  // Data from Hugo - already parsed as JavaScript arrays
+  const labels = {{ $data.monthly_data.labels }};
+  const cumulativeData = {{ $data.monthly_data.cumulative }};
+  const milestones = {{ $data.timeline_milestones }};
+
+  // Ensure data is valid
+  if (!Array.isArray(labels) || !Array.isArray(cumulativeData) || !Array.isArray(milestones)) {
+    console.error('Invalid data format for timeline chart');
+    return;
+  }
+
+  // Create gradient
+  const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, 'rgba(36, 129, 204, 0.4)');
+  gradient.addColorStop(1, 'rgba(36, 129, 204, 0.0)');
+
+  const config = {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Сообщения (кумулятивно)',
+        data: cumulativeData,
+        fill: true,
+        backgroundColor: gradient,
+        borderColor: '#2481CC',
+        borderWidth: 3,
+        tension: 0.4,
+        pointRadius: function(context) {
+          // Larger points for milestones
+          const index = context.dataIndex;
+          const isMilestone = milestones.some(m => m.month_index === index);
+          return isMilestone ? 8 : 4;
+        },
+        pointBackgroundColor: function(context) {
+          const index = context.dataIndex;
+          const milestone = milestones.find(m => m.month_index === index);
+          if (milestone) {
+            if (index === 11) return '#D946EF'; // December - purple
+            if (index === 4) return '#10B981';  // May - green
+            return '#2481CC';
+          }
+          return '#2481CC';
+        },
+        pointBorderColor: 'rgba(255, 255, 255, 0.8)',
+        pointBorderWidth: 2,
+        pointHoverRadius: 10,
+        shadowOffsetX: 0,
+        shadowOffsetY: 0,
+        shadowBlur: 10,
+        shadowColor: 'rgba(36, 129, 204, 0.5)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: 2.5,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          titleColor: '#F8FAFC',
+          bodyColor: '#94A3B8',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 12,
+          displayColors: false,
+          titleFont: {
+            family: 'JetBrains Mono',
+            size: 14,
+            weight: 'bold'
+          },
+          bodyFont: {
+            family: 'Inter',
+            size: 12
+          },
+          callbacks: {
+            title: function(context) {
+              return context[0].label;
+            },
+            label: function(context) {
+              return context.parsed.y.toLocaleString('ru-RU') + ' сообщений';
+            },
+            afterLabel: function(context) {
+              const milestone = milestones.find(m => m.month_index === context.dataIndex);
+              if (milestone) {
+                return [
+                  '',
+                  milestone.title,
+                  milestone.highlight
+                ];
+              }
+              return '';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            color: '#64748B',
+            font: {
+              family: 'Inter',
+              size: 12
+            }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(148, 163, 184, 0.1)',
+            drawBorder: false
+          },
+          ticks: {
+            color: '#64748B',
+            font: {
+              family: 'JetBrains Mono',
+              size: 11
+            },
+            callback: function(value) {
+              return value.toLocaleString('ru-RU');
+            }
+          }
+        }
+      },
+      animation: {
+        duration: 2000,
+        easing: 'easeInOutQuart',
+        onProgress: function(animation) {
+          // Draw glow effect during animation
+          const chart = animation.chart;
+          const ctx = chart.ctx;
+          ctx.save();
+          ctx.shadowColor = 'rgba(36, 129, 204, 0.5)';
+          ctx.shadowBlur = 15;
+          ctx.restore();
+        }
+      }
+    }
+  };
+
+  // Create chart
+  const chart = new Chart(ctx, config);
+
+  // Animate chart on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        chart.update();
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.3 });
+
+  observer.observe(ctx);
+
+})();
+</script>

@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-deep-space: #0F172A;
+    --color-telegram-blue: #2481CC;
+    --color-starlight: #F8FAFC;
+
+    --gradient-ai: linear-gradient(135deg, #A855F7 0%, #D946EF 100%);
+    --gradient-management: linear-gradient(135deg, #F97316 0%, #FDBA74 100%);
+    --gradient-aurora: linear-gradient(135deg, #A855F7 0%, #F97316 50%, #D946EF 100%);
+
+    --glass-blur: 12px;
+    --border-radius-card: 24px;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .bento-card {
+    @apply rounded-bento;
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+  }
+
+  .bento-card:hover {
+    transform: scale(1.01);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-panel {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .grid-pattern {
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  .aurora-bg {
+    background: var(--gradient-aurora);
+    background-size: 200% 200%;
+    animation: aurora 20s ease infinite;
+  }
+}
+
+@layer utilities {
+  .text-gradient-ai {
+    background: var(--gradient-ai);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-management {
+    background: var(--gradient-management);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+@keyframes aurora {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 1s ease forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}

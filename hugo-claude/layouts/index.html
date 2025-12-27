@@ -1,0 +1,191 @@
+{{ define "main" }}
+
+<!-- Hero Section -->
+<div id="hero">
+{{ partial "components/hero.html" . }}
+</div>
+
+<!-- Key Metrics Section -->
+<section id="metrics" class="relative py-20 px-4">
+  <div class="container mx-auto max-w-7xl">
+
+    <h2 class="text-4xl md:text-5xl font-heading font-bold text-center mb-4 text-starlight">
+      Ключевые Метрики <span class="text-gradient-ai">2025</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-16 max-w-2xl mx-auto">
+      Год, который изменил наше сообщество навсегда
+    </p>
+
+    <!-- Metrics Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+      <!-- Card 1: Total Messages -->
+      <div class="bento-card p-8 group">
+        <div class="text-5xl mb-4">💬</div>
+        <div class="font-data text-5xl font-bold text-starlight mb-2" data-count="26600">0</div>
+        <div class="text-slate-400 text-lg mb-4">сообщений</div>
+        <a href="#overview" class="text-telegram-blue text-sm hover:underline inline-flex items-center gap-1">
+          → Обзор
+        </a>
+      </div>
+
+      <!-- Card 2: Active Contributors -->
+      <div class="bento-card p-8 group">
+        <div class="text-5xl mb-4">👥</div>
+        <div class="font-data text-5xl font-bold text-starlight mb-2" data-count="139">0</div>
+        <div class="text-slate-400 text-lg mb-4">участников</div>
+        <a href="#people" class="text-management-orange-start text-sm hover:underline inline-flex items-center gap-1">
+          → Люди
+        </a>
+      </div>
+
+      <!-- Card 3: Top Topic -->
+      <div class="bento-card p-8 group">
+        <div class="text-5xl mb-4">🤖</div>
+        <div class="font-heading text-3xl font-bold text-gradient-ai mb-2">AI & ML</div>
+        <div class="text-slate-400 text-lg mb-4">Лидер обсуждений</div>
+        <a href="#topics" class="text-telegram-blue text-sm hover:underline inline-flex items-center gap-1">
+          → Темы
+        </a>
+      </div>
+
+      <!-- Card 4: Community Sentiment -->
+      <div class="bento-card p-8 group">
+        <div class="text-5xl mb-4">😌</div>
+        <div class="font-data text-5xl font-bold text-starlight mb-2" data-count="69.6">0</div>
+        <div class="text-slate-400 text-lg mb-4">% нейтральных</div>
+        <a href="#sentiment" class="text-telegram-blue text-sm hover:underline inline-flex items-center gap-1">
+          → Тональность
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Big Four Preview Section -->
+<section id="big-four" class="relative py-20 px-4 bg-gradient-to-b from-transparent to-deep-space/50">
+  <div class="container mx-auto max-w-7xl">
+
+    <h2 class="text-4xl md:text-5xl font-heading font-bold text-center mb-4 text-starlight">
+      <span class="text-gradient-management">Большая Четвёрка</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-16 max-w-2xl mx-auto">
+      Ядро сообщества — лидеры активности и вдохновители дискуссий
+    </p>
+
+    <!-- Big Four Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+      <!-- Andrii Kurdiumov -->
+      <div class="bento-card p-6 text-center group hover:border-yellow-500/50">
+        <div class="text-4xl mb-2">🥇</div>
+        <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-2xl font-bold text-deep-space">
+          AK
+        </div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-1">Andrii Kurdiumov</h3>
+        <div class="font-data text-2xl font-bold text-yellow-400 mb-1" data-count="6266">0</div>
+        <div class="text-slate-400 text-sm">сообщений</div>
+      </div>
+
+      <!-- Артур Пан -->
+      <div class="bento-card p-6 text-center group hover:border-gray-400/50">
+        <div class="text-4xl mb-2">🥈</div>
+        <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center text-2xl font-bold text-deep-space">
+          АП
+        </div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-1">Артур Пан</h3>
+        <div class="font-data text-2xl font-bold text-gray-300 mb-1" data-count="4388">0</div>
+        <div class="text-slate-400 text-sm">сообщений</div>
+      </div>
+
+      <!-- Теймур Шайкемелов -->
+      <div class="bento-card p-6 text-center group hover:border-orange-600/50">
+        <div class="text-4xl mb-2">🥉</div>
+        <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-orange-400 to-orange-700 rounded-full flex items-center justify-center text-2xl font-bold text-deep-space">
+          ТШ
+        </div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-1">Теймур Шайкемелов</h3>
+        <div class="font-data text-2xl font-bold text-orange-400 mb-1" data-count="3105">0</div>
+        <div class="text-slate-400 text-sm">сообщений</div>
+      </div>
+
+      <!-- Stanislav Belyaev -->
+      <div class="bento-card p-6 text-center group hover:border-blue-400/50">
+        <div class="text-4xl mb-2">⭐</div>
+        <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-2xl font-bold text-deep-space">
+          SB
+        </div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-1">Stanislav Belyaev</h3>
+        <div class="font-data text-2xl font-bold text-blue-400 mb-1" data-count="3035">0</div>
+        <div class="text-slate-400 text-sm">сообщений</div>
+      </div>
+
+    </div>
+
+    <div class="text-center mt-12">
+      <a href="/people" class="inline-flex items-center gap-2 px-8 py-4 bento-card hover:border-telegram-blue/50 transition-all">
+        <span class="text-lg text-starlight">Узнать больше о сообществе</span>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+        </svg>
+      </a>
+    </div>
+
+  </div>
+</section>
+
+<!-- Timeline Infographic -->
+{{ partial "infographics/timeline.html" . }}
+
+<!-- Topic Cloud -->
+{{ partial "infographics/topic-cloud.html" . }}
+
+<!-- Sentiment Overview Donut -->
+{{ partial "infographics/sentiment-donut.html" . }}
+
+<!-- Day of Week Activity -->
+{{ partial "infographics/day-of-week.html" . }}
+
+<!-- Count-up Animation Script -->
+<script>
+  // Count-up animation for numbers
+  function animateCount(element, target, duration = 2000) {
+    const start = 0;
+    const increment = target / (duration / 16);
+    let current = start;
+
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) {
+        element.textContent = target.toLocaleString('ru-RU');
+        clearInterval(timer);
+      } else {
+        element.textContent = Math.floor(current).toLocaleString('ru-RU');
+      }
+    }, 16);
+  }
+
+  // Intersection Observer for triggering animations when scrolled into view
+  const observerOptions = {
+    threshold: 0.5,
+    rootMargin: '0px'
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && !entry.target.classList.contains('counted')) {
+        entry.target.classList.add('counted');
+        const target = parseFloat(entry.target.getAttribute('data-count'));
+        animateCount(entry.target, target);
+      }
+    });
+  }, observerOptions);
+
+  // Observe all count elements
+  document.querySelectorAll('[data-count]').forEach(el => {
+    observer.observe(el);
+  });
+</script>
+
+{{ end }}

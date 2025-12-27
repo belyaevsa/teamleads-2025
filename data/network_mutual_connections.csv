@@ -1,0 +1,365 @@
+user1,user2,user1_to_user2,user2_to_user1,total,balance
+"Andrii Kurdiumov","Stanislav Belyaev",334,356,690,22
+"Артур Пан","Теймур Шайкемелов",289,362,651,73
+"Andrii Kurdiumov","Артур Пан",365,271,636,94
+"Andrii Kurdiumov","Теймур Шайкемелов",236,234,470,2
+"Andrii Kurdiumov","Vassiliy ",167,244,411,77
+"Stanislav Belyaev","Артур Пан",265,138,403,127
+"Stanislav Belyaev","Теймур Шайкемелов",149,133,282,16
+"Andrii Kurdiumov","Антон ",97,88,185,9
+"Andrii Kurdiumov","Dmitriy Melnik",105,78,183,27
+"Stanislav Belyaev","Vassiliy ",84,77,161,7
+"Vassiliy ","Теймур Шайкемелов",90,70,160,20
+"Andrii Kurdiumov","Arthur pandev.io",82,77,159,5
+"Azat Jalilov","Stanislav Belyaev",70,87,157,17
+"Azat Jalilov","Артур Пан",74,80,154,6
+"Dmitriy Melnik","Теймур Шайкемелов",62,75,137,13
+"Andrii Kurdiumov","Tair Sab",76,59,135,17
+"Andrii Kurdiumov","Azat Jalilov",68,61,129,7
+"Dmitriy Melnik","Stanislav Belyaev",51,77,128,26
+"Andrii Kurdiumov","Denis ",69,53,122,16
+"Andrii Kurdiumov","Nurlan N",49,66,115,17
+"Andrii Kurdiumov","Андрей Звёздочка",40,54,94,14
+"Stanislav Belyaev","Антон ",57,36,93,21
+"Stanislav Belyaev","Tair Sab",45,37,82,8
+"Egor ","Stanislav Belyaev",41,41,82,0
+"Dmitriy Melnik","Артур Пан",36,42,78,6
+"Arthur pandev.io","Stanislav Belyaev",21,55,76,34
+"Stanislav Belyaev","Андрей Звёздочка",38,33,71,5
+"Andrii Kurdiumov","Maxim Gorbatyuk",31,40,71,9
+"Артур Пан","鏥 Tоλеген ",37,30,67,7
+"Denis ","Stanislav Belyaev",26,41,67,15
+"Andrii Kurdiumov","АДИЛЬБЕК ",39,27,66,12
+"Azat Jalilov","Теймур Шайкемелов",28,37,65,9
+"Nurlan N","Артур Пан",39,24,63,15
+"Azat Jalilov","Tair Sab",24,38,62,14
+"Nurlan N","Stanislav Belyaev",30,30,60,0
+"Maxim Gorbatyuk","Теймур Шайкемелов",34,25,59,9
+"Arthur pandev.io","Антон ",32,27,59,5
+"Andrii Kurdiumov","Anton ",38,18,56,20
+"Arthur pandev.io","Теймур Шайкемелов",21,35,56,14
+"Андрей Звёздочка","Теймур Шайкемелов",31,24,55,7
+"Tair Sab","Теймур Шайкемелов",25,29,54,4
+"Arthur pandev.io","Dmitriy Melnik",33,21,54,12
+"Nurlan N","Теймур Шайкемелов",27,25,52,2
+"Maxim Gorbatyuk","Stanislav Belyaev",25,25,50,0
+"Stanislav Belyaev","АДИЛЬБЕК ",33,16,49,17
+"Andrii Kurdiumov","Rodion M [KZ]",20,27,47,7
+"Vassiliy ","Антон ",24,23,47,1
+"Andrii Kurdiumov","Egor ",18,27,45,9
+"Andrey Pfremmy","Andrii Kurdiumov",26,19,45,7
+"Andrii Kurdiumov","Rodion Mostovoi",19,23,42,4
+"Azat Jalilov","Nurlan N",15,27,42,12
+"Maxim Gorbatyuk","Артур Пан",25,16,41,9
+"Stanislav Belyaev","鏥 Tоλеген ",26,14,40,12
+"Vassiliy ","Артур Пан",26,14,40,12
+"Andrii Kurdiumov","鏥 Tоλеген ",18,19,37,1
+"АДИЛЬБЕК ","Теймур Шайкемелов",15,22,37,7
+"Azat Jalilov","Vassiliy ",13,22,35,9
+"Shamuil💻 ","Stanislav Belyaev",13,22,35,9
+"Alex Dukhnovskiy ","Артур Пан",18,16,34,2
+"Egor ","Теймур Шайкемелов",16,17,33,1
+"Tair Sab","Артур Пан",14,19,33,5
+"Andrii Kurdiumov","Артем Летюшев",16,16,32,0
+"Denis ","Dmitriy Melnik",19,13,32,6
+"Dmitriy Melnik","Антон ",11,20,31,9
+"Maxim Gorbatyuk","Tair Sab",14,15,29,1
+"Arthur pandev.io","Vassiliy ",12,16,28,4
+"Andrii Kurdiumov","Artem Galustyan",11,16,27,5
+"Azat Jalilov","Антон ",14,13,27,1
+"Egor ","Артур Пан",12,15,27,3
+"Denis ","Андрей Звёздочка",8,19,27,11
+"Denis ","Теймур Шайкемелов",14,12,26,2
+"Теймур Шайкемелов","鏥 Tоλеген ",16,9,25,7
+"Dmitriy Melnik","Nurlan N",10,15,25,5
+"Azat Jalilov","Zhanar Mustafina",11,13,24,2
+"Andrey Pfremmy","Теймур Шайкемелов",11,13,24,2
+"Rodion Mostovoi","Stanislav Belyaev",14,10,24,4
+"Anton ","Теймур Шайкемелов",13,11,24,2
+"Pavel Gasanov","Stanislav Belyaev",11,12,23,1
+"Stanislav Belyaev","Сергей Михайлов ",11,11,22,0
+"Egor ","Maxim Gorbatyuk",11,11,22,0
+"Denis Migulin","Stanislav Belyaev",13,8,21,5
+"Daulet ","Vassiliy ",11,10,21,1
+"Nurlan N","Tair Sab",10,10,20,0
+"Alex Dukhnovskiy ","Stanislav Belyaev",11,9,20,2
+"Iztleu Darkhan ","Vassiliy ",9,11,20,2
+"Dmitriy Melnik","Maxim Gorbatyuk",8,11,19,3
+"Артур Пан","Сергей Михайлов ",10,9,19,1
+"Shamuil💻 ","Артур Пан",10,9,19,1
+"Denis ","Артур Пан",12,7,19,5
+"Arthur pandev.io","Denis ",8,11,19,3
+"Maksim Mukharev","Антон ",8,11,19,3
+"Denis ","Nurlan N",6,12,18,6
+"АДИЛЬБЕК ","Артур Пан",9,8,17,1
+"Nurlan N","Vassiliy ",9,8,17,1
+"Alex Dukhnovskiy ","Теймур Шайкемелов",12,5,17,7
+"Stanislav Belyaev","Магжан Каратаєв <🦩/>",13,3,16,10
+"Azat Jalilov","Андрей Звёздочка",7,9,16,2
+"Dmitriy Melnik","Андрей Звёздочка",3,13,16,10
+"Rodion M [KZ]","Артур Пан",12,4,16,8
+"Artem Galustyan","Stanislav Belyaev",6,10,16,4
+"Stanislav Belyaev","Vladimir Monomakh",8,7,15,1
+"Andrii Kurdiumov","Rodion M [UTC+5]",6,9,15,3
+"olzhas tatagulov","Артур Пан",11,4,15,7
+"Daulet Dauitbek","Артур Пан",9,6,15,3
+"Iztleu Darkhan ","Артур Пан",7,8,15,1
+"Daniyar S","Vassiliy ",8,7,15,1
+"Denis ","Антон ",6,9,15,3
+"Andrii Kurdiumov","Denis Migulin",8,6,14,2
+"Dmitriy Melnik","Egor ",5,9,14,4
+"Tair Sab","鏥 Tоλеген ",8,6,14,2
+"Alex Dukhnovskiy ","Tair Sab",8,6,14,2
+"Rodion M [KZ]","Stanislav Belyaev",7,7,14,0
+"Yernur ","Артур Пан",10,4,14,6
+"Anton ","Tair Sab",8,6,14,2
+"Andrii Kurdiumov","Shamuil💻 ",5,8,13,3
+"Maxim Gorbatyuk","Vassiliy ",10,3,13,7
+"Maxim Gorbatyuk","Nurlan N",5,8,13,3
+"Tair Sab","olzhas tatagulov",6,7,13,1
+"Ali ","Stanislav Belyaev",6,7,13,1
+"Sergey Kuzmin","Теймур Шайкемелов",7,6,13,1
+"Arthur pandev.io","Rodion Mostovoi",3,10,13,7
+"Anton ","Arthur pandev.io",7,6,13,1
+"Антон ","Теймур Шайкемелов",6,7,13,1
+"Stanislav Belyaev","olzhas tatagulov",6,6,12,0
+"Andrii Kurdiumov","Сергей Михайлов ",5,7,12,2
+"Nurlan N","АДИЛЬБЕК ",8,4,12,4
+"Vassiliy ","Артем Летюшев",6,6,12,0
+"Monti ","Артур Пан",7,5,12,2
+"Pavel Gasanov","Артур Пан",7,5,12,2
+"Rodion Mostovoi [KZ]","Теймур Шайкемелов",10,2,12,8
+"Artem Galustyan","Теймур Шайкемелов",6,6,12,0
+"Rodion Mostovoi","Теймур Шайкемелов",5,7,12,2
+"Maksim Mukharev","Stanislav Belyaev",7,5,12,2
+"Stanislav Belyaev","Zhanar Mustafina",6,5,11,1
+"Stanislav Belyaev","Yernur ",6,5,11,1
+"Andrii Kurdiumov","LORDE kz",4,7,11,3
+"Andrii Kurdiumov","olzhas tatagulov",7,4,11,3
+"Egor ","Андрей Звёздочка",5,6,11,1
+"Tair Sab","Андрей Звёздочка",5,6,11,1
+"Aibek ","Stanislav Belyaev",5,6,11,1
+"Adil ","Andrii Kurdiumov",4,7,11,3
+"Andrii Kurdiumov","Baur ",4,6,10,2
+"Andrii Kurdiumov","Viktor ",5,5,10,0
+"Azat Jalilov","Dmitriy Melnik",4,6,10,2
+"olzhas tatagulov","Теймур Шайкемелов",5,5,10,0
+"Daulet Dauitbek","Vassiliy ",5,5,10,0
+"Artem Galustyan","Azat Jalilov",8,2,10,6
+"Arthur pandev.io","Azat Jalilov",4,6,10,2
+"Andrii Kurdiumov","Магжан Каратаєв <🦩/>",7,2,9,5
+"Andrii Kurdiumov","Pavel Gasanov",5,4,9,1
+"Nurlan N","Антон ",4,5,9,1
+"Maxim Gorbatyuk","Антон ",5,4,9,1
+"Dmitriy Melnik","Rodion Mostovoi",5,4,9,1
+"Dmitriy Melnik","Vassiliy ",4,5,9,1
+"Артур Пан","Борис ",6,3,9,3
+"Denis Migulin","Артур Пан",6,3,9,3
+"Iztleu Darkhan ","Stanislav Belyaev",6,3,9,3
+"Shamuil💻 ","Vassiliy ",4,5,9,1
+"Abdubek Zholay","Rodion Mostovoi [KZ]",5,4,9,1
+"Adil ","Vassiliy ",3,6,9,3
+"Артем Летюшев","Теймур Шайкемелов",5,4,9,1
+"Andrii Kurdiumov","Iztleu Darkhan ",5,3,8,2
+"Andrii Kurdiumov","Rodion Mostovoi [KZ]",4,4,8,0
+"Andrii Kurdiumov","Daulet Dauitbek",3,5,8,2
+"Maxim Gorbatyuk","Андрей Звёздочка",4,4,8,0
+"Maxim Gorbatyuk","Pavel Gasanov",5,3,8,2
+"Dmitriy Melnik","АДИЛЬБЕК ",3,5,8,2
+"Vassiliy ","Андрей Звёздочка",4,4,8,0
+"Магжан Каратаєв <🦩/>","Теймур Шайкемелов",3,5,8,2
+"Rodion M [KZ]","Tair Sab",4,4,8,0
+"Rodion M [KZ]","Теймур Шайкемелов",4,4,8,0
+"Andrey Pfremmy","Tair Sab",4,4,8,0
+"Ali ","Андрей Звёздочка",3,5,8,2
+"Daniyar S","Stanislav Belyaev",4,4,8,0
+"Denis ","Rodion Mostovoi",5,3,8,2
+"Andrii Kurdiumov","Monti ",4,3,7,1
+"Andrii Kurdiumov","Zhanar Mustafina",5,2,7,3
+"Sergey Rubtsov","Stanislav Belyaev",5,2,7,3
+"Azat Jalilov","Daniyar S",4,3,7,1
+"Egor ","鏥 Tоλеген ",5,2,7,3
+"Egor ","Rodion Mostovoi",4,3,7,1
+"Olzhas ","Stanislav Belyaev",2,5,7,3
+"Dmitriy Melnik","Tair Sab",2,5,7,3
+"Dmitriy Melnik","Артем Летюшев",4,3,7,1
+"Tair Sab","Vassiliy ",4,3,7,1
+"Andrey Pfremmy","Артур Пан",4,3,7,1
+"Andrey Pfremmy","Stanislav Belyaev",4,3,7,1
+"LORDE kz","Stanislav Belyaev",3,4,7,1
+"Iztleu Darkhan ","Tair Sab",4,3,7,1
+"Андрей Звёздочка","Артур Пан",6,1,7,5
+"Pavel Gasanov","Андрей Звёздочка",4,3,7,1
+"Антон ","Артем Летюшев",4,3,7,1
+"Stanislav Belyaev","Vladislav ",2,4,6,2
+"Azat Jalilov","Baur ",4,2,6,2
+"Azat Jalilov","Rodion M [KZ]",2,4,6,2
+"Maxim Gorbatyuk","АДИЛЬБЕК ",4,2,6,2
+"Dmitriy Melnik","鏥 Tоλеген ",4,2,6,2
+"Dmitriy Melnik","Сергей Михайлов",3,3,6,0
+"Dmitriy Melnik","Vladislav ",1,5,6,4
+"Baur ","Stanislav Belyaev",3,3,6,0
+"Sayan Jakupbekov","Теймур Шайкемелов",2,4,6,2
+"Igor Pak","Stanislav Belyaev",3,3,6,0
+"Denis Migulin","Nurlan N",2,4,6,2
+"Denis Migulin","Теймур Шайкемелов",2,4,6,2
+"Andrey Pfremmy","Maxim Gorbatyuk",2,4,6,2
+"Andrey Pfremmy","Vitaliy ",4,2,6,2
+"LORDE kz","Теймур Шайкемелов",4,2,6,2
+"LORDE kz","Tair Sab",3,3,6,0
+"playerunknown ","Теймур Шайкемелов",4,2,6,2
+"Artem Galustyan","Nurlan N",3,3,6,0
+"Adil ","Egor ",3,3,6,0
+"Anton ","Stanislav Belyaev",2,4,6,2
+"Maksim Mukharev","Теймур Шайкемелов",2,4,6,2
+"Andrii Kurdiumov","Vladimir Monomakh",3,2,5,1
+"Andrii Kurdiumov","Sayan Jakupbekov",2,3,5,1
+"Nurlan N","Магжан Каратаєв <🦩/>",4,1,5,3
+"Nurlan N","Shamuil💻 ",3,2,5,1
+"Nurlan N","olzhas tatagulov",4,1,5,3
+"Azat Jalilov","Vladimir Monomakh",2,3,5,1
+"Azat Jalilov","Iztleu Darkhan ",3,2,5,1
+"Azat Jalilov","Svetlana Yankovs ",3,2,5,1
+"Azat Jalilov","Maxim Gorbatyuk",3,2,5,1
+"Azat Jalilov","Pavel Gasanov",2,3,5,1
+"Egor ","Nurlan N",3,2,5,1
+"Dmitriy Melnik","Борис ",2,3,5,1
+"Dmitriy Melnik","Rodion M [KZ]",3,2,5,1
+"Dmitriy Melnik","Maksim Mukharev",3,2,5,1
+"Артур Пан","Магжан Каратаєв <🦩/>",4,1,5,3
+"Артур Пан","Дмитрий Романов",1,4,5,3
+"Denis Migulin","Андрей Звёздочка",2,3,5,1
+"Denis Migulin","Vassiliy ",3,2,5,1
+"Vladislav ","Артур Пан",4,1,5,3
+"Shamuil💻 ","Теймур Шайкемелов",2,3,5,1
+"Pavel Gasanov","Tair Sab",1,4,5,3
+"Denis ","Артем Летюшев",3,2,5,1
+"Denis ","Vassiliy ",1,4,5,3
+"Denis ","Tair Sab",2,3,5,1
+"KASSCO ","Артур Пан",2,3,5,1
+"azafromkaza ","Теймур Шайкемелов",2,3,5,1
+"Anton ","Dmitriy Melnik",3,2,5,1
+"Stanislav Belyaev","Акмаль ",2,2,4,0
+"Andrii Kurdiumov","Vladislav ",2,2,4,0
+"Andrii Kurdiumov","Ilya Nikitenkov",2,2,4,0
+"Andrii Kurdiumov","Дмитрий Романов",3,1,4,2
+"Andrii Kurdiumov","Sergey Kuzmin",2,2,4,0
+"Andrii Kurdiumov","Daniyar S",2,2,4,0
+"Andrii Kurdiumov","KASSCO ",2,2,4,0
+"Andrii Kurdiumov","Arman ",2,2,4,0
+"Andrii Kurdiumov","Maksim Mukharev",2,2,4,0
+"Andrii Kurdiumov","Daulet ",2,2,4,0
+"Сергей Михайлов ","鏥 Tоλеген ",2,2,4,0
+"Vladimir Monomakh","Теймур Шайкемелов",1,3,4,2
+"Nurlan N","Rodion M [KZ]",3,1,4,2
+"Nurlan N","Pavel Gasanov",2,2,4,0
+"Maxim Gorbatyuk","鏥 Tоλеген ",2,2,4,0
+"Maxim Gorbatyuk","Rodion M [KZ]",2,2,4,0
+"Sergey F.","Stanislav Belyaev",3,1,4,2
+"Артур Пан","Жасулан ",2,2,4,0
+"Tair Sab","Антон ",1,3,4,2
+"Denis Migulin","Dmitriy Melnik",1,3,4,2
+"Daulet Dauitbek","Stanislav Belyaev",2,2,4,0
+"Pavel Gasanov","Теймур Шайкемелов",2,2,4,0
+"Ali ","Pavel Gasanov",2,2,4,0
+"Ali ","Vassiliy ",2,2,4,0
+"Sergey Kuzmin","Stanislav Belyaev",3,1,4,2
+"Aidyn Toibekov","LORDE kz",2,2,4,0
+"Adil ","Stanislav Belyaev",1,3,4,2
+"Damir Kyzyr","Теймур Шайкемелов",3,1,4,2
+"Daulet ","Stanislav Belyaev",2,2,4,0
+"Andrii Kurdiumov","Eugene Svalukhin",2,1,3,1
+"Andrii Kurdiumov","Vitaliy ",1,2,3,1
+"АДИЛЬБЕК ","Сергей Михайлов",2,1,3,1
+"Nurlan N","Дмитрий Романов",1,2,3,1
+"Nurlan N","Rodion Mostovoi [KZ]",2,1,3,1
+"Nurlan N","Rodion Mostovoi",2,1,3,1
+"Azat Jalilov","АДИЛЬБЕК ",2,1,3,1
+"Azat Jalilov","Сергей Михайлов ",2,1,3,1
+"Azat Jalilov","Игорь Блинк",2,1,3,1
+"Azat Jalilov","olzhas tatagulov",2,1,3,1
+"Egor ","АДИЛЬБЕК ",2,1,3,1
+"Egor ","Rodion M [KZ]",2,1,3,1
+"Egor ","Борис ",2,1,3,1
+"Maxim Gorbatyuk","Shamuil💻 ",2,1,3,1
+"Maxim Gorbatyuk","Svetlana Yankovs ",2,1,3,1
+"Dmitriy Melnik","Rodion M [UTC+5]",1,2,3,1
+"Sayan Jakupbekov","Артур Пан",2,1,3,1
+"Rodion M [UTC+5]","Артур Пан",2,1,3,1
+"Rodion M [UTC+5]","Stanislav Belyaev",1,2,3,1
+"Tair Sab","Борис ",1,2,3,1
+"Alex Dukhnovskiy ","Azat Jalilov",2,1,3,1
+"Vladislav ","Теймур Шайкемелов",1,2,3,1
+"Daulet Dauitbek","Tair Sab",1,2,3,1
+"Борис ","Теймур Шайкемелов",1,2,3,1
+"LORDE kz","Nurlan N",2,1,3,1
+"Iztleu Darkhan ","Maxim Gorbatyuk",1,2,3,1
+"Iztleu Darkhan ","鏥 Tоλеген ",2,1,3,1
+"Shamuil💻 ","鏥 Tоλеген ",1,2,3,1
+"Zhanar Mustafina","Теймур Шайкемелов",2,1,3,1
+"A O","Andrii Kurdiumov",1,2,3,1
+"A O","Dmitriy Melnik",1,2,3,1
+"Anarbek ","Stanislav Belyaev",1,2,3,1
+"Pavel Gasanov","Rodion Mostovoi",1,2,3,1
+"Rodion Mostovoi [KZ]","Stanislav Belyaev",1,2,3,1
+"Artem Galustyan","Артур Пан",2,1,3,1
+"Aleksandr Berestovoy","Артур Пан",2,1,3,1
+"Adil ","Maxim Gorbatyuk",1,2,3,1
+"Denis ","Ilyas Adov",2,1,3,1
+"Denis ","Maksim Mukharev",2,1,3,1
+"Denis ","Maxim Gorbatyuk",2,1,3,1
+"Артем Летюшев","Артур Пан",2,1,3,1
+"Oracle ","Stanislav Belyaev",2,1,3,1
+"Arthur pandev.io","Андрей Звёздочка",1,2,3,1
+"Anton ","Denis ",1,2,3,1
+"Andrii Kurdiumov","Sergey Rubtsov",1,1,2,0
+"Sergey Rubtsov","Vladislav ",1,1,2,0
+"Sergey Rubtsov","Артур Пан",1,1,2,0
+"Nurlan N","Андрей Звёздочка",1,1,2,0
+"Nurlan N","Артем Летюшев",1,1,2,0
+"Azat Jalilov","鏥 Tоλеген ",1,1,2,0
+"Egor ","Shamuil💻 ",1,1,2,0
+"Egor ","Rodion Mostovoi [KZ]",1,1,2,0
+"Egor ","KASSCO ",1,1,2,0
+"Maxim Gorbatyuk","Магжан Каратаєв <🦩/>",1,1,2,0
+"Dmitriy Melnik","Sergey Rudenko",1,1,2,0
+"Baur ","Dmitriy Melnik",1,1,2,0
+"Baur ","Nurlan N",1,1,2,0
+"Aidyn Mautkhan","Теймур Шайкемелов",1,1,2,0
+"Igor Pak","Tair Sab",1,1,2,0
+"Igor Pak","Артур Пан",1,1,2,0
+"Tair Sab","АДИЛЬБЕК ",1,1,2,0
+"Tair Sab","Vitaliy ",1,1,2,0
+"Denis Migulin","Maxim Gorbatyuk",1,1,2,0
+"Alex Dukhnovskiy ","Dmitriy Melnik",1,1,2,0
+"Alex Dukhnovskiy ","Maxim Gorbatyuk",1,1,2,0
+"Alex Dukhnovskiy ","Акмаль ",1,1,2,0
+"Dastan Smailov","Теймур Шайкемелов",1,1,2,0
+"Andrey Pfremmy","Azat Jalilov",1,1,2,0
+"LORDE kz","Maxim Gorbatyuk",1,1,2,0
+"LORDE kz","Rodion Mostovoi",1,1,2,0
+"Aibek ","Andrii Kurdiumov",1,1,2,0
+"Aibek ","Артур Пан",1,1,2,0
+"Ilya Nikitenkov","АДИЛЬБЕК ",1,1,2,0
+"Anarbek ","Теймур Шайкемелов",1,1,2,0
+"Nursultan Sarymov","Артур Пан",1,1,2,0
+"Pavel Gasanov","Ustem ",1,1,2,0
+"Abdubek Zholay","Теймур Шайкемелов",1,1,2,0
+"Ali ","Dmitriy Melnik",1,1,2,0
+"A S","Stanislav Belyaev",1,1,2,0
+"A S","Артем Летюшев",1,1,2,0
+"Daniyar S","Tair Sab",1,1,2,0
+"Rodion Mostovoi","Д а Н Е К Е Р ",1,1,2,0
+"Aleksandr Berestovoy","Artem Galustyan",1,1,2,0
+"Aleksandr Berestovoy","Andrii Kurdiumov",1,1,2,0
+"Adil ","Артур Пан",1,1,2,0
+"Denis ","hayshin ",1,1,2,0
+"Denis ","Ustem ",1,1,2,0
+"KASSCO ","АДИЛЬБЕК ",1,1,2,0
+"KASSCO ","Теймур Шайкемелов",1,1,2,0
+"Timur Nurmagambetov","Артур Пан",1,1,2,0
+"Azat ","Артур Пан",1,1,2,0
+"Arthur pandev.io","Viktor ",1,1,2,0
+"Anton ","Артем Летюшев",1,1,2,0
+"Ustem ","Viktor ",1,1,2,0
+"IlhufhUhvwohvv<<C ","Антон ",1,1,2,0

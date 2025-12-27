@@ -1,0 +1,497 @@
+{{ define "main" }}
+{{ $data := .Site.Data.metrics }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- Page Header -->
+<section class="relative py-16 px-4">
+  <div class="container mx-auto max-w-7xl">
+    <div class="text-center mb-12">
+      <h1 class="text-5xl md:text-6xl font-heading font-bold text-starlight mb-4">
+        <span class="text-gradient-management">Кто эти люди</span>
+      </h1>
+      <p class="text-xl text-slate-400 max-w-3xl mx-auto">
+        И почему они не спят по ночам
+      </p>
+    </div>
+
+    <!-- Community Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
+      <div class="bento-card p-8 text-center">
+        <div class="text-4xl mb-4">👥</div>
+        <div class="font-data text-5xl font-bold text-starlight mb-2">{{ $data.community_stats.total_members }}</div>
+        <div class="text-slate-400 text-lg">Всего участников</div>
+      </div>
+      <div class="bento-card p-8 text-center">
+        <div class="text-4xl mb-4">✍️</div>
+        <div class="font-data text-5xl font-bold text-telegram-blue mb-2">{{ $data.total_contributors }}</div>
+        <div class="text-slate-400 text-lg">Активных участников</div>
+      </div>
+      <div class="bento-card p-8 text-center">
+        <div class="text-4xl mb-4">🔥</div>
+        <div class="font-data text-5xl font-bold text-management-orange-start mb-2">{{ len $data.big_four }}</div>
+        <div class="text-slate-400 text-lg">Большая Четвёрка</div>
+      </div>
+      <div class="bento-card p-8 text-center">
+        <div class="text-4xl mb-4">💬</div>
+        <div class="font-data text-5xl font-bold text-ai-purple-start mb-2">{{ div $data.total_messages $data.total_contributors | lang.FormatNumber 0 }}</div>
+        <div class="text-slate-400 text-lg">Среднее сообщений</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Founders Section -->
+<section class="relative py-16 px-4">
+  <div class="container mx-auto max-w-7xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      🌟 <span class="text-gradient-management">Основатели</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-3xl mx-auto">
+      Первые участники, присоединившиеся к чату <strong class="text-telegram-blue">20 января 2025</strong>. Именно они заложили фундамент культуры открытого обсуждения и взаимопомощи.
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {{ range $data.founders }}
+      <div class="bento-card p-6 hover:border-telegram-blue/50 transition-all">
+        <div class="text-4xl mb-3">{{ .icon }}</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-1">{{ .name }}</h3>
+        <p class="text-slate-400 text-sm mb-3">@{{ .username }}</p>
+        <div class="text-management-orange-start font-semibold mb-2">{{ .role }}</div>
+        {{ if .description }}
+        <p class="text-slate-300 text-sm">{{ .description }}</p>
+        {{ end }}
+      </div>
+      {{ end }}
+    </div>
+  </div>
+</section>
+
+<!-- Rising Stars Section -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-deep-space/50 to-transparent">
+  <div class="container mx-auto max-w-7xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      ⭐ <span class="text-gradient-ai">Восходящие Звезды</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-3xl mx-auto">
+      Новые участники, присоединившиеся в течение года и сделавшие значительный вклад
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {{ range $data.rising_stars }}
+      <div class="bento-card p-6 {{ if eq .rank 1 }}border-2 border-yellow-500/50{{ end }} hover:scale-105 transition-all">
+        {{ if .award }}
+        <div class="bg-gradient-to-r from-yellow-500 to-orange-500 text-deep-space font-bold text-sm px-3 py-1 rounded-full inline-block mb-3">
+          🏆 {{ .award }}
+        </div>
+        {{ end }}
+
+        <h3 class="font-heading font-bold text-xl text-starlight mb-1">{{ .name }}</h3>
+        <p class="text-slate-400 text-sm mb-4">@{{ .username }}</p>
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <div class="font-data text-2xl font-bold text-ai-purple-start">{{ .messages | lang.FormatNumber 0 }}</div>
+            <div class="text-slate-400 text-xs">сообщений</div>
+          </div>
+          <div>
+            <div class="font-data text-2xl font-bold text-management-orange-start">{{ .avg_per_day }}</div>
+            <div class="text-slate-400 text-xs">в день</div>
+          </div>
+        </div>
+
+        <div class="text-sm text-slate-300 mb-2">
+          <strong class="text-telegram-blue">{{ .days }} дней</strong> в сообществе
+        </div>
+
+        <div class="text-xs text-slate-400">
+          Присоединился: {{ .join_date }}
+        </div>
+
+        {{ if .description }}
+        <p class="text-sm text-slate-300 mt-3 italic">{{ .description }}</p>
+        {{ end }}
+      </div>
+      {{ end }}
+    </div>
+
+    <div class="mt-8 bento-card p-6 border-l-4 border-yellow-500">
+      <p class="text-slate-300">
+        <span class="text-2xl mr-2">🌟</span>
+        <strong class="text-yellow-400">{{ (index $data.rising_stars 0).name }}</strong> получает специальную награду <strong class="text-yellow-400">"Rising Star 2025"</strong> за невероятную активность — <strong class="text-management-orange-start">150 сообщений в день!</strong> сразу после присоединения к сообществу.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Big Four Section -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-transparent to-deep-space/50">
+  <div class="container mx-auto max-w-7xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      <span class="text-gradient-ai">Большая Четвёрка</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Лидеры активности, которые задают тон обсуждениям
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {{ range $data.big_four }}
+      <div class="bento-card p-8 hover:border-{{ .color }}-400/50 transition-all group">
+        <div class="flex items-start gap-6">
+          <!-- Avatar -->
+          <div class="flex-shrink-0">
+            <div class="text-5xl mb-3">{{ .medal }}</div>
+            <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-{{ .color }}-400 to-{{ .color }}-600 flex items-center justify-center text-3xl font-bold text-deep-space shadow-lg group-hover:scale-110 transition-transform">
+              {{ .initials }}
+            </div>
+          </div>
+
+          <!-- Info -->
+          <div class="flex-1">
+            <h3 class="font-heading font-bold text-2xl text-starlight mb-1">{{ .name }}</h3>
+            <p class="text-slate-400 mb-4">@{{ .username }}</p>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <div class="font-data text-3xl font-bold text-{{ .color }}-400 mb-1">{{ .messages | lang.FormatNumber 0 }}</div>
+                <div class="text-slate-400 text-sm">сообщений</div>
+              </div>
+              <div>
+                <div class="font-data text-3xl font-bold text-{{ .color }}-400 mb-1">{{ .active_days }}</div>
+                <div class="text-slate-400 text-sm">активных дней</div>
+              </div>
+            </div>
+
+            <!-- Consistency Bar -->
+            <div class="mb-3">
+              <div class="flex justify-between text-xs text-slate-400 mb-1">
+                <span>Постоянство</span>
+                <span>{{ div (mul .active_days 100) $data.active_days | lang.FormatNumber 0 }}%</span>
+              </div>
+              <div class="h-2 bg-deep-space rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-{{ .color }}-400 to-{{ .color }}-600" style="width: {{ div (mul .active_days 100) $data.active_days | lang.FormatNumber 0 }}%"></div>
+              </div>
+            </div>
+
+            <!-- Average per day -->
+            <div class="text-sm text-slate-400">
+              <strong class="text-starlight">{{ div .messages .active_days | lang.FormatNumber 0 }}</strong> сообщений в день
+            </div>
+          </div>
+        </div>
+      </div>
+      {{ end }}
+    </div>
+
+    <!-- Big Four Insights -->
+    <div class="mt-12 grid md:grid-cols-2 gap-6">
+      <div class="bento-card p-6 border-l-4 border-yellow-500">
+        <h3 class="font-heading font-bold text-lg text-starlight mb-3">🥇 Лидер по активности</h3>
+        <p class="text-slate-300">
+          <strong class="text-yellow-400">Andrii Kurdiumov</strong> — абсолютный рекордсмен с 6 266 сообщениями.
+          Активен {{ index $data.big_four 0 "active_days" }} дней из {{ $data.active_days }} возможных.
+        </p>
+      </div>
+      <div class="bento-card p-6 border-l-4 border-blue-500">
+        <h3 class="font-heading font-bold text-lg text-starlight mb-3">⭐ Самый постоянный</h3>
+        <p class="text-slate-300">
+          <strong class="text-blue-400">Stanislav Belyaev</strong> — чемпион по постоянству.
+          Активен {{ index $data.big_four 3 "active_days" }} дней ({{ div (mul (index $data.big_four 3 "active_days") 100) $data.active_days | lang.FormatNumber 0 }}% всех дней).
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Top-15 Leaderboard -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-transparent to-deep-space/50">
+  <div class="container mx-auto max-w-6xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      🏆 <span class="text-gradient-ai">Топ-15 Участников</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-3xl mx-auto">
+      Полный рейтинг самых активных участников по количеству сообщений
+    </p>
+
+    <div class="bento-card overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-slate-700">
+            <th class="text-left p-4 font-heading text-slate-400 text-sm">#</th>
+            <th class="text-left p-4 font-heading text-slate-400 text-sm">Участник</th>
+            <th class="text-center p-4 font-heading text-slate-400 text-sm">Сообщений</th>
+            <th class="text-center p-4 font-heading text-slate-400 text-sm">Активных дней</th>
+            <th class="text-center p-4 font-heading text-slate-400 text-sm">Среднее/день</th>
+            <th class="text-center p-4 font-heading text-slate-400 text-sm">Рейтинг</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{ range $data.top_15_contributors }}
+          <tr class="border-b border-slate-800/50 hover:bg-white/5 transition-colors">
+            <td class="p-4">
+              <div class="font-data text-xl font-bold
+                {{ if eq .tier "gold" }}text-yellow-400
+                {{ else if eq .tier "silver" }}text-gray-400
+                {{ else if eq .tier "bronze" }}text-orange-400
+                {{ else if eq .tier "star" }}text-blue-400
+                {{ else if eq .tier "fire" }}text-management-orange-start
+                {{ else }}text-purple-400{{ end }}">
+                {{ .rank }}
+              </div>
+            </td>
+            <td class="p-4">
+              <div class="font-heading font-bold text-starlight">{{ .name }}</div>
+            </td>
+            <td class="p-4 text-center">
+              <div class="font-data text-lg font-bold
+                {{ if eq .tier "gold" }}text-yellow-400
+                {{ else if eq .tier "silver" }}text-gray-400
+                {{ else if eq .tier "bronze" }}text-orange-400
+                {{ else if eq .tier "star" }}text-blue-400
+                {{ else if eq .tier "fire" }}text-management-orange-start
+                {{ else }}text-ai-purple-start{{ end }}">
+                {{ .messages | lang.FormatNumber 0 }}
+              </div>
+            </td>
+            <td class="p-4 text-center">
+              <div class="font-data text-slate-300">{{ .active_days }}</div>
+            </td>
+            <td class="p-4 text-center">
+              <div class="font-data text-slate-300">{{ div .messages .active_days | lang.FormatNumber 0 }}</div>
+            </td>
+            <td class="p-4 text-center">
+              <div class="text-2xl">{{ .medal }}</div>
+            </td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tier Legend -->
+    <div class="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div class="bento-card p-4 text-center">
+        <div class="text-3xl mb-2">🥇</div>
+        <div class="text-yellow-400 font-bold text-sm">Золото</div>
+        <div class="text-slate-400 text-xs">#1</div>
+      </div>
+      <div class="bento-card p-4 text-center">
+        <div class="text-3xl mb-2">🥈</div>
+        <div class="text-gray-400 font-bold text-sm">Серебро</div>
+        <div class="text-slate-400 text-xs">#2</div>
+      </div>
+      <div class="bento-card p-4 text-center">
+        <div class="text-3xl mb-2">🥉</div>
+        <div class="text-orange-400 font-bold text-sm">Бронза</div>
+        <div class="text-slate-400 text-xs">#3</div>
+      </div>
+      <div class="bento-card p-4 text-center">
+        <div class="text-3xl mb-2">⭐</div>
+        <div class="text-blue-400 font-bold text-sm">Звезда</div>
+        <div class="text-slate-400 text-xs">#4</div>
+      </div>
+      <div class="bento-card p-4 text-center">
+        <div class="text-3xl mb-2">🔥</div>
+        <div class="text-management-orange-start font-bold text-sm">Огонь</div>
+        <div class="text-slate-400 text-xs">#5-10</div>
+      </div>
+      <div class="bento-card p-4 text-center">
+        <div class="text-3xl mb-2">⚡</div>
+        <div class="text-purple-400 font-bold text-sm">Молния</div>
+        <div class="text-slate-400 text-xs">#11-15</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Contributors Distribution -->
+<section class="relative py-16 px-4">
+  <div class="container mx-auto max-w-7xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      Распределение <span class="text-gradient-ai">Участников</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Динамика роста числа активных участников по месяцам
+    </p>
+
+    <div class="relative mb-12">
+      <canvas id="contributors-chart" style="max-height: 400px;"></canvas>
+    </div>
+
+    <!-- Activity Tiers -->
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="bento-card p-6">
+        <div class="text-3xl mb-3">🔥</div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-2">Активные (100+ сообщений)</h3>
+        <div class="font-data text-3xl text-management-orange-start mb-2">~15</div>
+        <p class="text-slate-400 text-sm">Ядро сообщества, регулярные участники</p>
+      </div>
+      <div class="bento-card p-6">
+        <div class="text-3xl mb-3">💬</div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-2">Участники (10-100 сообщений)</h3>
+        <div class="font-data text-3xl text-telegram-blue mb-2">~40</div>
+        <p class="text-slate-400 text-sm">Периодически активные члены</p>
+      </div>
+      <div class="bento-card p-6">
+        <div class="text-3xl mb-3">👀</div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-2">Наблюдатели (< 10 сообщений)</h3>
+        <div class="font-data text-3xl text-slate-400 mb-2">~84</div>
+        <p class="text-slate-400 text-sm">Читают, редко пишут</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Community Insights -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-deep-space/50 to-transparent">
+  <div class="container mx-auto max-w-6xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-12 text-starlight">
+      Инсайты о <span class="text-gradient-management">Сообществе</span>
+    </h2>
+
+    <div class="grid md:grid-cols-2 gap-8">
+      <div class="bento-card p-8">
+        <div class="text-5xl mb-4">📈</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">Рост сообщества</h3>
+        <p class="text-slate-300 mb-4">
+          Сообщество выросло с <strong class="text-telegram-blue">16 человек</strong> в январе до <strong class="text-telegram-blue">{{ index $data.monthly_data.contributors 11 }}</strong> активных участников в декабре.
+        </p>
+        <div class="text-sm text-slate-400">
+          Пик привлечения новых людей пришёлся на <strong class="text-starlight">май 2025</strong> — присоединились 47 участников.
+        </div>
+      </div>
+
+      <div class="bento-card p-8">
+        <div class="text-5xl mb-4">💪</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">Вклад в общее дело</h3>
+        <p class="text-slate-300 mb-4">
+          Большая Четвёрка создала <strong class="text-management-orange-start">{{ add (index $data.big_four 0 "messages") (index $data.big_four 1 "messages") (index $data.big_four 2 "messages") (index $data.big_four 3 "messages") | lang.FormatNumber 0 }}</strong> сообщений — это <strong class="text-management-orange-start">{{ div (mul (add (index $data.big_four 0 "messages") (index $data.big_four 1 "messages") (index $data.big_four 2 "messages") (index $data.big_four 3 "messages")) 100) $data.total_messages | lang.FormatNumber 0 }}%</strong> всех сообщений.
+        </p>
+        <div class="text-sm text-slate-400">
+          Остальные {{ sub $data.total_contributors (len $data.big_four) }} участников написали {{ sub $data.total_messages (add (index $data.big_four 0 "messages") (index $data.big_four 1 "messages") (index $data.big_four 2 "messages") (index $data.big_four 3 "messages")) | lang.FormatNumber 0 }} сообщений.
+        </div>
+      </div>
+
+      <div class="bento-card p-8">
+        <div class="text-5xl mb-4">🌍</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">География</h3>
+        <p class="text-slate-300 mb-4">
+          Основной состав — русскоязычные IT-лидеры из разных стран: Казахстан, Россия, другие страны СНГ и дальнего зарубежья.
+        </p>
+        <div class="text-sm text-slate-400">
+          Временные зоны: от UTC+3 до UTC+6
+        </div>
+      </div>
+
+      <div class="bento-card p-8">
+        <div class="text-5xl mb-4">🎯</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">Профиль участников</h3>
+        <p class="text-slate-300 mb-4">
+          Тимлиды, техлиды, engineering managers с опытом управления командами от 5 до 50+ разработчиков.
+        </p>
+        <div class="text-sm text-slate-400">
+          Компании: стартапы, продуктовые, аутсорс, консалтинг
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Contributors Chart Script -->
+<script>
+(function() {
+  const ctx = document.getElementById('contributors-chart');
+  if (!ctx) return;
+
+  const labels = {{ $data.monthly_data.labels }};
+  const contributors = {{ $data.monthly_data.contributors }};
+
+  if (!Array.isArray(labels) || !Array.isArray(contributors)) {
+    console.error('Invalid contributors data');
+    return;
+  }
+
+  // Create gradient
+  const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, 'rgba(249, 115, 22, 0.5)');
+  gradient.addColorStop(1, 'rgba(249, 115, 22, 0.0)');
+
+  const config = {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Активные участники',
+        data: contributors,
+        fill: true,
+        backgroundColor: gradient,
+        borderColor: '#F97316',
+        borderWidth: 3,
+        tension: 0.4,
+        pointRadius: 6,
+        pointBackgroundColor: '#F97316',
+        pointBorderColor: 'rgba(255, 255, 255, 0.8)',
+        pointBorderWidth: 2,
+        pointHoverRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          titleColor: '#F8FAFC',
+          bodyColor: '#94A3B8',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 12,
+          displayColors: false,
+          titleFont: { family: 'Inter', size: 14, weight: 'bold' },
+          bodyFont: { family: 'JetBrains Mono', size: 12 },
+          callbacks: {
+            title: function(context) {
+              return context[0].label + ' 2025';
+            },
+            label: function(context) {
+              return context.parsed.y + ' активных участников';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#94A3B8',
+            font: { family: 'Inter', size: 12, weight: 'bold' }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(148, 163, 184, 0.1)',
+            drawBorder: false
+          },
+          ticks: {
+            color: '#64748B',
+            font: { family: 'JetBrains Mono', size: 11 },
+            stepSize: 10
+          }
+        }
+      },
+      animation: {
+        duration: 2000,
+        easing: 'easeInOutQuart'
+      }
+    }
+  };
+
+  new Chart(ctx, config);
+})();
+</script>
+
+{{ end }}

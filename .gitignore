@@ -1,0 +1,7 @@
+# Hugo public files
+/public/
+/resources/_gen/
+.hugo_build.lock
+.DS_Store
+hugo-claude/node_modules/
+hugo-claude/public/

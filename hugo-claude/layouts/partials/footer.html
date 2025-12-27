@@ -1,0 +1,45 @@
+<footer class="relative mt-20 py-12 border-t border-white/10">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+
+      <!-- About -->
+      <div>
+        <h3 class="font-heading font-bold text-lg mb-4 text-starlight">О сообществе</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">
+          Сообщество Тимлидов Казахстана. Архитектура. Люди. Процессы разработки.
+        </p>
+      </div>
+
+      <!-- Links -->
+      <div>
+        <h3 class="font-heading font-bold text-lg mb-4 text-starlight">Разделы</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="/overview" class="text-slate-400 hover:text-telegram-blue transition-colors">Обзор</a></li>
+          <li><a href="/people" class="text-slate-400 hover:text-telegram-blue transition-colors">Люди</a></li>
+          <li><a href="/topics" class="text-slate-400 hover:text-telegram-blue transition-colors">Темы</a></li>
+          <li><a href="/sentiment" class="text-slate-400 hover:text-telegram-blue transition-colors">Тональность</a></li>
+          <li><a href="/network" class="text-slate-400 hover:text-telegram-blue transition-colors">Сеть</a></li>
+          <li><a href="/insights" class="text-slate-400 hover:text-telegram-blue transition-colors">Инсайты</a></li>
+        </ul>
+      </div>
+
+      <!-- Contact -->
+      <div>
+        <h3 class="font-heading font-bold text-lg mb-4 text-starlight">Присоединяйтесь</h3>
+        <p class="text-slate-400 text-sm mb-4">
+          Чат: <a href="https://t.me/teamleads_kz" class="text-telegram-blue hover:underline">@teamleads_kz</a>
+        </p>
+        <p class="text-slate-400 text-sm">
+          Год анализа: {{ .Site.Params.year }}
+        </p>
+      </div>
+
+    </div>
+
+    <div class="mt-12 pt-8 border-t border-white/5 text-center">
+      <p class="text-slate-500 text-sm">
+        © {{ .Site.Params.year }} {{ .Site.Params.author }}. Создано с использованием data-driven подхода.
+      </p>
+    </div>
+  </div>
+</footer>

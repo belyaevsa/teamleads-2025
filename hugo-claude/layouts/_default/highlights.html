@@ -1,0 +1,272 @@
+{{ define "main" }}
+{{ $data := .Site.Data.metrics }}
+
+<!-- Page Header -->
+<section class="relative py-16 px-4">
+  <div class="container mx-auto max-w-7xl">
+    <div class="text-center mb-12">
+      <h1 class="text-5xl md:text-6xl font-heading font-bold text-starlight mb-4">
+        <span class="text-gradient-ai">Посты, которые взорвали чат</span>
+      </h1>
+      <p class="text-xl text-slate-400 max-w-3xl mx-auto">
+        Топ-10 споров, награды и лонгриды на 4000 символов
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Top Threads Section -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-deep-space/50 to-transparent">
+  <div class="container mx-auto max-w-6xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      💬 <span class="text-gradient-management">Топ-10 Обсуждений</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Треды с наибольшим количеством ответов — темы, которые зацепили сообщество
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {{ range $data.top_threads }}
+      <a href="{{ .link }}" target="_blank" rel="noopener noreferrer"
+         class="bento-card p-6 hover:scale-105 hover:border-telegram-blue/50 transition-all group">
+
+        <div class="flex items-start gap-4 mb-4">
+          <!-- Rank Badge -->
+          <div class="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br
+            {{ if eq .rank 1 }}from-yellow-400 to-yellow-600
+            {{ else if eq .rank 2 }}from-gray-400 to-gray-600
+            {{ else if eq .rank 3 }}from-orange-400 to-orange-600
+            {{ else }}from-blue-400 to-blue-600{{ end }}
+            flex items-center justify-center font-heading font-bold text-2xl text-deep-space">
+            {{ .rank }}
+          </div>
+
+          <!-- Title -->
+          <div class="flex-1">
+            <h3 class="font-heading font-bold text-lg text-starlight mb-2 group-hover:text-telegram-blue transition-colors">
+              {{ .title }}
+              <svg class="inline-block w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+              </svg>
+            </h3>
+          </div>
+        </div>
+
+        <!-- Meta Info -->
+        <div class="flex items-center gap-4 mb-3 text-sm text-slate-400">
+          <div class="flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+            </svg>
+            <span class="font-data text-telegram-blue font-bold">{{ .replies }}</span>
+            <span>ответов</span>
+          </div>
+          <div>•</div>
+          <div>{{ .author }}</div>
+          <div>•</div>
+          <div>{{ .date }}</div>
+        </div>
+
+        <!-- Description (if available) -->
+        {{ if .description }}
+        <p class="text-sm text-slate-300 italic border-l-2 border-ai-purple-start pl-3">
+          {{ .description }}
+        </p>
+        {{ end }}
+      </a>
+      {{ end }}
+    </div>
+
+    <div class="mt-8 bento-card p-6 border-l-4 border-management-orange-start">
+      <p class="text-slate-300">
+        <span class="text-2xl mr-2">🔥</span>
+        <strong class="text-management-orange-start">Артур Пан</strong> — автор 7 из 10 самых обсуждаемых тем! Его провокационные вопросы о метриках, джунах и тимлидстве запускают самые горячие дискуссии.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Awards Section -->
+<section class="relative py-16 px-4">
+  <div class="container mx-auto max-w-6xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      🏆 <span class="text-gradient-ai">Награды Года</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Признание самых ценных вкладов в сообщество
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Message of Year -->
+      <div class="bento-card p-8 border-2 border-yellow-500/50">
+        <div class="text-6xl mb-4 text-center">{{ $data.awards.message_of_year.emoji }}</div>
+        <h3 class="font-heading font-bold text-xl text-center text-starlight mb-2">Сообщение Года</h3>
+        <div class="text-center mb-4">
+          <a href="{{ $data.awards.message_of_year.link }}" target="_blank" rel="noopener noreferrer"
+             class="text-telegram-blue hover:text-ai-purple-start transition-colors font-bold">
+            "{{ $data.awards.message_of_year.title }}"
+            <svg class="inline-block w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+            </svg>
+          </a>
+        </div>
+        <p class="text-slate-300 text-sm mb-3">{{ $data.awards.message_of_year.description }}</p>
+        <div class="text-xs text-slate-400 text-center">
+          <strong class="text-starlight">{{ $data.awards.message_of_year.author }}</strong>
+          <span class="mx-2">•</span>
+          {{ $data.awards.message_of_year.date }}
+        </div>
+      </div>
+
+      <!-- Question of Year -->
+      <div class="bento-card p-8 border-2 border-blue-500/50">
+        <div class="text-6xl mb-4 text-center">{{ $data.awards.question_of_year.emoji }}</div>
+        <h3 class="font-heading font-bold text-xl text-center text-starlight mb-2">Вопрос Года</h3>
+        <div class="text-center mb-4">
+          <a href="{{ $data.awards.question_of_year.link }}" target="_blank" rel="noopener noreferrer"
+             class="text-telegram-blue hover:text-ai-purple-start transition-colors font-bold">
+            "{{ $data.awards.question_of_year.title }}"
+            <svg class="inline-block w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+            </svg>
+          </a>
+        </div>
+        <p class="text-slate-300 text-sm mb-3">{{ $data.awards.question_of_year.description }}</p>
+        <div class="text-xs text-slate-400 text-center">
+          <strong class="text-starlight">{{ $data.awards.question_of_year.author }}</strong>
+          <span class="mx-2">•</span>
+          {{ $data.awards.question_of_year.date }}
+        </div>
+      </div>
+
+      <!-- Insight of Year -->
+      <div class="bento-card p-8 border-2 border-green-500/50">
+        <div class="text-6xl mb-4 text-center">{{ $data.awards.insight_of_year.emoji }}</div>
+        <h3 class="font-heading font-bold text-xl text-center text-starlight mb-2">Инсайт Года</h3>
+        <div class="text-center mb-4">
+          <a href="{{ $data.awards.insight_of_year.link }}" target="_blank" rel="noopener noreferrer"
+             class="text-telegram-blue hover:text-ai-purple-start transition-colors font-bold">
+            "{{ $data.awards.insight_of_year.title }}"
+            <svg class="inline-block w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+            </svg>
+          </a>
+        </div>
+        <p class="text-slate-300 text-sm mb-3">{{ $data.awards.insight_of_year.description }}</p>
+        <div class="text-xs text-slate-400 text-center">
+          <strong class="text-starlight">{{ $data.awards.insight_of_year.author }}</strong>
+          <span class="mx-2">•</span>
+          {{ $data.awards.insight_of_year.date }}
+        </div>
+      </div>
+
+      <!-- Provocative Topic -->
+      <div class="bento-card p-8 border-2 border-purple-500/50">
+        <div class="text-6xl mb-4 text-center">{{ $data.awards.provocative_topic.emoji }}</div>
+        <h3 class="font-heading font-bold text-xl text-center text-starlight mb-2">Провокационная Тема</h3>
+        <div class="text-center mb-4">
+          <a href="{{ $data.awards.provocative_topic.link }}" target="_blank" rel="noopener noreferrer"
+             class="text-telegram-blue hover:text-ai-purple-start transition-colors font-bold">
+            "{{ $data.awards.provocative_topic.title }}"
+            <svg class="inline-block w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+            </svg>
+          </a>
+        </div>
+        <p class="text-slate-300 text-sm mb-3">{{ $data.awards.provocative_topic.description }}</p>
+        <div class="text-xs text-slate-400 text-center">
+          <strong class="text-starlight">{{ $data.awards.provocative_topic.author }}</strong>
+          <span class="mx-2">•</span>
+          {{ $data.awards.provocative_topic.date }}
+        </div>
+      </div>
+
+      <!-- Most Useful -->
+      <div class="bento-card p-8 border-2 border-orange-500/50">
+        <div class="text-6xl mb-4 text-center">{{ $data.awards.most_useful.emoji }}</div>
+        <h3 class="font-heading font-bold text-xl text-center text-starlight mb-2">Самая Полезная Тема</h3>
+        <div class="text-center mb-4">
+          <a href="{{ $data.awards.most_useful.link }}" target="_blank" rel="noopener noreferrer"
+             class="text-telegram-blue hover:text-ai-purple-start transition-colors font-bold">
+            "{{ $data.awards.most_useful.title }}"
+            <svg class="inline-block w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+            </svg>
+          </a>
+        </div>
+        <p class="text-slate-300 text-sm mb-3">{{ $data.awards.most_useful.description }}</p>
+        <div class="text-xs text-slate-400 text-center">
+          <strong class="text-starlight">{{ $data.awards.most_useful.author }}</strong>
+          <span class="mx-2">•</span>
+          {{ $data.awards.most_useful.date }}
+        </div>
+      </div>
+
+      <!-- Rising Star Award -->
+      <div class="bento-card p-8 border-2 border-yellow-400/50 bg-gradient-to-br from-yellow-500/10 to-orange-500/10">
+        <div class="text-6xl mb-4 text-center">{{ $data.awards.rising_star_award.emoji }}</div>
+        <h3 class="font-heading font-bold text-xl text-center text-starlight mb-2">Rising Star 2025</h3>
+        <div class="text-center mb-4">
+          <div class="text-telegram-blue font-bold text-lg">
+            {{ $data.awards.rising_star_award.author }}
+          </div>
+        </div>
+        <p class="text-slate-300 text-sm mb-3">{{ $data.awards.rising_star_award.description }}</p>
+        <div class="text-xs text-slate-400 text-center">
+          Присоединился: {{ $data.awards.rising_star_award.date }}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Longest Posts Section -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-deep-space/50 to-transparent">
+  <div class="container mx-auto max-w-6xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      📝 <span class="text-gradient-management">Лонгриды Года</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Самые развернутые и детальные посты — когда есть что сказать
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {{ range $data.longest_posts }}
+      <a href="{{ .link }}" target="_blank" rel="noopener noreferrer"
+         class="bento-card p-6 hover:scale-105 hover:border-ai-purple-start/50 transition-all group">
+
+        <div class="text-4xl mb-4 text-center">📄</div>
+
+        <h3 class="font-heading font-bold text-lg text-starlight mb-3 text-center group-hover:text-telegram-blue transition-colors">
+          {{ .title }}
+          <svg class="inline-block w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+          </svg>
+        </h3>
+
+        <div class="mb-4 text-center">
+          <div class="inline-block px-4 py-2 rounded-full bg-ai-purple-start/20 border border-ai-purple-start/50">
+            <span class="font-data text-2xl font-bold text-ai-purple-start">{{ .characters | lang.FormatNumber 0 }}</span>
+            <span class="text-slate-400 text-sm ml-1">символов</span>
+          </div>
+        </div>
+
+        <p class="text-sm text-slate-300 mb-4 text-center">{{ .description }}</p>
+
+        <div class="text-sm text-slate-400 text-center border-t border-slate-700 pt-3">
+          <strong class="text-starlight">{{ .author }}</strong>
+        </div>
+      </a>
+      {{ end }}
+    </div>
+
+    <div class="mt-8 bento-card p-6 border-l-4 border-ai-purple-start">
+      <p class="text-slate-300">
+        <span class="text-2xl mr-2">📚</span>
+        Средняя длина сообщения в чате — всего <strong class="text-telegram-blue">95-105 символов</strong>. Эти лонгриды выделяются на фоне остальных — каждый почти <strong class="text-management-orange-start">4,000 символов</strong> глубоких размышлений и практического опыта.
+      </p>
+    </div>
+  </div>
+</section>
+
+{{ end }}

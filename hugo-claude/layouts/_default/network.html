@@ -1,0 +1,445 @@
+{{ define "main" }}
+{{ $data := .Site.Data.metrics }}
+
+<!-- Page Header -->
+<section class="relative py-16 px-4">
+  <div class="container mx-auto max-w-7xl">
+    <div class="text-center mb-12">
+      <h1 class="text-5xl md:text-6xl font-heading font-bold text-starlight mb-4">
+        <span class="text-gradient-management">Кто с кем разговаривает</span>
+      </h1>
+      <p class="text-xl text-slate-400 max-w-3xl mx-auto">
+        И почему это важно
+      </p>
+    </div>
+
+    <!-- Network Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
+      <div class="bento-card p-6 text-center">
+        <div class="text-4xl mb-3">👥</div>
+        <div class="font-data text-4xl font-bold text-telegram-blue mb-2">{{ $data.total_contributors }}</div>
+        <div class="text-slate-400 text-sm">Участников</div>
+      </div>
+      <div class="bento-card p-6 text-center">
+        <div class="text-4xl mb-3">💬</div>
+        <div class="font-data text-4xl font-bold text-ai-purple-start mb-2">{{ $data.total_messages | lang.FormatNumber 0 }}</div>
+        <div class="text-slate-400 text-sm">Сообщений</div>
+      </div>
+      <div class="bento-card p-6 text-center">
+        <div class="text-4xl mb-3">🔥</div>
+        <div class="font-data text-4xl font-bold text-management-orange-start mb-2">{{ len $data.big_four }}</div>
+        <div class="text-slate-400 text-sm">Ключевых игроков</div>
+      </div>
+      <div class="bento-card p-6 text-center">
+        <div class="text-4xl mb-3">🌐</div>
+        <div class="font-data text-4xl font-bold text-green-400 mb-2">{{ $data.active_days }}</div>
+        <div class="text-slate-400 text-sm">Дней активности</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Network Visualization -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-transparent to-deep-space/50">
+  <div class="container mx-auto max-w-7xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      Карта <span class="text-gradient-ai">Связей</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Визуализация взаимодействий между участниками
+    </p>
+
+    <div class="bento-card p-8">
+      <div id="network-viz" class="relative" style="height: 600px; min-height: 500px;">
+        <!-- SVG Network Visualization -->
+        <svg id="network-svg" width="100%" height="100%" class="rounded-lg">
+          <!-- Network will be rendered here via JavaScript -->
+        </svg>
+
+        <!-- Legend -->
+        <div class="absolute top-4 right-4 bento-card p-4 text-sm">
+          <h3 class="font-heading font-bold text-starlight mb-3">Легенда</h3>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-full bg-yellow-400"></div>
+              <span class="text-slate-300">Большая Четвёрка</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-5 h-5 rounded-full bg-telegram-blue"></div>
+              <span class="text-slate-300">Активные (100+)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-4 h-4 rounded-full bg-ai-purple-start"></div>
+              <span class="text-slate-300">Участники (10-100)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-full bg-slate-500"></div>
+              <span class="text-slate-300">Наблюдатели (<10)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Network Insights -->
+    <div class="grid md:grid-cols-3 gap-6 mt-12">
+      <div class="bento-card p-6">
+        <h3 class="font-heading font-bold text-lg text-starlight mb-3">🎯 Ядро сообщества</h3>
+        <p class="text-slate-300 text-sm mb-3">
+          <strong class="text-yellow-400">Большая Четвёрка</strong> — центральные узлы сети. Они генерируют контент и вовлекают других.
+        </p>
+        <p class="text-slate-400 text-sm">
+          63% всех сообщений от 4 человек — высокая централизация.
+        </p>
+      </div>
+      <div class="bento-card p-6">
+        <h3 class="font-heading font-bold text-lg text-starlight mb-3">📈 Рост связей</h3>
+        <p class="text-slate-300 text-sm mb-3">
+          С января по декабрь сеть выросла в 2+ раза: с <strong class="text-telegram-blue">16</strong> до <strong class="text-telegram-blue">34</strong> активных участников.
+        </p>
+        <p class="text-slate-400 text-sm">
+          Май принёс наибольший приток — 47 новых людей.
+        </p>
+      </div>
+      <div class="bento-card p-6">
+        <h3 class="font-heading font-bold text-lg text-starlight mb-3">🌍 Распределённая сеть</h3>
+        <p class="text-slate-300 text-sm mb-3">
+          Участники из разных стран и часовых поясов. Асинхронная коммуникация — ключ к успеху.
+        </p>
+        <p class="text-slate-400 text-sm">
+          UTC+3 до UTC+6 — основные зоны активности.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Connection Patterns -->
+<section class="relative py-16 px-4">
+  <div class="container mx-auto max-w-7xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-12 text-starlight">
+      Паттерны <span class="text-gradient-management">Взаимодействий</span>
+    </h2>
+
+    <div class="grid md:grid-cols-2 gap-8">
+      <div class="bento-card p-8 border-l-4 border-yellow-400">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="text-5xl">🌟</div>
+          <div class="flex-1">
+            <h3 class="font-heading font-bold text-2xl text-starlight mb-2">Звёзды сообщества</h3>
+            <p class="text-slate-400 text-sm mb-3">Star topology pattern</p>
+          </div>
+        </div>
+        <p class="text-slate-300 mb-4">
+          Большая Четвёрка выступает как "хабы" — они отвечают на вопросы, инициируют дискуссии, связывают людей.
+        </p>
+        <ul class="space-y-2 text-slate-300 text-sm">
+          <li class="flex items-start gap-2">
+            <span class="text-yellow-400">•</span>
+            <span><strong>Andrii Kurdiumov:</strong> 6 266 сообщений</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-yellow-400">•</span>
+            <span><strong>Артур Пан:</strong> 4 388 сообщений</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-yellow-400">•</span>
+            <span><strong>Теймур Шайкемелов:</strong> 3 105 сообщений</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-yellow-400">•</span>
+            <span><strong>Stanislav Belyaev:</strong> 3 035 сообщений</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="bento-card p-8 border-l-4 border-telegram-blue">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="text-5xl">🔗</div>
+          <div class="flex-1">
+            <h3 class="font-heading font-bold text-2xl text-starlight mb-2">Кластеры по темам</h3>
+            <p class="text-slate-400 text-sm mb-3">Topic-based communities</p>
+          </div>
+        </div>
+        <p class="text-slate-300 mb-4">
+          Участники группируются вокруг тем: AI-энтузиасты, QA-специалисты, HR-лиды, архитекторы.
+        </p>
+        <ul class="space-y-2 text-slate-300 text-sm">
+          <li class="flex items-start gap-2">
+            <span class="text-ai-purple-start">•</span>
+            <span><strong>AI кластер:</strong> 976 упоминаний</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-telegram-blue">•</span>
+            <span><strong>QA кластер:</strong> 940 упоминаний</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-management-orange-start">•</span>
+            <span><strong>Management кластер:</strong> 499 упоминаний</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400">•</span>
+            <span><strong>HR кластер:</strong> 482 упоминания</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="bento-card p-8 border-l-4 border-green-400">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="text-5xl">📅</div>
+          <div class="flex-1">
+            <h3 class="font-heading font-bold text-2xl text-starlight mb-2">Временные паттерны</h3>
+            <p class="text-slate-400 text-sm mb-3">Time-based activity</p>
+          </div>
+        </div>
+        <p class="text-slate-300 mb-4">
+          Пик активности — рабочие дни (Пн-Пт). Понедельник лидирует с 22% всех сообщений.
+        </p>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div class="p-3 bg-deep-space/50 rounded-lg">
+            <div class="font-data text-lg text-management-orange-start mb-1">22%</div>
+            <div class="text-slate-400">Понедельник</div>
+          </div>
+          <div class="p-3 bg-deep-space/50 rounded-lg">
+            <div class="font-data text-lg text-telegram-blue mb-1">11:00</div>
+            <div class="text-slate-400">Пик активности</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bento-card p-8 border-l-4 border-ai-purple-start">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="text-5xl">🎓</div>
+          <div class="flex-1">
+            <h3 class="font-heading font-bold text-2xl text-starlight mb-2">Новички → Эксперты</h3>
+            <p class="text-slate-400 text-sm mb-3">Onboarding flow</p>
+          </div>
+        </div>
+        <p class="text-slate-300 mb-4">
+          Здоровая динамика: новички задают вопросы (19.1% в январе), эксперты отвечают, постепенно все становятся активными участниками.
+        </p>
+        <p class="text-slate-400 text-sm">
+          К декабрю процент вопросов стабилизировался на уровне 13.4% — признак зрелости.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Community Health -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-deep-space/50 to-transparent">
+  <div class="container mx-auto max-w-6xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-12 text-starlight">
+      Здоровье <span class="text-gradient-ai">Сети</span>
+    </h2>
+
+    <div class="grid md:grid-cols-2 gap-8">
+      <div class="bento-card p-8">
+        <div class="text-5xl mb-4">💪</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">Сильные стороны</h3>
+        <ul class="space-y-3 text-slate-300">
+          <li class="flex items-start gap-3">
+            <span class="text-green-400 text-xl">✓</span>
+            <div>
+              <strong>Активное ядро:</strong> Постоянные участники генерируют контент ежедневно
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-green-400 text-xl">✓</span>
+            <div>
+              <strong>Рост сети:</strong> +112% участников за год, устойчивый тренд
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-green-400 text-xl">✓</span>
+            <div>
+              <strong>Разнообразие:</strong> 8+ кластеров по темам, широкий охват
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="bento-card p-8">
+        <div class="text-5xl mb-4">⚠️</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">Риски</h3>
+        <ul class="space-y-3 text-slate-300">
+          <li class="flex items-start gap-3">
+            <span class="text-yellow-400 text-xl">!</span>
+            <div>
+              <strong>Высокая централизация:</strong> 63% сообщений от 4 человек — зависимость
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-yellow-400 text-xl">!</span>
+            <div>
+              <strong>Lurkers:</strong> 84 участника с <10 сообщений — пассивные наблюдатели
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-yellow-400 text-xl">!</span>
+            <div>
+              <strong>Выгорание лидеров:</strong> Нужно растить новых активных участников
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="bento-card p-8 mt-8 border-2 border-telegram-blue/30">
+      <h3 class="font-heading font-bold text-2xl text-starlight mb-6 text-center">Рекомендации для роста</h3>
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="text-center">
+          <div class="text-4xl mb-3">🌱</div>
+          <h4 class="font-heading font-bold text-lg text-starlight mb-2">Выращивайте новых лидеров</h4>
+          <p class="text-slate-400 text-sm">Делегируйте модерацию, поощряйте активных участников</p>
+        </div>
+        <div class="text-center">
+          <div class="text-4xl mb-3">🎯</div>
+          <h4 class="font-heading font-bold text-lg text-starlight mb-2">Активизируйте lurkers</h4>
+          <p class="text-slate-400 text-sm">Задавайте вопросы, создавайте опросы, приглашайте делиться опытом</p>
+        </div>
+        <div class="text-center">
+          <div class="text-4xl mb-3">🔗</div>
+          <h4 class="font-heading font-bold text-lg text-starlight mb-2">Укрепляйте связи</h4>
+          <p class="text-slate-400 text-sm">Офлайн встречи, воркшопы, совместные проекты</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Network Visualization Script -->
+<script>
+(function() {
+  const svg = document.getElementById('network-svg');
+  if (!svg) return;
+
+  const width = svg.clientWidth;
+  const height = svg.clientHeight || 600;
+
+  // Network data: representing the community structure
+  const nodes = [
+    // Big Four (center nodes)
+    { id: 'ak', name: 'Andrii K.', size: 30, group: 'bigfour', x: width/2 - 100, y: height/2 - 80, messages: 6266 },
+    { id: 'ap', name: 'Артур П.', size: 26, group: 'bigfour', x: width/2 + 100, y: height/2 - 80, messages: 4388 },
+    { id: 'ts', name: 'Теймур Ш.', size: 24, group: 'bigfour', x: width/2 - 100, y: height/2 + 80, messages: 3105 },
+    { id: 'sb', name: 'Stanislav B.', size: 24, group: 'bigfour', x: width/2 + 100, y: height/2 + 80, messages: 3035 },
+
+    // Active contributors (medium nodes)
+    { id: 'a1', name: 'Active 1', size: 18, group: 'active', x: width/2 - 200, y: height/2 - 150 },
+    { id: 'a2', name: 'Active 2', size: 16, group: 'active', x: width/2 + 200, y: height/2 - 150 },
+    { id: 'a3', name: 'Active 3', size: 17, group: 'active', x: width/2 - 250, y: height/2 },
+    { id: 'a4', name: 'Active 4', size: 15, group: 'active', x: width/2 + 250, y: height/2 },
+    { id: 'a5', name: 'Active 5', size: 16, group: 'active', x: width/2 - 200, y: height/2 + 150 },
+    { id: 'a6', name: 'Active 6', size: 14, group: 'active', x: width/2 + 200, y: height/2 + 150 },
+
+    // Regular participants (small nodes)
+    { id: 'p1', name: 'Participant', size: 10, group: 'participant', x: width/2 - 300, y: height/2 - 100 },
+    { id: 'p2', name: 'Participant', size: 10, group: 'participant', x: width/2 - 320, y: height/2 + 50 },
+    { id: 'p3', name: 'Participant', size: 10, group: 'participant', x: width/2 + 300, y: height/2 - 100 },
+    { id: 'p4', name: 'Participant', size: 10, group: 'participant', x: width/2 + 320, y: height/2 + 50 },
+    { id: 'p5', name: 'Participant', size: 10, group: 'participant', x: width/2 - 150, y: height/2 - 220 },
+    { id: 'p6', name: 'Participant', size: 10, group: 'participant', x: width/2 + 150, y: height/2 - 220 },
+    { id: 'p7', name: 'Participant', size: 10, group: 'participant', x: width/2 - 150, y: height/2 + 220 },
+    { id: 'p8', name: 'Participant', size: 10, group: 'participant', x: width/2 + 150, y: height/2 + 220 },
+
+    // Observers (tiny nodes)
+    { id: 'o1', name: 'Observer', size: 6, group: 'observer', x: width/2 - 350, y: height/2 - 180 },
+    { id: 'o2', name: 'Observer', size: 6, group: 'observer', x: width/2 + 350, y: height/2 - 180 },
+    { id: 'o3', name: 'Observer', size: 6, group: 'observer', x: width/2 - 350, y: height/2 + 180 },
+    { id: 'o4', name: 'Observer', size: 6, group: 'observer', x: width/2 + 350, y: height/2 + 180 }
+  ];
+
+  // Links between nodes
+  const links = [
+    // Big Four interconnections
+    { source: 'ak', target: 'ap' }, { source: 'ak', target: 'ts' }, { source: 'ak', target: 'sb' },
+    { source: 'ap', target: 'ts' }, { source: 'ap', target: 'sb' }, { source: 'ts', target: 'sb' },
+
+    // Active to Big Four
+    { source: 'a1', target: 'ak' }, { source: 'a2', target: 'ap' }, { source: 'a3', target: 'ak' },
+    { source: 'a4', target: 'ap' }, { source: 'a5', target: 'ts' }, { source: 'a6', target: 'sb' },
+
+    // Participants to Active/Big Four
+    { source: 'p1', target: 'a3' }, { source: 'p2', target: 'a3' }, { source: 'p3', target: 'a4' },
+    { source: 'p4', target: 'a4' }, { source: 'p5', target: 'a1' }, { source: 'p6', target: 'a2' },
+    { source: 'p7', target: 'a5' }, { source: 'p8', target: 'a6' },
+
+    // Observers to core
+    { source: 'o1', target: 'ak' }, { source: 'o2', target: 'ap' },
+    { source: 'o3', target: 'ts' }, { source: 'o4', target: 'sb' }
+  ];
+
+  // Color mapping
+  const colors = {
+    bigfour: '#EAB308',    // Yellow
+    active: '#2481CC',     // Telegram Blue
+    participant: '#A855F7', // Purple
+    observer: '#64748B'    // Gray
+  };
+
+  // Draw links
+  links.forEach(link => {
+    const source = nodes.find(n => n.id === link.source);
+    const target = nodes.find(n => n.id === link.target);
+
+    if (source && target) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', source.x);
+      line.setAttribute('y1', source.y);
+      line.setAttribute('x2', target.x);
+      line.setAttribute('y2', target.y);
+      line.setAttribute('stroke', 'rgba(148, 163, 184, 0.2)');
+      line.setAttribute('stroke-width', '1');
+      svg.appendChild(line);
+    }
+  });
+
+  // Draw nodes
+  nodes.forEach(node => {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', node.x);
+    circle.setAttribute('cy', node.y);
+    circle.setAttribute('r', node.size);
+    circle.setAttribute('fill', colors[node.group]);
+    circle.setAttribute('opacity', '0.9');
+    circle.setAttribute('stroke', '#fff');
+    circle.setAttribute('stroke-width', '2');
+    circle.style.cursor = 'pointer';
+
+    // Tooltip
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = node.name + (node.messages ? ' (' + node.messages.toLocaleString('ru-RU') + ' сообщений)' : '');
+    circle.appendChild(title);
+
+    // Hover effect
+    circle.addEventListener('mouseenter', function() {
+      this.setAttribute('opacity', '1');
+      this.setAttribute('r', parseInt(this.getAttribute('r')) * 1.2);
+    });
+    circle.addEventListener('mouseleave', function() {
+      this.setAttribute('opacity', '0.9');
+      this.setAttribute('r', node.size);
+    });
+
+    svg.appendChild(circle);
+
+    // Labels for Big Four
+    if (node.group === 'bigfour') {
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', node.x);
+      text.setAttribute('y', node.y + node.size + 15);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('fill', '#F8FAFC');
+      text.setAttribute('font-size', '12');
+      text.setAttribute('font-weight', 'bold');
+      text.setAttribute('font-family', 'Inter');
+      text.textContent = node.name;
+      svg.appendChild(text);
+    }
+  });
+})();
+</script>
+
+{{ end }}

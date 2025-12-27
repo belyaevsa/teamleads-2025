@@ -1,0 +1,203 @@
+{{ $data := .Site.Data.metrics }}
+
+<section class="relative py-20 px-4 bg-gradient-to-b from-deep-space/50 to-transparent">
+  <div class="container mx-auto max-w-5xl">
+
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      Тональность <span class="text-gradient-ai">Сообщества</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-16 max-w-2xl mx-auto">
+      Общий тон 26 600 сообщений
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+
+      <!-- Chart -->
+      <div class="relative">
+        <canvas id="sentiment-chart" style="max-width: 400px; max-height: 400px; margin: 0 auto;"></canvas>
+
+        <!-- Center text -->
+        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <div class="text-2xl font-heading font-bold text-starlight text-center leading-tight">
+            Общий<br>Тон
+          </div>
+          <div class="font-data text-slate-400 text-sm mt-2">
+            {{ $data.total_messages | lang.FormatNumber 0 }} сообщений
+          </div>
+        </div>
+      </div>
+
+      <!-- Legend & Insights -->
+      <div class="space-y-6">
+
+        <!-- Neutral -->
+        <div class="flex items-center justify-between p-4 bento-card">
+          <div class="flex items-center gap-3">
+            <div class="w-4 h-4 rounded-full bg-gray-400"></div>
+            <span class="text-slate-300">Нейтральные</span>
+          </div>
+          <span class="font-data text-2xl font-bold text-gray-400">{{ $data.sentiment.neutral }}%</span>
+        </div>
+
+        <!-- Questions -->
+        <div class="flex items-center justify-between p-4 bento-card">
+          <div class="flex items-center gap-3">
+            <div class="w-4 h-4 rounded-full bg-blue-400"></div>
+            <span class="text-slate-300">Вопросы</span>
+          </div>
+          <span class="font-data text-2xl font-bold text-blue-400">{{ $data.sentiment.questions }}%</span>
+        </div>
+
+        <!-- Negative -->
+        <div class="flex items-center justify-between p-4 bento-card">
+          <div class="flex items-center gap-3">
+            <div class="w-4 h-4 rounded-full bg-red-400"></div>
+            <span class="text-slate-300">Негативные</span>
+          </div>
+          <span class="font-data text-2xl font-bold text-red-400">{{ $data.sentiment.negative }}%</span>
+        </div>
+
+        <!-- Positive -->
+        <div class="flex items-center justify-between p-4 bento-card">
+          <div class="flex items-center gap-3">
+            <div class="w-4 h-4 rounded-full bg-green-400"></div>
+            <span class="text-slate-300">Позитивные</span>
+          </div>
+          <span class="font-data text-2xl font-bold text-green-400">{{ $data.sentiment.positive }}%</span>
+        </div>
+
+        <!-- Insight -->
+        <div class="mt-8 p-6 bento-card border-l-4 border-ai-purple-start">
+          <p class="text-slate-300 text-sm leading-relaxed">
+            <strong class="text-starlight">Нейтральный тон доминирует.</strong>
+            Это признак профессионального сообщества, где обмениваются фактами и опытом.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<script>
+(function() {
+  const ctx = document.getElementById('sentiment-chart');
+  if (!ctx) return;
+
+  // Data from Hugo - already parsed as JavaScript object
+  const sentimentData = {{ $data.sentiment }};
+
+  // Ensure data is valid
+  if (!sentimentData || typeof sentimentData !== 'object') {
+    console.error('Invalid data format for sentiment chart');
+    return;
+  }
+
+  const config = {
+    type: 'doughnut',
+    data: {
+      labels: ['Нейтральные', 'Вопросы', 'Негативные', 'Позитивные'],
+      datasets: [{
+        data: [
+          sentimentData.neutral,
+          sentimentData.questions,
+          sentimentData.negative,
+          sentimentData.positive
+        ],
+        backgroundColor: [
+          '#9E9E9E', // Neutral - gray
+          '#3B82F6', // Questions - blue
+          '#EF4444', // Negative - red
+          '#10B981'  // Positive - green
+        ],
+        borderColor: [
+          'rgba(158, 158, 158, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(16, 185, 129, 0.8)'
+        ],
+        borderWidth: 2,
+        hoverOffset: 15,
+        hoverBorderColor: '#F8FAFC',
+        hoverBorderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '65%',
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          titleColor: '#F8FAFC',
+          bodyColor: '#94A3B8',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 12,
+          displayColors: true,
+          titleFont: {
+            family: 'Inter',
+            size: 14,
+            weight: 'bold'
+          },
+          bodyFont: {
+            family: 'JetBrains Mono',
+            size: 13
+          },
+          callbacks: {
+            label: function(context) {
+              const label = context.label || '';
+              const value = context.parsed;
+              return label + ': ' + value.toFixed(1) + '%';
+            },
+            afterLabel: function(context) {
+              const totalMessages = {{ $data.total_messages }};
+              const percentage = context.parsed / 100;
+              const count = Math.round(totalMessages * percentage);
+              return count.toLocaleString('ru-RU') + ' сообщений';
+            }
+          }
+        }
+      },
+      animation: {
+        animateRotate: true,
+        animateScale: true,
+        duration: 2000,
+        easing: 'easeInOutQuart'
+      }
+    },
+    plugins: [{
+      id: 'neonGlow',
+      beforeDraw: function(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = 'rgba(168, 85, 247, 0.3)';
+        ctx.restore();
+      }
+    }]
+  };
+
+  // Create chart
+  const chart = new Chart(ctx, config);
+
+  // Animate on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        chart.update();
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.3 });
+
+  observer.observe(ctx);
+
+})();
+</script>

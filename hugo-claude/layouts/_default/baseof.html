@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="{{ .Site.LanguageCode }}" class="dark">
+<head>
+  {{ partial "head.html" . }}
+</head>
+<body class="min-h-screen text-starlight bg-deep-space relative overflow-x-hidden font-body antialiased">
+
+  <!-- Grid background pattern -->
+  <div class="fixed inset-0 opacity-5 pointer-events-none grid-pattern"></div>
+
+  <!-- Aurora background -->
+  <div class="fixed inset-0 opacity-10 pointer-events-none aurora-bg"></div>
+
+  <!-- Main content -->
+  <main class="relative z-10">
+    {{ block "main" . }}{{ end }}
+  </main>
+
+  <!-- Floating Dock Navigation -->
+  {{ partial "floating-dock.html" . }}
+
+  <!-- Footer -->
+  {{ partial "footer.html" . }}
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+</body>
+</html>
