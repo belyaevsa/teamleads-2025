@@ -13,7 +13,7 @@
       Метрики, которые <span class="text-gradient-ai">имеют значение</span>
     </h2>
     <p class="text-center text-slate-400 mb-16 max-w-2xl mx-auto">
-      Год в цифрах. Никаких ванильных метрик — только реальная активность.
+      Год в цифрах. Никаких ванильных метрик – только реальная активность.
     </p>
 
     <!-- Metrics Grid -->
@@ -22,7 +22,7 @@
       <!-- Card 1: Total Messages -->
       <div class="bento-card p-8 group">
         <div class="text-5xl mb-4">💬</div>
-        <div class="font-data text-5xl font-bold text-starlight mb-2" data-count="26600">0</div>
+        <div class="font-data text-5xl font-bold text-starlight mb-2" data-count="26 600">0</div>
         <div class="text-slate-400 text-lg mb-4">коммитов в диалог</div>
         <a href="#overview" class="text-telegram-blue text-sm hover:underline inline-flex items-center gap-1">
           → Посмотреть историю
@@ -52,7 +52,7 @@
       <!-- Card 4: Community Sentiment -->
       <div class="bento-card p-8 group">
         <div class="text-5xl mb-4">😌</div>
-        <div class="font-data text-5xl font-bold text-starlight mb-2" data-count="69.6">0</div>
+        <div class="font-data text-5xl font-bold text-starlight mb-2" data-count="70">0</div>
         <div class="text-slate-400 text-lg mb-4">% спокойных</div>
         <a href="#sentiment" class="text-telegram-blue text-sm hover:underline inline-flex items-center gap-1">
           → Анализ настроений
@@ -76,51 +76,9 @@
 
     <!-- Big Four Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-
-      <!-- Andrii Kurdiumov -->
-      <div class="bento-card p-6 text-center group hover:border-yellow-500/50">
-        <div class="text-4xl mb-2">🥇</div>
-        <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-2xl font-bold text-deep-space">
-          AK
-        </div>
-        <h3 class="font-heading font-bold text-lg text-starlight mb-1">Andrii Kurdiumov</h3>
-        <div class="font-data text-2xl font-bold text-yellow-400 mb-1" data-count="6266">0</div>
-        <div class="text-slate-400 text-sm">тредов запущено</div>
-      </div>
-
-      <!-- Артур Пан -->
-      <div class="bento-card p-6 text-center group hover:border-gray-400/50">
-        <div class="text-4xl mb-2">🥈</div>
-        <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center text-2xl font-bold text-deep-space">
-          АП
-        </div>
-        <h3 class="font-heading font-bold text-lg text-starlight mb-1">Артур Пан</h3>
-        <div class="font-data text-2xl font-bold text-gray-300 mb-1" data-count="4388">0</div>
-        <div class="text-slate-400 text-sm">дискуссий поднято</div>
-      </div>
-
-      <!-- Теймур Шайкемелов -->
-      <div class="bento-card p-6 text-center group hover:border-orange-600/50">
-        <div class="text-4xl mb-2">🥉</div>
-        <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-orange-400 to-orange-700 rounded-full flex items-center justify-center text-2xl font-bold text-deep-space">
-          ТШ
-        </div>
-        <h3 class="font-heading font-bold text-lg text-starlight mb-1">Теймур Шайкемелов</h3>
-        <div class="font-data text-2xl font-bold text-orange-400 mb-1" data-count="3105">0</div>
-        <div class="text-slate-400 text-sm">инсайтов за год</div>
-      </div>
-
-      <!-- Stanislav Belyaev -->
-      <div class="bento-card p-6 text-center group hover:border-blue-400/50">
-        <div class="text-4xl mb-2">⭐</div>
-        <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-2xl font-bold text-deep-space">
-          SB
-        </div>
-        <h3 class="font-heading font-bold text-lg text-starlight mb-1">Stanislav Belyaev</h3>
-        <div class="font-data text-2xl font-bold text-blue-400 mb-1" data-count="3035">0</div>
-        <div class="text-slate-400 text-sm">связей в сети</div>
-      </div>
-
+      {{- range .Site.Data.profiles.big_four -}}
+      {{ partial "components/profile-card.html" (dict "profile" . "variant" "big-four") }}
+      {{- end -}}
     </div>
 
     <div class="text-center mt-12">

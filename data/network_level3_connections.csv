@@ -1,0 +1,51 @@
+level2_person,connected_person,weight,in_level2
+Arthur pandev.io,Антон ,59,yes
+Arthur pandev.io,Dmitriy Melnik,54,yes
+Arthur pandev.io,Vassiliy ,28,yes
+Arthur pandev.io,Denis ,19,no
+Arthur pandev.io,Anton ,13,no
+Azat Jalilov,Tair Sab,62,yes
+Azat Jalilov,Nurlan N,42,yes
+Azat Jalilov,Vassiliy ,35,yes
+Azat Jalilov,Антон ,27,yes
+Azat Jalilov,Zhanar Mustafina,24,no
+Dmitriy Melnik,Arthur pandev.io,54,yes
+Dmitriy Melnik,Denis ,32,no
+Dmitriy Melnik,Антон ,31,yes
+Dmitriy Melnik,Nurlan N,25,yes
+Dmitriy Melnik,Maxim Gorbatyuk,19,yes
+Egor ,Maxim Gorbatyuk,22,yes
+Egor ,Dmitriy Melnik,14,yes
+Egor ,Андрей Звёздочка,11,no
+Egor ,鏥 Tоλеген ,7,yes
+Egor ,Rodion Mostovoi,7,no
+Maxim Gorbatyuk,Tair Sab,29,yes
+Maxim Gorbatyuk,Egor ,22,yes
+Maxim Gorbatyuk,Dmitriy Melnik,19,yes
+Maxim Gorbatyuk,Vassiliy ,13,yes
+Maxim Gorbatyuk,Nurlan N,13,yes
+Nurlan N,Azat Jalilov,42,yes
+Nurlan N,Dmitriy Melnik,25,yes
+Nurlan N,Tair Sab,20,yes
+Nurlan N,Denis ,18,no
+Nurlan N,Vassiliy ,17,yes
+Tair Sab,Azat Jalilov,62,yes
+Tair Sab,Maxim Gorbatyuk,29,yes
+Tair Sab,Nurlan N,20,yes
+Tair Sab,Alex Dukhnovskiy ,14,no
+Tair Sab,鏥 Tоλеген ,14,yes
+Vassiliy ,Антон ,47,yes
+Vassiliy ,Azat Jalilov,35,yes
+Vassiliy ,Arthur pandev.io,28,yes
+Vassiliy ,Daulet ,21,no
+Vassiliy ,Iztleu Darkhan ,20,no
+Антон ,Arthur pandev.io,59,yes
+Антон ,Vassiliy ,47,yes
+Антон ,Dmitriy Melnik,31,yes
+Антон ,Azat Jalilov,27,yes
+Антон ,Maksim Mukharev,19,no
+鏥 Tоλеген ,Tair Sab,14,yes
+鏥 Tоλеген ,Egor ,7,yes
+鏥 Tоλеген ,Dmitriy Melnik,6,yes
+鏥 Tоλеген ,Сергей Михайлов ,4,no
+鏥 Tоλеген ,Maxim Gorbatyuk,4,yes

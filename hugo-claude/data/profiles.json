@@ -1,0 +1,360 @@
+{
+  "founders": [
+    {
+      "id": "andrii_kurdiumov",
+      "name": "Andrii Kurdiumov",
+      "username": "kant2002",
+      "avatar": "/images/avatars/andrii.jpg",
+      "role": "Суперхаб",
+      "description": "Безусловный лидер по активности",
+      "icon": "🌟",
+      "join_date": "2025-01-20"
+    },
+    {
+      "id": "teymur_shaykemelov",
+      "name": "Теймур Шайкемелов",
+      "username": "shaykemelov",
+      "avatar": "/images/avatars/teymur.jpg",
+      "role": "Организатор встреч nullptr.party",
+      "description": "Один из основателей сообщества",
+      "icon": "🎪",
+      "join_date": "2025-01-20"
+    },
+    {
+      "id": "stanislav_belyaev",
+      "name": "Stanislav Belyaev",
+      "username": "BelyaevStanislav",
+      "avatar": "/images/avatars/stanislav.jpg",
+      "role": "Самый регулярный участник",
+      "description": "Философия лидерства и найма",
+      "icon": "📚",
+      "join_date": "2025-01-20"
+    },
+    {
+      "id": "nurlan_n",
+      "name": "Nurlan N",
+      "username": "NNurmano",
+      "avatar": "/images/avatars/nurlan.jpg",
+      "role": "Один из основателей",
+      "icon": "🚀",
+      "join_date": "2025-01-20"
+    },
+    {
+      "id": "adilbek",
+      "name": "АДИЛЬБЕК",
+      "username": "greident",
+      "avatar": "/images/avatars/adilbek.jpg",
+      "role": "Один из основателей",
+      "icon": "💼",
+      "join_date": "2025-01-20"
+    }
+  ],
+  "big_four": [
+    {
+      "id": "andrii_kurdiumov",
+      "name": "Andrii Kurdiumov",
+      "short_name": "Andrii K.",
+      "username": "akurdiumov",
+      "avatar": "/images/avatars/andrii.jpg",
+      "level": 0,
+      "role": "Центральный хаб",
+      "description": "Суперхаб сообщества",
+      "stats": {
+        "messages": 6266,
+        "active_days": 247,
+        "connections": 411,
+        "outgoing": 2047,
+        "incoming": 1996,
+        "unique_connections": 124
+      },
+      "color": "yellow-400",
+      "medal": "🥇"
+    },
+    {
+      "id": "artur_pan",
+      "name": "Артур Пан",
+      "short_name": "Артур П.",
+      "username": "arturpan",
+      "avatar": "/images/avatars/artur.jpg",
+      "level": 0,
+      "role": "Главный влиятель",
+      "description": "Центр дискуссий",
+      "stats": {
+        "messages": 4388,
+        "active_days": 145,
+        "connections": 365,
+        "outgoing": 1073,
+        "incoming": 1428,
+        "unique_connections": 103
+      },
+      "color": "gray-400",
+      "medal": "🥈"
+    },
+    {
+      "id": "teymur_shaykemelov",
+      "name": "Теймур Шайкемелов",
+      "short_name": "Теймур Ш.",
+      "username": "teymur",
+      "avatar": "/images/avatars/teymur.jpg",
+      "level": 0,
+      "role": "Активный участник",
+      "description": "Генератор инсайтов",
+      "stats": {
+        "messages": 3105,
+        "active_days": 198,
+        "connections": 362,
+        "outgoing": 1243,
+        "incoming": 1176,
+        "unique_connections": 110
+      },
+      "color": "orange-400",
+      "medal": "🥉"
+    },
+    {
+      "id": "stanislav_belyaev",
+      "name": "Stanislav Belyaev",
+      "short_name": "Stanislav B.",
+      "username": "sbelyaev",
+      "avatar": "/images/avatars/stanislav.jpg",
+      "level": 0,
+      "role": "Главный коннектор",
+      "description": "Связывает всех",
+      "stats": {
+        "messages": 3035,
+        "active_days": 252,
+        "connections": 356,
+        "outgoing": 1626,
+        "incoming": 1275,
+        "unique_connections": 129
+      },
+      "color": "blue-400",
+      "medal": "⭐"
+    }
+  ],
+  "level_1": [
+    {
+      "id": "vassiliy",
+      "name": "Vassiliy",
+      "short_name": "Vassiliy",
+      "username": null,
+      "avatar": "/images/avatars/vassiliy.jpg",
+      "level": 1,
+      "role": "Технический эксперт",
+      "description": "Мост к техническим дискуссиям",
+      "stats": {
+        "connections": 411,
+        "top_connections": ["Andrii (411)", "Теймур (160)", "Stanislav (161)"]
+      },
+      "color": "telegram-blue"
+    },
+    {
+      "id": "dmitriy_melnik",
+      "name": "Dmitriy Melnik",
+      "short_name": "Dmitriy M.",
+      "username": null,
+      "avatar": "/images/avatars/dmitriy.jpg",
+      "level": 1,
+      "role": "Бизнес-влиятель",
+      "description": "Бизнес-перспектива в дискуссиях",
+      "stats": {
+        "connections": 183,
+        "top_connections": ["Andrii (183)", "Теймур (137)", "Stanislav (128)"]
+      },
+      "color": "telegram-blue"
+    },
+    {
+      "id": "azat_jalilov",
+      "name": "Azat Jalilov",
+      "short_name": "Azat J.",
+      "username": null,
+      "avatar": "/images/avatars/azat.jpg",
+      "level": 1,
+      "role": "Активный участник",
+      "description": "Народный участник",
+      "stats": {
+        "connections": 154,
+        "top_connections": ["Артур (154)", "Stanislav (157)", "Теймур (65)"]
+      },
+      "color": "telegram-blue"
+    },
+    {
+      "id": "anton",
+      "name": "Антон",
+      "short_name": "Антон",
+      "username": null,
+      "avatar": "/images/avatars/anton.jpg",
+      "level": 1,
+      "role": "Сфокусированный",
+      "description": "Связь с Andrii",
+      "stats": {
+        "connections": 185,
+        "top_connections": ["Andrii (185)", "Stanislav (93)"]
+      },
+      "color": "telegram-blue"
+    },
+    {
+      "id": "arthur_pandev",
+      "name": "Arthur pandev.io",
+      "short_name": "Arthur P.",
+      "username": "arthur_pandev",
+      "avatar": "/images/avatars/arthur.jpg",
+      "level": 1,
+      "role": "Влиятельный",
+      "description": "Влиятельный новичок",
+      "stats": {
+        "connections": 159,
+        "top_connections": ["Andrii (159)", "Stanislav (76)", "Теймур (56)"]
+      },
+      "color": "telegram-blue"
+    },
+    {
+      "id": "tair_sab",
+      "name": "Tair Sab",
+      "short_name": "Tair S.",
+      "username": null,
+      "avatar": "/images/avatars/tair.jpg",
+      "level": 1,
+      "role": "Сбалансированный",
+      "description": "Сбалансированный участник",
+      "stats": {
+        "connections": 135,
+        "top_connections": ["Andrii (135)", "Stanislav (82)", "Теймур (54)"]
+      },
+      "color": "telegram-blue"
+    },
+    {
+      "id": "nurlan_n",
+      "name": "Nurlan N",
+      "short_name": "Nurlan N.",
+      "username": null,
+      "avatar": "/images/avatars/nurlan.jpg",
+      "level": 1,
+      "role": "Усилитель",
+      "description": "Усилитель дискуссий",
+      "stats": {
+        "connections": 115,
+        "top_connections": ["Andrii (115)", "Артур (63)", "Теймур (52)"]
+      },
+      "color": "telegram-blue"
+    },
+    {
+      "id": "egor",
+      "name": "Egor",
+      "short_name": "Egor",
+      "username": null,
+      "avatar": "/images/avatars/egor.jpg",
+      "level": 1,
+      "role": "Регулярный",
+      "description": "Регулярный участник",
+      "stats": {
+        "connections": 82,
+        "top_connections": ["Stanislav (82)", "Теймур (33)"]
+      },
+      "color": "telegram-blue"
+    },
+    {
+      "id": "maxim_gorbatyuk",
+      "name": "Maxim Gorbatyuk",
+      "short_name": "Maxim G.",
+      "username": null,
+      "avatar": "/images/avatars/maxim.jpg",
+      "level": 1,
+      "role": "Коннектор",
+      "description": "Соединяет разные группы",
+      "stats": {
+        "connections": 71,
+        "top_connections": ["Andrii (71)", "Теймур (59)", "Артур (41)"]
+      },
+      "color": "telegram-blue"
+    },
+    {
+      "id": "tolegen",
+      "name": "鏥 Tоλеген",
+      "short_name": "Tоλеген",
+      "username": null,
+      "avatar": "/images/avatars/tolegen.jpg",
+      "level": 1,
+      "role": "Специализированный",
+      "description": "Специализированная связь",
+      "stats": {
+        "connections": 67,
+        "top_connections": ["Артур (67)"]
+      },
+      "color": "telegram-blue"
+    }
+  ],
+  "level_2": [
+    {
+      "id": "denis",
+      "name": "Denis",
+      "short_name": "Denis",
+      "username": null,
+      "avatar": "/images/avatars/denis.jpg",
+      "level": 2,
+      "role": "Расширенная сеть",
+      "stats": {
+        "connections": 32
+      }
+    },
+    {
+      "id": "zhanar_mustafina",
+      "name": "Zhanar Mustafina",
+      "short_name": "Zhanar M.",
+      "username": null,
+      "avatar": "/images/avatars/zhanar.jpg",
+      "level": 2,
+      "role": "Расширенная сеть",
+      "stats": {
+        "connections": 24
+      }
+    },
+    {
+      "id": "daulet",
+      "name": "Daulet",
+      "short_name": "Daulet",
+      "username": null,
+      "avatar": "/images/avatars/daulet.jpg",
+      "level": 2,
+      "role": "Расширенная сеть",
+      "stats": {
+        "connections": 21
+      }
+    },
+    {
+      "id": "iztleu_darkhan",
+      "name": "Iztleu Darkhan",
+      "short_name": "Iztleu D.",
+      "username": null,
+      "avatar": "/images/avatars/iztleu.jpg",
+      "level": 2,
+      "role": "Расширенная сеть",
+      "stats": {
+        "connections": 20
+      }
+    },
+    {
+      "id": "alex_dukhnovskiy",
+      "name": "Alex Dukhnovskiy",
+      "short_name": "Alex D.",
+      "username": null,
+      "avatar": "/images/avatars/alex.jpg",
+      "level": 2,
+      "role": "Расширенная сеть",
+      "stats": {
+        "connections": 18
+      }
+    },
+    {
+      "id": "rodion_mostovoi",
+      "name": "Rodion Mostovoi",
+      "short_name": "Rodion M.",
+      "username": null,
+      "avatar": "/images/avatars/rodion.jpg",
+      "level": 2,
+      "role": "Расширенная сеть",
+      "stats": {
+        "connections": 15
+      }
+    }
+  ]
+}

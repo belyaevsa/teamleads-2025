@@ -1,19 +1,8 @@
 {{ define "main" }}
 {{ $data := .Site.Data.metrics }}
 
-<!-- Page Header -->
-<section class="relative py-16 px-4">
-  <div class="container mx-auto max-w-7xl">
-    <div class="text-center mb-12">
-      <h1 class="text-5xl md:text-6xl font-heading font-bold text-starlight mb-4">
-        <span class="text-gradient-ai">Посты, которые взорвали чат</span>
-      </h1>
-      <p class="text-xl text-slate-400 max-w-3xl mx-auto">
-        Топ-10 споров, награды и лонгриды на 4000 символов
-      </p>
-    </div>
-  </div>
-</section>
+<!-- Hero Section -->
+{{ partial "components/page-hero.html" (dict "title" "Посты, которые взорвали чат" "subtitle" "Топ-10 споров, награды и лонгриды на 4000 символов" "emoji" "🏆" "gradient" "management") }}
 
 <!-- Top Threads Section -->
 <section class="relative py-16 px-4 bg-gradient-to-b from-deep-space/50 to-transparent">
@@ -22,7 +11,7 @@
       💬 <span class="text-gradient-management">Топ-10 Обсуждений</span>
     </h2>
     <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
-      Треды с наибольшим количеством ответов — темы, которые зацепили сообщество
+      Треды с наибольшим количеством ответов – темы, которые зацепили сообщество
     </p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -80,7 +69,7 @@
     <div class="mt-8 bento-card p-6 border-l-4 border-management-orange-start">
       <p class="text-slate-300">
         <span class="text-2xl mr-2">🔥</span>
-        <strong class="text-management-orange-start">Артур Пан</strong> — автор 7 из 10 самых обсуждаемых тем! Его провокационные вопросы о метриках, джунах и тимлидстве запускают самые горячие дискуссии.
+        <strong class="text-management-orange-start">Артур Пан</strong> – автор 7 из 10 самых обсуждаемых тем! Его провокационные вопросы о метриках, джунах и тимлидстве запускают самые горячие дискуссии.
       </p>
     </div>
   </div>
@@ -227,7 +216,7 @@
       📝 <span class="text-gradient-management">Лонгриды Года</span>
     </h2>
     <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
-      Самые развернутые и детальные посты — когда есть что сказать
+      Самые развернутые и детальные посты – когда есть что сказать
     </p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -263,7 +252,7 @@
     <div class="mt-8 bento-card p-6 border-l-4 border-ai-purple-start">
       <p class="text-slate-300">
         <span class="text-2xl mr-2">📚</span>
-        Средняя длина сообщения в чате — всего <strong class="text-telegram-blue">95-105 символов</strong>. Эти лонгриды выделяются на фоне остальных — каждый почти <strong class="text-management-orange-start">4,000 символов</strong> глубоких размышлений и практического опыта.
+        Средняя длина сообщения в чате – всего <strong class="text-telegram-blue">95-105 символов</strong>. Эти лонгриды выделяются на фоне остальных – каждый почти <strong class="text-management-orange-start">4,000 символов</strong> глубоких размышлений и практического опыта.
       </p>
     </div>
   </div>

@@ -3,99 +3,175 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<!-- Page Header -->
-<section class="relative py-16 px-4">
-  <div class="container mx-auto max-w-7xl">
-    <div class="text-center mb-12">
-      <h1 class="text-5xl md:text-6xl font-heading font-bold text-starlight mb-4">
-        <span class="text-gradient-ai">Каждый месяц</span>
-      </h1>
-      <p class="text-xl text-slate-400 max-w-3xl mx-auto">
-        Своя история
+<!-- Hero Section -->
+{{ partial "components/page-hero.html" (dict "title" "Каждый месяц" "subtitle" "Своя история" "emoji" "📅" "gradient" "ai") }}
+
+<!-- Horizontal Timeline -->
+<section class="relative py-8 mt-16 w-full overflow-visible">
+  <div class="w-full overflow-visible">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-12 text-starlight px-4">
+      <span class="text-gradient-management">Год в одной строке</span>
+    </h2>
+
+    <!-- Timeline Container -->
+    <div class="relative overflow-visible pb-2 w-full" style="min-height: 200px;">
+      <!-- Continuous Year Line -->
+      <div class="absolute left-4 right-4 top-[88px] h-1 bg-gradient-to-r from-telegram-blue via-ai-purple-start to-telegram-blue opacity-30 rounded-full"></div>
+
+      <div class="flex items-start justify-center gap-0 px-4 relative overflow-visible" style="min-width: 100%;">
+        {{ range $index, $month := $data.monthly_narrative }}
+        <!-- Month Item -->
+        <div class="timeline-month relative flex-1 max-w-[120px]" data-month-index="{{ $index }}">
+          <!-- Month Label -->
+          <div class="text-center cursor-pointer pt-12">
+            <div class="text-2xl mb-1 hover:scale-110 transition-transform">{{ .emoji }}</div>
+            <div class="font-heading font-bold text-sm text-starlight hover:text-telegram-blue transition-colors">
+              {{ .month }}
+            </div>
+            {{ if .growth }}
+            <div class="text-xs mt-1 font-bold
+              {{ if hasPrefix .growth "+" }}text-green-400{{ else }}text-red-400{{ end }}">
+              {{ .growth }}
+            </div>
+            {{ end }}
+          </div>
+
+          <!-- Hover Card -->
+          <div class="month-card absolute bottom-24 w-[500px] opacity-0 pointer-events-none transition-all duration-300 z-[999]
+            {{ if le $index 1 }}left-0{{ else if ge $index 10 }}right-0{{ else }}left-1/2 -translate-x-1/2{{ end }}"
+            style="{{ if and (gt $index 1) (lt $index 10) }}transform: translateX(-50%) translateY(-10px);{{ else }}transform: translateY(-10px);{{ end }}" data-card-index="{{ $index }}"
+            data-position="{{ if le $index 1 }}left{{ else if ge $index 10 }}right{{ else }}center{{ end }}">
+            <div class="bento-card p-6 shadow-2xl bg-space-black border-2
+              {{ if .highlight }}border-management-orange-start/50{{ else }}border-slate-700{{ end }}">
+
+              <!-- Card Header -->
+              <div class="flex items-start gap-3 mb-4">
+                <div class="text-4xl">{{ .emoji }}</div>
+                <div class="flex-1">
+                  <h3 class="font-heading font-bold text-xl text-starlight">{{ .month }}</h3>
+                  <p class="text-sm text-management-orange-start font-bold">{{ .title }}</p>
+                </div>
+              </div>
+
+              <!-- Stats -->
+              <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="text-center p-3 bg-deep-space/50 rounded-lg">
+                  <div class="font-data text-2xl font-bold text-telegram-blue">{{ .messages | lang.FormatNumber 0 }}</div>
+                  <div class="text-slate-400 text-xs">сообщений</div>
+                </div>
+                <div class="text-center p-3 bg-deep-space/50 rounded-lg">
+                  <div class="font-data text-2xl font-bold text-management-orange-start">{{ .contributors }}</div>
+                  <div class="text-slate-400 text-xs">участников</div>
+                </div>
+              </div>
+
+              <!-- Highlight -->
+              {{ if .highlight }}
+              <div class="mb-3 p-3 bg-management-orange-start/10 border-l-4 border-management-orange-start rounded">
+                <p class="text-sm text-management-orange-start font-bold">{{ .highlight }}</p>
+              </div>
+              {{ end }}
+
+              <!-- Description -->
+              <p class="text-sm text-slate-300 mb-3">{{ .description }}</p>
+
+              <!-- Key Events -->
+              {{ if .key_events }}
+              <div class="border-t border-slate-700 pt-3">
+                <p class="text-xs text-slate-400 mb-2 font-bold">Ключевые события:</p>
+                <ul class="space-y-1">
+                  {{ range .key_events }}
+                  <li class="text-xs text-slate-300">• {{ . | htmlUnescape }}</li>
+                  {{ end }}
+                </ul>
+              </div>
+              {{ end }}
+            </div>
+          </div>
+        </div>
+        {{ end }}
+      </div>
+    </div>
+
+    <!-- Instruction -->
+    <div class="text-center mt-2 px-4">
+      <p class="text-sm text-slate-400">
+        <span class="text-telegram-blue">→</span> Наведите курсор на месяц, чтобы увидеть детали
       </p>
     </div>
   </div>
 </section>
 
-<!-- Monthly Timeline -->
+<script>
+(function() {
+  let currentCard = null;
+
+  function getTransform(position, hidden) {
+    if (position === 'center') {
+      return hidden ? 'translateX(-50%) translateY(-10px)' : 'translateX(-50%) translateY(0)';
+    }
+    return hidden ? 'translateY(-10px)' : 'translateY(0)';
+  }
+
+  function showCard(index) {
+    const card = document.querySelector('[data-card-index="' + index + '"]');
+    if (card) {
+      const position = card.getAttribute('data-position') || 'center';
+
+      // Hide current card if different
+      if (currentCard && currentCard !== card) {
+        const prevPosition = currentCard.getAttribute('data-position') || 'center';
+        currentCard.style.opacity = '0';
+        currentCard.style.pointerEvents = 'none';
+        currentCard.style.transform = getTransform(prevPosition, true);
+      }
+
+      // Show new card
+      card.style.opacity = '1';
+      card.style.pointerEvents = 'auto';
+      card.style.transform = getTransform(position, false);
+      currentCard = card;
+    }
+  }
+
+  function hideCard(index) {
+    setTimeout(function() {
+      const card = document.querySelector('[data-card-index="' + index + '"]');
+      if (card && !card.matches(':hover') && currentCard === card) {
+        const position = card.getAttribute('data-position') || 'center';
+        card.style.opacity = '0';
+        card.style.pointerEvents = 'none';
+        card.style.transform = getTransform(position, true);
+        currentCard = null;
+      }
+    }, 100);
+  }
+
+  // Add event listeners
+  document.addEventListener('DOMContentLoaded', function() {
+    const months = document.querySelectorAll('.timeline-month');
+    months.forEach(function(month) {
+      const index = month.getAttribute('data-month-index');
+      const label = month.querySelector('.text-center');
+      const card = month.querySelector('.month-card');
+
+      if (label) {
+        label.addEventListener('mouseenter', function() { showCard(index); });
+        label.addEventListener('mouseleave', function() { hideCard(index); });
+      }
+      if (card) {
+        card.addEventListener('mouseenter', function() { showCard(index); });
+        card.addEventListener('mouseleave', function() { hideCard(index); });
+      }
+    });
+  });
+})();
+</script>
+
+<!-- Year Summary -->
 <section class="relative py-16 px-4 bg-gradient-to-b from-deep-space/50 to-transparent">
   <div class="container mx-auto max-w-7xl">
-    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-12 text-starlight">
-      📅 <span class="text-gradient-management">Месяц за Месяцем</span>
-    </h2>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {{ range $data.monthly_narrative }}
-      <div class="bento-card p-6
-        {{ if .highlight }}border-2 border-management-orange-start/50{{ end }}
-        hover:scale-105 transition-all">
-
-        <!-- Month Header -->
-        <div class="flex items-center gap-3 mb-4">
-          <div class="text-4xl">{{ .emoji }}</div>
-          <div class="flex-1">
-            <h3 class="font-heading font-bold text-xl text-starlight">{{ .month }}</h3>
-            <p class="text-sm text-slate-400">{{ .title }}</p>
-          </div>
-        </div>
-
-        <!-- Stats -->
-        <div class="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <div class="font-data text-2xl font-bold text-telegram-blue">{{ .messages | lang.FormatNumber 0 }}</div>
-            <div class="text-slate-400 text-xs">сообщений</div>
-          </div>
-          <div>
-            <div class="font-data text-2xl font-bold text-management-orange-start">{{ .contributors }}</div>
-            <div class="text-slate-400 text-xs">участников</div>
-          </div>
-        </div>
-
-        <!-- Growth Indicator -->
-        {{ if .growth }}
-        <div class="mb-4">
-          <span class="inline-block px-3 py-1 rounded-full text-sm font-bold
-            {{ if hasPrefix .growth "+" }}bg-green-500/20 text-green-400
-            {{ else }}bg-red-500/20 text-red-400{{ end }}">
-            {{ .growth }}
-          </span>
-        </div>
-        {{ end }}
-
-        <!-- Highlight -->
-        {{ if .highlight }}
-        <div class="mb-4 p-3 bg-management-orange-start/10 border-l-4 border-management-orange-start rounded">
-          <p class="text-sm text-management-orange-start font-bold">{{ .highlight }}</p>
-        </div>
-        {{ end }}
-
-        <!-- Description -->
-        <p class="text-sm text-slate-300 mb-4">{{ .description }}</p>
-
-        <!-- Key Events -->
-        {{ if .key_events }}
-        <div class="border-t border-slate-700 pt-3">
-          <p class="text-xs text-slate-400 mb-2 font-bold">Ключевые события:</p>
-          <ul class="space-y-1">
-            {{ range .key_events }}
-            <li class="text-xs text-slate-300">• {{ . }}</li>
-            {{ end }}
-          </ul>
-        </div>
-        {{ end }}
-
-        <!-- Message Length (if available) -->
-        {{ if .avg_message_length }}
-        <div class="mt-3 text-xs text-slate-400">
-          <span class="font-data">📏</span> Средняя длина: {{ .avg_message_length }} символов
-        </div>
-        {{ end }}
-      </div>
-      {{ end }}
-    </div>
-
-    <!-- Year Summary -->
-    <div class="mt-12 bento-card p-8 border-l-4 border-ai-purple-start">
+    <div class="bento-card p-8 border-l-4 border-ai-purple-start">
       <h3 class="font-heading font-bold text-2xl text-starlight mb-4">
         🎯 Итог года
       </h3>
@@ -146,7 +222,7 @@
 
     <div class="mt-8 bento-card p-6 border-l-4 border-yellow-500">
       <p class="text-slate-300">
-        <strong class="text-yellow-400">21 декабря 2025</strong> — абсолютный рекорд года с <strong class="text-management-orange-start">872 сообщениями</strong>! Предновогодняя неделя (20-24 декабря) была самой активной в истории сообщества.
+        <strong class="text-yellow-400">21 декабря 2025</strong> – абсолютный рекорд года с <strong class="text-management-orange-start">872 сообщениями</strong>! Предновогодняя неделя (20-24 декабря) была самой активной в истории сообщества.
       </p>
     </div>
   </div>
@@ -174,7 +250,7 @@
         <div class="font-data text-3xl text-management-orange-start mb-2">{{ $data.hourly_activity.morning_peak | lang.FormatNumber 0 }}</div>
         <p class="text-slate-400 text-sm">сообщений</p>
         <div class="mt-3 text-xs text-slate-300">
-          Пик в <strong class="text-telegram-blue">11:00</strong> — {{ $data.hourly_activity.peak_messages | lang.FormatNumber 0 }} сообщений
+          Пик в <strong class="text-telegram-blue">11:00</strong> – {{ $data.hourly_activity.peak_messages | lang.FormatNumber 0 }} сообщений
         </div>
       </div>
       <div class="bento-card p-6">
@@ -200,7 +276,7 @@
     <div class="mt-8 bento-card p-6 border-l-4 border-telegram-blue">
       <p class="text-slate-300">
         <span class="text-2xl mr-2">📊</span>
-        Сообщество живет по <strong class="text-telegram-blue">офисному расписанию</strong> (9:00-18:00). Пик активности приходится на <strong class="text-management-orange-start">11:00</strong> — предобеденное время, когда все уже проснулись и готовы к дискуссиям.
+        Сообщество живет по <strong class="text-telegram-blue">офисному расписанию</strong> (9:00-18:00). Пик активности приходится на <strong class="text-management-orange-start">11:00</strong> – предобеденное время, когда все уже проснулись и готовы к дискуссиям.
       </p>
     </div>
   </div>

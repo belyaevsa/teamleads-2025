@@ -1,0 +1,104 @@
+{{- /*
+  Profile Card Component
+  Usage: {{ partial "components/profile-card.html" (dict "profile" $profile "variant" "big-four") }}
+
+  Parameters:
+  - profile: Profile object from data/profiles.json
+  - variant: "big-four" | "level-1" | "level-2" | "compact"
+*/ -}}
+
+{{- $profile := .profile -}}
+{{- $variant := .variant | default "compact" -}}
+
+{{- /* Generate initials from name */ -}}
+{{- $initials := "" -}}
+{{- $nameParts := split $profile.name " " -}}
+{{- if ge (len $nameParts) 2 -}}
+  {{- /* Use first letter of first name + first letter of last name */ -}}
+  {{- $initials = printf "%s%s" (substr (index $nameParts 0) 0 1 | upper) (substr (index $nameParts 1) 0 1 | upper) -}}
+{{- else if eq (len $nameParts) 1 -}}
+  {{- /* Use first 1-2 letters of single name */ -}}
+  {{- $name := index $nameParts 0 -}}
+  {{- if ge (len $name) 2 -}}
+    {{- $initials = substr $name 0 2 | upper -}}
+  {{- else -}}
+    {{- $initials = substr $name 0 1 | upper -}}
+  {{- end -}}
+{{- else -}}
+  {{- $initials = "??" -}}
+{{- end -}}
+
+{{- if eq $variant "big-four" -}}
+<!-- Big Four Card -->
+<div class="bento-card p-6 text-center group hover:border-{{ $profile.color }}/50">
+  <div class="text-4xl mb-2">{{ $profile.medal }}</div>
+
+  {{- if $profile.avatar -}}
+  <div class="w-20 h-20 mx-auto mb-4 rounded-full overflow-hidden border-4 border-{{ $profile.color }}">
+    <img src="{{ $profile.avatar }}" alt="{{ $profile.name }}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-gradient-to-br from-{{ $profile.color }} to-{{ $profile.color }}-600 flex items-center justify-center text-2xl font-bold text-deep-space\'>{{ $initials }}</div>'">
+  </div>
+  {{- else -}}
+  <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-{{ $profile.color }} to-{{ $profile.color }}-600 rounded-full flex items-center justify-center text-2xl font-bold text-deep-space">
+    {{ $initials }}
+  </div>
+  {{- end -}}
+
+  <h3 class="font-heading font-bold text-lg text-starlight mb-1">{{ $profile.name }}</h3>
+  <div class="font-data text-2xl font-bold text-{{ $profile.color }} mb-1" data-count="{{ $profile.stats.messages }}">0</div>
+  <div class="text-slate-400 text-sm">{{ $profile.description }}</div>
+</div>
+
+{{- else if eq $variant "level-1" -}}
+<!-- Level 1 Card -->
+<div class="bg-deep-space/50 p-5 rounded-lg hover:bg-deep-space/70 transition-colors">
+  <div class="flex items-center gap-3 mb-3">
+    {{- if $profile.avatar -}}
+    <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-telegram-blue flex-shrink-0">
+      <img src="{{ $profile.avatar }}" alt="{{ $profile.name }}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-telegram-blue flex items-center justify-center text-sm font-bold text-white\'>{{ $initials }}</div>'">
+    </div>
+    {{- else -}}
+    <div class="w-10 h-10 rounded-full bg-telegram-blue flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+      {{ $initials }}
+    </div>
+    {{- end -}}
+    <div class="flex-1 min-w-0">
+      <h4 class="font-heading font-bold text-starlight truncate">{{ $profile.name }}</h4>
+    </div>
+  </div>
+  <p class="text-slate-300 text-sm mb-2">{{ $profile.role }}</p>
+  <p class="text-xs text-slate-400">{{ range $profile.stats.top_connections }}{{ . }} {{ end }}</p>
+</div>
+
+{{- else if eq $variant "level-2" -}}
+<!-- Level 2 Card -->
+<div class="flex items-center gap-2 p-3 bg-deep-space/30 rounded-lg hover:bg-deep-space/50 transition-colors">
+  {{- if $profile.avatar -}}
+  <div class="w-8 h-8 rounded-full overflow-hidden border border-ai-purple-start flex-shrink-0">
+    <img src="{{ $profile.avatar }}" alt="{{ $profile.name }}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-ai-purple-start flex items-center justify-center text-xs font-bold text-white\'>{{ $initials }}</div>'">
+  </div>
+  {{- else -}}
+  <div class="w-8 h-8 rounded-full bg-ai-purple-start flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+    {{ $initials }}
+  </div>
+  {{- end -}}
+  <div class="flex-1 min-w-0">
+    <div class="text-slate-300 text-sm font-medium truncate">{{ $profile.name }}</div>
+    <div class="text-xs text-slate-500">{{ $profile.stats.connections }} связей</div>
+  </div>
+</div>
+
+{{- else -}}
+<!-- Compact Card -->
+<div class="flex items-center gap-2">
+  {{- if $profile.avatar -}}
+  <div class="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+    <img src="{{ $profile.avatar }}" alt="{{ $profile.name }}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-slate-600 flex items-center justify-center text-xs text-white\'>{{ $initials }}</div>'">
+  </div>
+  {{- else -}}
+  <div class="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-xs text-white flex-shrink-0">
+    {{ $initials }}
+  </div>
+  {{- end -}}
+  <span class="text-slate-300 text-sm">{{ $profile.name }}</span>
+</div>
+{{- end -}}

@@ -3,17 +3,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<!-- Page Header -->
+<!-- Hero Section -->
+{{ partial "components/page-hero.html" (dict "title" "Цифры не врут" "subtitle" "Как мы росли и о чём спорили" "emoji" "📊" "gradient" "ai") }}
+
+<!-- Quick Stats -->
 <section class="relative py-16 px-4">
   <div class="container mx-auto max-w-7xl">
-    <div class="text-center mb-12">
-      <h1 class="text-5xl md:text-6xl font-heading font-bold text-starlight mb-4">
-        <span class="text-gradient-ai">Цифры не врут</span>
-      </h1>
-      <p class="text-xl text-slate-400 max-w-3xl mx-auto">
-        Как мы росли и о чём спорили
-      </p>
-    </div>
 
     <!-- Quick Stats Grid -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
@@ -95,7 +90,7 @@
         <h3 class="font-heading font-bold text-lg text-starlight mb-3">📈 Период роста</h3>
         <p class="text-slate-300 mb-3">
           <strong class="text-green-400">Апрель-Май:</strong> +192% роста сообщений.
-          Май стал переломным месяцем с 3 644 сообщениями.
+          Май стал переломным месяцем с 3 600 сообщениями.
         </p>
         <p class="text-slate-400 text-sm">
           Присоединились 47 новых активных участников
@@ -105,7 +100,7 @@
         <h3 class="font-heading font-bold text-lg text-starlight mb-3">📉 Летний спад</h3>
         <p class="text-slate-300 mb-3">
           <strong class="text-red-400">Июль-Август:</strong> Снижение активности на 76%.
-          Август показал минимум — 857 сообщений.
+          Август показал минимум – 857 сообщений.
         </p>
         <p class="text-slate-400 text-sm">
           Типичный сезонный паттерн для IT-сообществ

@@ -1,0 +1,41 @@
+big_four_member,connected_person,total_weight,outgoing,incoming,balance
+Andrii Kurdiumov,Vassiliy ,411,167,244,incoming_heavy
+Andrii Kurdiumov,Антон ,185,97,88,balanced
+Andrii Kurdiumov,Dmitriy Melnik,183,105,78,outgoing_heavy
+Andrii Kurdiumov,Arthur pandev.io,159,82,77,balanced
+Andrii Kurdiumov,Tair Sab,135,76,59,balanced
+Andrii Kurdiumov,Azat Jalilov,129,68,61,balanced
+Andrii Kurdiumov,Denis ,122,69,53,balanced
+Andrii Kurdiumov,Nurlan N,115,49,66,balanced
+Andrii Kurdiumov,Андрей Звёздочка,94,40,54,balanced
+Andrii Kurdiumov,Maxim Gorbatyuk,71,31,40,balanced
+Stanislav Belyaev,Vassiliy ,161,84,77,balanced
+Stanislav Belyaev,Azat Jalilov,157,87,70,balanced
+Stanislav Belyaev,Dmitriy Melnik,128,77,51,outgoing_heavy
+Stanislav Belyaev,Антон ,93,57,36,outgoing_heavy
+Stanislav Belyaev,Egor ,82,41,41,balanced
+Stanislav Belyaev,Tair Sab,82,45,37,balanced
+Stanislav Belyaev,Arthur pandev.io,76,55,21,outgoing_heavy
+Stanislav Belyaev,Андрей Звёздочка,71,38,33,balanced
+Stanislav Belyaev,Denis ,67,41,26,balanced
+Stanislav Belyaev,Nurlan N,60,30,30,balanced
+Артур Пан,Azat Jalilov,154,80,74,balanced
+Артур Пан,Dmitriy Melnik,78,42,36,balanced
+Артур Пан,鏥 Tоλеген ,67,37,30,balanced
+Артур Пан,Nurlan N,63,24,39,balanced
+Артур Пан,Maxim Gorbatyuk,41,16,25,balanced
+Артур Пан,Vassiliy ,40,14,26,balanced
+Артур Пан,Alex Dukhnovskiy ,34,16,18,balanced
+Артур Пан,Tair Sab,33,19,14,balanced
+Артур Пан,Egor ,27,15,12,balanced
+Артур Пан,Сергей Михайлов ,19,10,9,balanced
+Теймур Шайкемелов,Vassiliy ,160,70,90,incoming_heavy
+Теймур Шайкемелов,Dmitriy Melnik,137,75,62,balanced
+Теймур Шайкемелов,Azat Jalilov,65,37,28,balanced
+Теймур Шайкемелов,Maxim Gorbatyuk,59,25,34,balanced
+Теймур Шайкемелов,Arthur pandev.io,56,35,21,balanced
+Теймур Шайкемелов,Андрей Звёздочка,55,24,31,balanced
+Теймур Шайкемелов,Tair Sab,54,29,25,balanced
+Теймур Шайкемелов,Nurlan N,52,25,27,balanced
+Теймур Шайкемелов,АДИЛЬБЕК ,37,22,15,balanced
+Теймур Шайкемелов,Egor ,33,17,16,balanced

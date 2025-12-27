@@ -1,19 +1,15 @@
 {{ define "main" }}
 {{ $data := .Site.Data.metrics }}
+{{ $profiles := .Site.Data.profiles }}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<!-- Page Header -->
+<!-- Hero Section -->
+{{ partial "components/page-hero.html" (dict "title" "Кто эти люди" "subtitle" "И почему они не спят по ночам" "emoji" "👥" "gradient" "management") }}
+
+<!-- Community Stats -->
 <section class="relative py-16 px-4">
   <div class="container mx-auto max-w-7xl">
-    <div class="text-center mb-12">
-      <h1 class="text-5xl md:text-6xl font-heading font-bold text-starlight mb-4">
-        <span class="text-gradient-management">Кто эти люди</span>
-      </h1>
-      <p class="text-xl text-slate-400 max-w-3xl mx-auto">
-        И почему они не спят по ночам
-      </p>
-    </div>
 
     <!-- Community Stats -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
@@ -52,16 +48,8 @@
     </p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {{ range $data.founders }}
-      <div class="bento-card p-6 hover:border-telegram-blue/50 transition-all">
-        <div class="text-4xl mb-3">{{ .icon }}</div>
-        <h3 class="font-heading font-bold text-xl text-starlight mb-1">{{ .name }}</h3>
-        <p class="text-slate-400 text-sm mb-3">@{{ .username }}</p>
-        <div class="text-management-orange-start font-semibold mb-2">{{ .role }}</div>
-        {{ if .description }}
-        <p class="text-slate-300 text-sm">{{ .description }}</p>
-        {{ end }}
-      </div>
+      {{ range $profiles.founders }}
+      {{ partial "components/profile-card.html" (dict "profile" . "variant" "compact") }}
       {{ end }}
     </div>
   </div>
@@ -118,7 +106,7 @@
     <div class="mt-8 bento-card p-6 border-l-4 border-yellow-500">
       <p class="text-slate-300">
         <span class="text-2xl mr-2">🌟</span>
-        <strong class="text-yellow-400">{{ (index $data.rising_stars 0).name }}</strong> получает специальную награду <strong class="text-yellow-400">"Rising Star 2025"</strong> за невероятную активность — <strong class="text-management-orange-start">150 сообщений в день!</strong> сразу после присоединения к сообществу.
+        <strong class="text-yellow-400">{{ (index $data.rising_stars 0).name }}</strong> получает специальную награду <strong class="text-yellow-400">"Rising Star 2025"</strong> за невероятную активность – <strong class="text-management-orange-start">150 сообщений в день!</strong> сразу после присоединения к сообществу.
       </p>
     </div>
   </div>
@@ -134,53 +122,9 @@
       Лидеры активности, которые задают тон обсуждениям
     </p>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-      {{ range $data.big_four }}
-      <div class="bento-card p-8 hover:border-{{ .color }}-400/50 transition-all group">
-        <div class="flex items-start gap-6">
-          <!-- Avatar -->
-          <div class="flex-shrink-0">
-            <div class="text-5xl mb-3">{{ .medal }}</div>
-            <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-{{ .color }}-400 to-{{ .color }}-600 flex items-center justify-center text-3xl font-bold text-deep-space shadow-lg group-hover:scale-110 transition-transform">
-              {{ .initials }}
-            </div>
-          </div>
-
-          <!-- Info -->
-          <div class="flex-1">
-            <h3 class="font-heading font-bold text-2xl text-starlight mb-1">{{ .name }}</h3>
-            <p class="text-slate-400 mb-4">@{{ .username }}</p>
-
-            <!-- Stats Grid -->
-            <div class="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <div class="font-data text-3xl font-bold text-{{ .color }}-400 mb-1">{{ .messages | lang.FormatNumber 0 }}</div>
-                <div class="text-slate-400 text-sm">сообщений</div>
-              </div>
-              <div>
-                <div class="font-data text-3xl font-bold text-{{ .color }}-400 mb-1">{{ .active_days }}</div>
-                <div class="text-slate-400 text-sm">активных дней</div>
-              </div>
-            </div>
-
-            <!-- Consistency Bar -->
-            <div class="mb-3">
-              <div class="flex justify-between text-xs text-slate-400 mb-1">
-                <span>Постоянство</span>
-                <span>{{ div (mul .active_days 100) $data.active_days | lang.FormatNumber 0 }}%</span>
-              </div>
-              <div class="h-2 bg-deep-space rounded-full overflow-hidden">
-                <div class="h-full bg-gradient-to-r from-{{ .color }}-400 to-{{ .color }}-600" style="width: {{ div (mul .active_days 100) $data.active_days | lang.FormatNumber 0 }}%"></div>
-              </div>
-            </div>
-
-            <!-- Average per day -->
-            <div class="text-sm text-slate-400">
-              <strong class="text-starlight">{{ div .messages .active_days | lang.FormatNumber 0 }}</strong> сообщений в день
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {{ range $profiles.big_four }}
+      {{ partial "components/profile-card.html" (dict "profile" . "variant" "big-four") }}
       {{ end }}
     </div>
 
@@ -189,15 +133,15 @@
       <div class="bento-card p-6 border-l-4 border-yellow-500">
         <h3 class="font-heading font-bold text-lg text-starlight mb-3">🥇 Лидер по активности</h3>
         <p class="text-slate-300">
-          <strong class="text-yellow-400">Andrii Kurdiumov</strong> — абсолютный рекордсмен с 6 266 сообщениями.
-          Активен {{ index $data.big_four 0 "active_days" }} дней из {{ $data.active_days }} возможных.
+          <strong class="text-yellow-400">{{ (index $profiles.big_four 0).name }}</strong> – абсолютный рекордсмен с {{ (index $profiles.big_four 0).stats.messages | lang.FormatNumber 0 }} сообщениями.
+          Активен {{ (index $profiles.big_four 0).stats.active_days }} дней из {{ $data.active_days }} возможных.
         </p>
       </div>
       <div class="bento-card p-6 border-l-4 border-blue-500">
         <h3 class="font-heading font-bold text-lg text-starlight mb-3">⭐ Самый постоянный</h3>
         <p class="text-slate-300">
-          <strong class="text-blue-400">Stanislav Belyaev</strong> — чемпион по постоянству.
-          Активен {{ index $data.big_four 3 "active_days" }} дней ({{ div (mul (index $data.big_four 3 "active_days") 100) $data.active_days | lang.FormatNumber 0 }}% всех дней).
+          <strong class="text-blue-400">{{ (index $profiles.big_four 3).name }}</strong> – чемпион по постоянству.
+          Активен {{ (index $profiles.big_four 3).stats.active_days }} дней ({{ div (mul (index $profiles.big_four 3).stats.active_days 100) $data.active_days | lang.FormatNumber 0 }}% всех дней).
         </p>
       </div>
     </div>
@@ -358,18 +302,19 @@
           Сообщество выросло с <strong class="text-telegram-blue">16 человек</strong> в январе до <strong class="text-telegram-blue">{{ index $data.monthly_data.contributors 11 }}</strong> активных участников в декабре.
         </p>
         <div class="text-sm text-slate-400">
-          Пик привлечения новых людей пришёлся на <strong class="text-starlight">май 2025</strong> — присоединились 47 участников.
+          Пик привлечения новых людей пришёлся на <strong class="text-starlight">май 2025</strong> – присоединились 47 участников.
         </div>
       </div>
 
       <div class="bento-card p-8">
         <div class="text-5xl mb-4">💪</div>
         <h3 class="font-heading font-bold text-xl text-starlight mb-3">Вклад в общее дело</h3>
+        {{- $bigFourTotal := add (index $profiles.big_four 0).stats.messages (index $profiles.big_four 1).stats.messages (index $profiles.big_four 2).stats.messages (index $profiles.big_four 3).stats.messages -}}
         <p class="text-slate-300 mb-4">
-          Большая Четвёрка создала <strong class="text-management-orange-start">{{ add (index $data.big_four 0 "messages") (index $data.big_four 1 "messages") (index $data.big_four 2 "messages") (index $data.big_four 3 "messages") | lang.FormatNumber 0 }}</strong> сообщений — это <strong class="text-management-orange-start">{{ div (mul (add (index $data.big_four 0 "messages") (index $data.big_four 1 "messages") (index $data.big_four 2 "messages") (index $data.big_four 3 "messages")) 100) $data.total_messages | lang.FormatNumber 0 }}%</strong> всех сообщений.
+          Большая Четвёрка создала <strong class="text-management-orange-start">{{ $bigFourTotal | lang.FormatNumber 0 }}</strong> сообщений – это <strong class="text-management-orange-start">{{ div (mul $bigFourTotal 100) $data.total_messages | lang.FormatNumber 0 }}%</strong> всех сообщений.
         </p>
         <div class="text-sm text-slate-400">
-          Остальные {{ sub $data.total_contributors (len $data.big_four) }} участников написали {{ sub $data.total_messages (add (index $data.big_four 0 "messages") (index $data.big_four 1 "messages") (index $data.big_four 2 "messages") (index $data.big_four 3 "messages")) | lang.FormatNumber 0 }} сообщений.
+          Остальные {{ sub $data.total_contributors (len $profiles.big_four) }} участников написали {{ sub $data.total_messages $bigFourTotal | lang.FormatNumber 0 }} сообщений.
         </div>
       </div>
 
@@ -377,7 +322,7 @@
         <div class="text-5xl mb-4">🌍</div>
         <h3 class="font-heading font-bold text-xl text-starlight mb-3">География</h3>
         <p class="text-slate-300 mb-4">
-          Основной состав — русскоязычные IT-лидеры из разных стран: Казахстан, Россия, другие страны СНГ и дальнего зарубежья.
+          Основной состав – русскоязычные IT-лидеры из разных стран: Казахстан, Россия, другие страны СНГ и дальнего зарубежья.
         </p>
         <div class="text-sm text-slate-400">
           Временные зоны: от UTC+3 до UTC+6
