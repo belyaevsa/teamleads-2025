@@ -1,0 +1,19 @@
+{{- /*
+  Hero Background Image Partial
+  Usage: {{ partial "hero-bg.html" (dict "src" "images/people/hero.png" "style" "object-position: center 25%") }}
+*/ -}}
+
+{{- $src := .src -}}
+{{- $style := .style | default "" -}}
+{{- $image := resources.Get $src -}}
+
+{{- if $image -}}
+  {{- $image = $image.Process "webp" -}}
+<img src="{{ $image.RelPermalink }}" alt="" class="w-full h-full object-cover opacity-30"
+  style="mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);{{ if $style }} {{ $style }}{{ end }}"
+  loading="eager">
+{{- else -}}
+<img src="/{{ $src }}" alt="" class="w-full h-full object-cover opacity-30"
+  style="mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);{{ if $style }} {{ $style }}{{ end }}"
+  loading="eager">
+{{- end -}}

@@ -7,8 +7,7 @@
 <section class="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
   <!-- Hero Background Image -->
   <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-    <img src="/images/sentiment/hero.png" alt="" class="w-full h-full object-cover opacity-30"
-      style="mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);">
+    {{ partial "hero-bg.html" (dict "src" "images/sentiment/hero.png") }}
   </div>
 
   <!-- Content -->
@@ -32,22 +31,22 @@
     <!-- Overall Sentiment Grid -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
       <div class="bento-card p-6 text-center hover:border-gray-400/50 transition-all">
-        <img src="/images/sentiment/neutral.png" alt="Neutral" class="w-16 h-16 mx-auto mb-3 rounded-full">
+        {{ partial "img.html" (dict "src" "images/sentiment/neutral.png" "alt" "Neutral" "class" "w-16 h-16 mx-auto mb-3 rounded-full") }}
         <div class="font-data text-4xl font-bold text-gray-400 mb-2">{{ $data.sentiment.neutral | lang.FormatNumber 1 }}%</div>
         <div class="text-slate-400 text-sm">Нейтральные</div>
       </div>
       <div class="bento-card p-6 text-center hover:border-blue-400/50 transition-all">
-        <img src="/images/sentiment/question.png" alt="Questions" class="w-16 h-16 mx-auto mb-3 rounded-full">
+        {{ partial "img.html" (dict "src" "images/sentiment/question.png" "alt" "Questions" "class" "w-16 h-16 mx-auto mb-3 rounded-full") }}
         <div class="font-data text-4xl font-bold text-blue-400 mb-2">{{ $data.sentiment.questions | lang.FormatNumber 1 }}%</div>
         <div class="text-slate-400 text-sm">Вопросы</div>
       </div>
       <div class="bento-card p-6 text-center hover:border-red-400/50 transition-all">
-        <img src="/images/sentiment/negative.png" alt="Negative" class="w-16 h-16 mx-auto mb-3 rounded-full">
+        {{ partial "img.html" (dict "src" "images/sentiment/negative.png" "alt" "Negative" "class" "w-16 h-16 mx-auto mb-3 rounded-full") }}
         <div class="font-data text-4xl font-bold text-red-400 mb-2">{{ $data.sentiment.negative | lang.FormatNumber 1 }}%</div>
         <div class="text-slate-400 text-sm">Негативные</div>
       </div>
       <div class="bento-card p-6 text-center hover:border-green-400/50 transition-all">
-        <img src="/images/sentiment/positive.png" alt="Positive" class="w-16 h-16 mx-auto mb-3 rounded-full">
+        {{ partial "img.html" (dict "src" "images/sentiment/positive.png" "alt" "Positive" "class" "w-16 h-16 mx-auto mb-3 rounded-full") }}
         <div class="font-data text-4xl font-bold text-green-400 mb-2">{{ $data.sentiment.positive | lang.FormatNumber 1 }}%</div>
         <div class="text-slate-400 text-sm">Позитивные</div>
       </div>

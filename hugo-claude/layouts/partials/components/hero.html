@@ -1,9 +1,13 @@
 <section class="relative min-h-screen flex items-center justify-center overflow-hidden">
 
   <!-- Hero Background Image with fading edges -->
+  {{- $heroImg := resources.Get "images/hero-teamlead.png" -}}
+  {{- if $heroImg -}}
+    {{- $heroImg = $heroImg.Process "webp" -}}
+  {{- end -}}
   <div class="absolute inset-0 hero-bg-container">
     <img
-      src="/images/hero-teamlead.png"
+      src="{{ if $heroImg }}{{ $heroImg.RelPermalink }}{{ else }}/images/hero-teamlead.png{{ end }}"
       alt=""
       class="hero-bg-image"
       loading="eager"

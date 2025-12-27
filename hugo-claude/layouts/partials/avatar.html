@@ -1,0 +1,21 @@
+{{- /*
+  Avatar Image Partial - processes avatar from assets folder
+  Usage: {{ partial "avatar.html" (dict "path" "/images/avatars/andrii.png" "alt" "Name" "class" "w-20 h-20") }}
+
+  Converts /images/avatars/file.png to assets path images/avatars/file.png
+*/ -}}
+
+{{- $path := .path -}}
+{{- $alt := .alt | default "" -}}
+{{- $class := .class | default "" -}}
+
+{{- /* Convert URL path to assets path */ -}}
+{{- $assetPath := strings.TrimPrefix "/" $path -}}
+{{- $image := resources.Get $assetPath -}}
+
+{{- if $image -}}
+  {{- $image = $image.Process "webp" -}}
+<img src="{{ $image.RelPermalink }}" alt="{{ $alt }}"{{ if $class }} class="{{ $class }}"{{ end }} loading="lazy" decoding="async">
+{{- else -}}
+<img src="{{ $path }}" alt="{{ $alt }}"{{ if $class }} class="{{ $class }}"{{ end }} loading="lazy">
+{{- end -}}

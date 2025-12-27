@@ -1,0 +1,42 @@
+{{- /*
+  Image Processing Partial
+  Usage: {{ partial "image.html" (dict "src" "/images/example.png" "alt" "Description" "class" "optional-class" "width" 800) }}
+
+  Parameters:
+  - src: Image path relative to assets folder (e.g., "/images/hero.png")
+  - alt: Alt text for the image
+  - class: Optional CSS classes
+  - width: Optional resize width (maintains aspect ratio)
+  - lazy: Optional lazy loading (default: true)
+*/ -}}
+
+{{- $src := .src -}}
+{{- $alt := .alt | default "" -}}
+{{- $class := .class | default "" -}}
+{{- $width := .width | default 0 -}}
+{{- $lazy := .lazy | default true -}}
+
+{{- /* Get the image from assets */ -}}
+{{- $image := resources.Get $src -}}
+
+{{- if $image -}}
+  {{- /* Resize if width specified */ -}}
+  {{- if gt $width 0 -}}
+    {{- $image = $image.Resize (printf "%dx webp" $width) -}}
+  {{- else -}}
+    {{- /* Convert to WebP */ -}}
+    {{- $image = $image.Process "webp" -}}
+  {{- end -}}
+
+  <img
+    src="{{ $image.RelPermalink }}"
+    alt="{{ $alt }}"
+    width="{{ $image.Width }}"
+    height="{{ $image.Height }}"
+    {{- if $class }} class="{{ $class }}"{{ end -}}
+    {{- if $lazy }} loading="lazy" decoding="async"{{ end -}}
+  >
+{{- else -}}
+  <!-- Image not found: {{ $src }} -->
+  <img src="{{ $src }}" alt="{{ $alt }}" {{ if $class }}class="{{ $class }}"{{ end }}>
+{{- end -}}

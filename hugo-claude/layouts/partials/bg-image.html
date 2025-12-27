@@ -1,0 +1,15 @@
+{{- /*
+  Background Image Processing Partial
+  Returns just the URL of a processed WebP image
+  Usage: {{ partial "bg-image.html" (dict "src" "/images/hero.png") }}
+*/ -}}
+
+{{- $src := .src -}}
+{{- $image := resources.Get $src -}}
+
+{{- if $image -}}
+  {{- $image = $image.Process "webp" -}}
+  {{- $image.RelPermalink -}}
+{{- else -}}
+  {{- $src -}}
+{{- end -}}

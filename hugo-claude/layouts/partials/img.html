@@ -1,0 +1,18 @@
+{{- /*
+  Simple Image Partial - returns processed WebP image tag
+  Usage: {{ partial "img.html" (dict "src" "images/topics/ai.png" "alt" "AI" "class" "w-16 h-16") }}
+*/ -}}
+
+{{- $src := .src -}}
+{{- $alt := .alt | default "" -}}
+{{- $class := .class | default "" -}}
+{{- $loading := .loading | default "lazy" -}}
+
+{{- $image := resources.Get $src -}}
+
+{{- if $image -}}
+  {{- $image = $image.Process "webp" -}}
+<img src="{{ $image.RelPermalink }}" alt="{{ $alt }}"{{ if $class }} class="{{ $class }}"{{ end }} loading="{{ $loading }}" decoding="async">
+{{- else -}}
+<img src="/{{ $src }}" alt="{{ $alt }}"{{ if $class }} class="{{ $class }}"{{ end }} loading="{{ $loading }}">
+{{- end -}}
