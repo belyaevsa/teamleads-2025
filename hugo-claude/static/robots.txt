@@ -1,0 +1,56 @@
+# Robots.txt для teamleads.kz
+# Сообщество тимлидов, техлидов и engineering managers Казахстана
+
+User-agent: *
+Allow: /
+
+# Разрешаем индексацию всего контента
+Allow: /overview
+Allow: /topics
+Allow: /people
+Allow: /network
+Allow: /insights
+Allow: /sentiment
+Allow: /timeline
+Allow: /highlights
+
+# Блокируем техническую директорию
+Disallow: /admin/
+Disallow: /_gen/
+
+# Разрешаем индексацию изображений
+Allow: /images/
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.svg$
+Allow: /*.webp$
+
+# Разрешаем CSS и JS для правильного рендеринга в поисковой выдаче
+Allow: /css/
+Allow: /js/
+
+# Специальные правила для Яндекс
+User-agent: Yandex
+Allow: /
+
+# Специальные правила для Google
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /images/
+
+# Специальные правила для Telegram (для предпросмотра ссылок)
+User-agent: TelegramBot
+Allow: /
+
+# Crawl-delay для агрессивных ботов
+User-agent: AhrefsBot
+Crawl-delay: 2
+
+User-agent: SemrushBot
+Crawl-delay: 2
+
+# Sitemap
+Sitemap: https://teamleads.kz/sitemap.xml

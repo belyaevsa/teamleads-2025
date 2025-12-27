@@ -10,6 +10,21 @@ enableGitInfo = false
   author = 'Тимлид не кодит Community'
   year = 2025
 
+  # SEO параметры
+  keywords = 'тимлид казахстан, сообщество тимлидов, team lead kz, управление командой разработки, engineering manager, техлид, AI ML в команде, QA тестирование, HR для разработчиков'
+  telegram_chat = '@teamleads_kz'
+  telegram_url = 'https://t.me/teamleads_kz'
+
+  # Social media
+  [params.social]
+    telegram = 'https://t.me/teamleads_kz'
+
+  # Organization info для Schema.org
+  [params.organization]
+    name = 'Тимлид не кодит'
+    alternateName = 'teamleads_kz'
+    description = 'Крупнейшее русскоязычное сообщество тимлидов, техлидов и engineering managers Казахстана и СНГ'
+
 [build]
   writeStats = true
 
