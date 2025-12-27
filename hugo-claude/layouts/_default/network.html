@@ -1,8 +1,27 @@
 {{ define "main" }}
 {{ $data := .Site.Data.metrics }}
 
-<!-- Hero Section -->
-{{ partial "components/page-hero.html" (dict "title" "Кто с кем разговаривает" "subtitle" "И почему это важно" "emoji" "🔗" "gradient" "management") }}
+<!-- Hero Section with Background Image -->
+<section class="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+  <!-- Hero Background Image -->
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <img src="/images/network/hero.png" alt="" class="w-full h-full object-cover opacity-30"
+      style="mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);">
+  </div>
+
+  <!-- Content -->
+  <div class="relative z-10 text-center px-4 max-w-5xl mx-auto pt-16">
+    <div class="flex items-center justify-center gap-3 mb-6">
+      <span class="text-6xl md:text-7xl">🔗</span>
+    </div>
+    <h1 class="text-4xl md:text-6xl lg:text-7xl font-heading font-bold mb-6 tracking-tight">
+      <span class="text-gradient-management">Кто с кем разговаривает</span>
+    </h1>
+    <p class="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
+      И почему это важно
+    </p>
+  </div>
+</section>
 
 <!-- Network Stats -->
 <section class="relative py-16 px-4">
@@ -508,35 +527,34 @@
   const width = svg.clientWidth;
   const height = svg.clientHeight || 600;
 
-  // Network data: representing the community structure
+  // Network data: representing the community structure with avatars
   const nodes = [
     // Level 0: Big Four (center nodes)
-    { id: 'ak', name: 'Andrii K.', size: 30, group: 'bigfour', x: width/2 - 100, y: height/2 - 80, connections: 411 },
-    { id: 'ap', name: 'Артур П.', size: 26, group: 'bigfour', x: width/2 + 100, y: height/2 - 80, connections: 365 },
-    { id: 'ts', name: 'Теймур Ш.', size: 24, group: 'bigfour', x: width/2 - 100, y: height/2 + 80, connections: 362 },
-    { id: 'sb', name: 'Stanislav B.', size: 24, group: 'bigfour', x: width/2 + 100, y: height/2 + 80, connections: 356 },
+    { id: 'ak', name: 'Andrii K.', size: 30, group: 'bigfour', x: width/2 - 100, y: height/2 - 80, connections: 411, avatar: '/images/avatars/andrii.png' },
+    { id: 'ap', name: 'Артур П.', size: 26, group: 'bigfour', x: width/2 + 100, y: height/2 - 80, connections: 365, avatar: '/images/avatars/artur.png' },
+    { id: 'ts', name: 'Теймур Ш.', size: 24, group: 'bigfour', x: width/2 - 100, y: height/2 + 80, connections: 362, avatar: '/images/avatars/teymur.png' },
+    { id: 'sb', name: 'Stanislav B.', size: 24, group: 'bigfour', x: width/2 + 100, y: height/2 + 80, connections: 356, avatar: '/images/avatars/stanislav.png' },
 
     // Level 1: Inner Circle (medium nodes)
-    { id: 'vas', name: 'Vassiliy', size: 18, group: 'active', x: width/2 - 200, y: height/2 - 160, connections: 411 },
-    { id: 'dm', name: 'Dmitriy M.', size: 16, group: 'active', x: width/2 + 200, y: height/2 - 160, connections: 183 },
-    { id: 'anton', name: 'Антон', size: 17, group: 'active', x: width/2 - 260, y: height/2, connections: 185 },
-    { id: 'azat', name: 'Azat J.', size: 16, group: 'active', x: width/2 + 260, y: height/2, connections: 154 },
-    { id: 'arthur', name: 'Arthur P.', size: 15, group: 'active', x: width/2 - 200, y: height/2 + 160, connections: 159 },
-    { id: 'tair', name: 'Tair S.', size: 14, group: 'active', x: width/2 + 200, y: height/2 + 160, connections: 135 },
-    { id: 'nurlan', name: 'Nurlan N.', size: 13, group: 'active', x: width/2 - 150, y: height/2 - 230, connections: 115 },
-    { id: 'egor', name: 'Egor', size: 12, group: 'active', x: width/2 + 150, y: height/2 - 230, connections: 82 },
-    { id: 'maxim', name: 'Maxim G.', size: 12, group: 'active', x: width/2, y: height/2 + 240, connections: 71 },
-    { id: 'tolegen', name: 'Tоλеген', size: 11, group: 'active', x: width/2, y: height/2 - 240, connections: 67 },
+    { id: 'vas', name: 'Vassiliy', size: 18, group: 'active', x: width/2 - 200, y: height/2 - 160, connections: 411, avatar: '/images/avatars/vassiliy.png' },
+    { id: 'dm', name: 'Dmitriy M.', size: 16, group: 'active', x: width/2 + 200, y: height/2 - 160, connections: 183, avatar: '/images/avatars/dmitriy.png' },
+    { id: 'anton', name: 'Антон', size: 17, group: 'active', x: width/2 - 260, y: height/2, connections: 185, avatar: '/images/avatars/anton.png' },
+    { id: 'azat', name: 'Azat J.', size: 16, group: 'active', x: width/2 + 260, y: height/2, connections: 154, avatar: '/images/avatars/azat.png' },
+        { id: 'tair', name: 'Tair S.', size: 14, group: 'active', x: width/2 + 200, y: height/2 + 160, connections: 135, avatar: '/images/avatars/tair.png' },
+    { id: 'nurlan', name: 'Nurlan N.', size: 13, group: 'active', x: width/2 - 150, y: height/2 - 230, connections: 115, avatar: '/images/avatars/nurlan.png' },
+    { id: 'egor', name: 'Egor', size: 12, group: 'active', x: width/2 + 150, y: height/2 - 230, connections: 82, avatar: '/images/avatars/egor.png' },
+    { id: 'maxim', name: 'Maxim G.', size: 12, group: 'active', x: width/2, y: height/2 + 240, connections: 71, avatar: '/images/avatars/maxim.png' },
+    { id: 'tolegen', name: 'Tоλеген', size: 11, group: 'active', x: width/2, y: height/2 - 240, connections: 67, avatar: '/images/avatars/tolegen.png' },
 
     // Level 2: Extended Network (small nodes)
-    { id: 'denis', name: 'Denis', size: 9, group: 'participant', x: width/2 - 320, y: height/2 - 100, connections: 32 },
-    { id: 'zhanar', name: 'Zhanar M.', size: 9, group: 'participant', x: width/2 - 340, y: height/2 + 50, connections: 24 },
-    { id: 'daulet', name: 'Daulet', size: 9, group: 'participant', x: width/2 + 320, y: height/2 - 100, connections: 21 },
-    { id: 'iztleu', name: 'Iztleu D.', size: 8, group: 'participant', x: width/2 + 340, y: height/2 + 50, connections: 20 },
-    { id: 'alex', name: 'Alex D.', size: 8, group: 'participant', x: width/2 - 280, y: height/2 + 200, connections: 18 },
-    { id: 'rodion', name: 'Rodion M.', size: 8, group: 'participant', x: width/2 + 280, y: height/2 + 200, connections: 15 },
+    { id: 'denis', name: 'Denis', size: 9, group: 'participant', x: width/2 - 320, y: height/2 - 100, connections: 32, avatar: '/images/avatars/denis.png' },
+    { id: 'zhanar', name: 'Zhanar M.', size: 9, group: 'participant', x: width/2 - 340, y: height/2 + 50, connections: 24, avatar: '/images/avatars/zhanar.png' },
+    { id: 'daulet', name: 'Daulet', size: 9, group: 'participant', x: width/2 + 320, y: height/2 - 100, connections: 21, avatar: '/images/avatars/daulet.png' },
+    { id: 'iztleu', name: 'Iztleu D.', size: 8, group: 'participant', x: width/2 + 340, y: height/2 + 50, connections: 20, avatar: '/images/avatars/iztleu.png' },
+    { id: 'alex', name: 'Alex D.', size: 8, group: 'participant', x: width/2 - 280, y: height/2 + 200, connections: 18, avatar: '/images/avatars/alex.png' },
+    { id: 'rodion', name: 'Rodion M.', size: 8, group: 'participant', x: width/2 + 280, y: height/2 + 200, connections: 15, avatar: '/images/avatars/rodion.png' },
 
-    // Periphery (tiny nodes)
+    // Periphery (tiny nodes - no avatars)
     { id: 'o1', name: 'Периферия', size: 6, group: 'observer', x: width/2 - 370, y: height/2 - 190 },
     { id: 'o2', name: 'Периферия', size: 6, group: 'observer', x: width/2 + 370, y: height/2 - 190 },
     { id: 'o3', name: 'Периферия', size: 6, group: 'observer', x: width/2 - 370, y: height/2 + 190 },
@@ -554,20 +572,18 @@
     { source: 'dm', target: 'ak' }, { source: 'dm', target: 'ts' }, { source: 'dm', target: 'sb' },
     { source: 'anton', target: 'ak' }, { source: 'anton', target: 'sb' },
     { source: 'azat', target: 'ap' }, { source: 'azat', target: 'sb' }, { source: 'azat', target: 'ts' },
-    { source: 'arthur', target: 'ak' }, { source: 'arthur', target: 'sb' }, { source: 'arthur', target: 'ts' },
-    { source: 'tair', target: 'ak' }, { source: 'tair', target: 'sb' }, { source: 'tair', target: 'ts' },
+        { source: 'tair', target: 'ak' }, { source: 'tair', target: 'sb' }, { source: 'tair', target: 'ts' },
     { source: 'nurlan', target: 'ak' }, { source: 'nurlan', target: 'ap' },
     { source: 'egor', target: 'sb' }, { source: 'egor', target: 'ts' },
     { source: 'maxim', target: 'ak' }, { source: 'maxim', target: 'ts' },
     { source: 'tolegen', target: 'ap' },
 
     // Level 1 internal connections (key subgraph)
-    { source: 'arthur', target: 'anton' }, { source: 'arthur', target: 'dm' }, { source: 'arthur', target: 'vas' },
-    { source: 'azat', target: 'tair' }, { source: 'azat', target: 'nurlan' }, { source: 'azat', target: 'vas' },
+        { source: 'azat', target: 'tair' }, { source: 'azat', target: 'nurlan' }, { source: 'azat', target: 'vas' },
     { source: 'vas', target: 'anton' },
 
     // Level 2 to Level 1
-    { source: 'denis', target: 'arthur' }, { source: 'denis', target: 'dm' },
+    { source: 'denis', target: 'ap' }, { source: 'denis', target: 'dm' },
     { source: 'zhanar', target: 'azat' },
     { source: 'daulet', target: 'vas' },
     { source: 'iztleu', target: 'vas' },
@@ -576,16 +592,32 @@
 
     // Periphery to core
     { source: 'o1', target: 'vas' }, { source: 'o2', target: 'dm' },
-    { source: 'o3', target: 'arthur' }, { source: 'o4', target: 'azat' }
+    { source: 'o3', target: 'ap' }, { source: 'o4', target: 'azat' }
   ];
 
-  // Color mapping
+  // Color mapping for borders
   const colors = {
     bigfour: '#EAB308',    // Yellow
     active: '#2481CC',     // Telegram Blue
     participant: '#A855F7', // Purple
     observer: '#64748B'    // Gray
   };
+
+  // Create defs for clip paths
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  nodes.forEach(node => {
+    if (node.avatar) {
+      const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+      clipPath.setAttribute('id', 'clip-' + node.id);
+      const clipCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      clipCircle.setAttribute('cx', node.x);
+      clipCircle.setAttribute('cy', node.y);
+      clipCircle.setAttribute('r', node.size);
+      clipPath.appendChild(clipCircle);
+      defs.appendChild(clipPath);
+    }
+  });
+  svg.appendChild(defs);
 
   // Draw links
   links.forEach(link => {
@@ -598,46 +630,72 @@
       line.setAttribute('y1', source.y);
       line.setAttribute('x2', target.x);
       line.setAttribute('y2', target.y);
-      line.setAttribute('stroke', 'rgba(148, 163, 184, 0.2)');
-      line.setAttribute('stroke-width', '1');
+      line.setAttribute('stroke', 'rgba(148, 163, 184, 0.3)');
+      line.setAttribute('stroke-width', '1.5');
       svg.appendChild(line);
     }
   });
 
   // Draw nodes
   nodes.forEach(node => {
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', node.x);
-    circle.setAttribute('cy', node.y);
-    circle.setAttribute('r', node.size);
-    circle.setAttribute('fill', colors[node.group]);
-    circle.setAttribute('opacity', '0.9');
-    circle.setAttribute('stroke', '#fff');
-    circle.setAttribute('stroke-width', '2');
-    circle.style.cursor = 'pointer';
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.style.cursor = 'pointer';
+
+    if (node.avatar) {
+      // Draw border circle first
+      const borderCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      borderCircle.setAttribute('cx', node.x);
+      borderCircle.setAttribute('cy', node.y);
+      borderCircle.setAttribute('r', node.size + 3);
+      borderCircle.setAttribute('fill', 'none');
+      borderCircle.setAttribute('stroke', colors[node.group]);
+      borderCircle.setAttribute('stroke-width', '3');
+      g.appendChild(borderCircle);
+
+      // Draw avatar image
+      const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+      image.setAttribute('x', node.x - node.size);
+      image.setAttribute('y', node.y - node.size);
+      image.setAttribute('width', node.size * 2);
+      image.setAttribute('height', node.size * 2);
+      image.setAttribute('href', node.avatar);
+      image.setAttribute('clip-path', 'url(#clip-' + node.id + ')');
+      image.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+      g.appendChild(image);
+    } else {
+      // Draw colored circle for nodes without avatars
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', node.x);
+      circle.setAttribute('cy', node.y);
+      circle.setAttribute('r', node.size);
+      circle.setAttribute('fill', colors[node.group]);
+      circle.setAttribute('opacity', '0.7');
+      circle.setAttribute('stroke', '#fff');
+      circle.setAttribute('stroke-width', '1');
+      g.appendChild(circle);
+    }
 
     // Tooltip
     const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
     title.textContent = node.name + (node.connections ? ' (' + node.connections + ' связей)' : '');
-    circle.appendChild(title);
+    g.appendChild(title);
 
     // Hover effect
-    circle.addEventListener('mouseenter', function() {
-      this.setAttribute('opacity', '1');
-      this.setAttribute('r', parseInt(this.getAttribute('r')) * 1.2);
+    g.addEventListener('mouseenter', function() {
+      this.style.transform = 'scale(1.1)';
+      this.style.transformOrigin = node.x + 'px ' + node.y + 'px';
     });
-    circle.addEventListener('mouseleave', function() {
-      this.setAttribute('opacity', '0.9');
-      this.setAttribute('r', node.size);
+    g.addEventListener('mouseleave', function() {
+      this.style.transform = 'scale(1)';
     });
 
-    svg.appendChild(circle);
+    svg.appendChild(g);
 
     // Labels for Big Four and Level 1 (Active)
     if (node.group === 'bigfour' || node.group === 'active') {
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', node.x);
-      text.setAttribute('y', node.y + node.size + 15);
+      text.setAttribute('y', node.y + node.size + 18);
       text.setAttribute('text-anchor', 'middle');
       text.setAttribute('fill', '#F8FAFC');
       text.setAttribute('font-size', node.group === 'bigfour' ? '12' : '10');
@@ -651,7 +709,7 @@
     if (node.group === 'participant') {
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', node.x);
-      text.setAttribute('y', node.y + node.size + 12);
+      text.setAttribute('y', node.y + node.size + 14);
       text.setAttribute('text-anchor', 'middle');
       text.setAttribute('fill', '#94A3B8');
       text.setAttribute('font-size', '8');

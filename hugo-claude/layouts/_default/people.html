@@ -4,8 +4,27 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<!-- Hero Section -->
-{{ partial "components/page-hero.html" (dict "title" "Кто эти люди" "subtitle" "И почему они не спят по ночам" "emoji" "👥" "gradient" "management") }}
+<!-- Hero Section with Background Image -->
+<section class="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+  <!-- Hero Background Image -->
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <img src="/images/people/hero.png" alt="" class="w-full h-full object-cover opacity-30"
+      style="object-position: center 25%; mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);">
+  </div>
+
+  <!-- Content -->
+  <div class="relative z-10 text-center px-4 max-w-5xl mx-auto pt-16">
+    <div class="flex items-center justify-center gap-3 mb-6">
+      <span class="text-6xl md:text-7xl">👥</span>
+    </div>
+    <h1 class="text-4xl md:text-6xl lg:text-7xl font-heading font-bold mb-6 tracking-tight">
+      <span class="text-gradient-management">Кто эти люди</span>
+    </h1>
+    <p class="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
+      И почему они не спят по ночам
+    </p>
+  </div>
+</section>
 
 <!-- Community Stats -->
 <section class="relative py-16 px-4">
@@ -41,15 +60,28 @@
 <section class="relative py-16 px-4">
   <div class="container mx-auto max-w-7xl">
     <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
-      🌟 <span class="text-gradient-management">Основатели</span>
+      🌟 <span class="text-gradient-management">Первые участникику</span>
     </h2>
     <p class="text-center text-slate-400 mb-12 max-w-3xl mx-auto">
       Первые участники, присоединившиеся к чату <strong class="text-telegram-blue">20.01.2025</strong>. Именно они заложили фундамент культуры открытого обсуждения и взаимопомощи.
     </p>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
       {{ range $profiles.founders }}
-      {{ partial "components/profile-card.html" (dict "profile" . "variant" "compact") }}
+      <div class="bento-card p-6 text-center group hover:border-telegram-blue/50 transition-all">
+        <div class="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden border-4 border-management-orange-start/50 group-hover:border-management-orange-start transition-all">
+          {{ if .avatar }}
+          <img src="{{ .avatar }}" alt="{{ .name }}" class="w-full h-full object-cover">
+          {{ else }}
+          <div class="w-full h-full bg-gradient-to-br from-management-orange-start to-yellow-500 flex items-center justify-center text-2xl font-bold text-deep-space">
+            {{ .icon }}
+          </div>
+          {{ end }}
+        </div>
+        <h3 class="font-heading font-bold text-lg text-starlight mb-1">{{ .name }}</h3>
+        <div class="text-slate-400 text-sm mb-2">{{ .role }}</div>
+        <div class="text-xs text-slate-500">{{ .icon }}</div>
+      </div>
       {{ end }}
     </div>
   </div>
@@ -86,10 +118,6 @@
             <div class="font-data text-2xl font-bold text-management-orange-start">{{ .avg_per_day }}</div>
             <div class="text-slate-400 text-xs">в день</div>
           </div>
-        </div>
-
-        <div class="text-sm text-slate-300 mb-2">
-          <strong class="text-telegram-blue">{{ .days }} дней</strong> в сообществе
         </div>
 
         <div class="text-xs text-slate-400">

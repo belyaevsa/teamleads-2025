@@ -3,8 +3,27 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<!-- Hero Section -->
-{{ partial "components/page-hero.html" (dict "title" "Что мы поняли за год" "subtitle" "(спойлер: многое)" "emoji" "💡" "gradient" "ai") }}
+<!-- Hero Section with Background Image -->
+<section class="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+  <!-- Hero Background Image -->
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <img src="/images/insights/hero.png" alt="" class="w-full h-full object-cover opacity-30"
+      style="mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);">
+  </div>
+
+  <!-- Content -->
+  <div class="relative z-10 text-center px-4 max-w-5xl mx-auto pt-16">
+    <div class="flex items-center justify-center gap-3 mb-6">
+      <span class="text-6xl md:text-7xl">💡</span>
+    </div>
+    <h1 class="text-4xl md:text-6xl lg:text-7xl font-heading font-bold mb-6 tracking-tight">
+      <span class="text-gradient-ai">Что мы поняли за год</span>
+    </h1>
+    <p class="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
+      (спойлер: многое)
+    </p>
+  </div>
+</section>
 
 <!-- Key Achievements -->
 <section class="relative py-16 px-4 bg-gradient-to-b from-transparent to-deep-space/50">
@@ -17,9 +36,19 @@
     </p>
 
     <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {{ range $data.key_achievements }}
+      {{ range $index, $item := $data.key_achievements }}
       <div class="bento-card p-8 text-center group hover:scale-105 transition-all">
-        <div class="text-6xl mb-4">{{ .icon }}</div>
+        <div class="w-24 h-24 mx-auto mb-4 rounded-full border-2 border-ai-purple-start/50 p-2 group-hover:border-ai-purple-start transition-all">
+          {{ if eq $index 0 }}
+          <img src="/images/insights/lightbulb.png" alt="{{ .title }}" class="w-full h-full object-cover rounded-full">
+          {{ else if eq $index 1 }}
+          <img src="/images/insights/puzzle.png" alt="{{ .title }}" class="w-full h-full object-cover rounded-full">
+          {{ else if eq $index 2 }}
+          <img src="/images/insights/growth.png" alt="{{ .title }}" class="w-full h-full object-cover rounded-full">
+          {{ else }}
+          <img src="/images/insights/target.png" alt="{{ .title }}" class="w-full h-full object-cover rounded-full">
+          {{ end }}
+        </div>
         <h3 class="font-heading font-bold text-2xl text-starlight mb-2">{{ .title }}</h3>
         <p class="text-slate-300 text-sm mb-3">{{ .description }}</p>
         <div class="font-data text-3xl font-bold text-telegram-blue">{{ .growth }}</div>

@@ -225,7 +225,7 @@ LAYOUT: Сетка 2x2 с gap 32px, каждая карточка 1880x1040px
 **Position**: Mid-page section
 
 ### Content
-**Title**: "Основатели - Первые участники"
+**Title**: "Первые участники"
 
 **Timeline** (Horizontal):
 - January 20, 2025 → First messages posted

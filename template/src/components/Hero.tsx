@@ -77,7 +77,7 @@ export function Hero() {
           className="text-xl md:text-2xl text-slate-300 mb-12 max-w-3xl mx-auto leading-relaxed"
         >
           A journey through{' '}
-          <span className="font-mono text-purple-400 font-bold">26,600</span> messages,{' '}
+          <span className="font-mono text-purple-400 font-bold">26 600</span> messages,{' '}
           <span className="font-mono text-orange-400 font-bold">847</span> brilliant minds, and
           countless moments of innovation
         </motion.p>

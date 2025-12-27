@@ -1,9 +1,18 @@
 baseURL = 'https://teamleads.kz/'
 languageCode = 'ru-RU'
+defaultContentLanguage = 'ru'
 title = 'Тимлид не кодит - Итоги 2025'
 theme = ''
 enableRobotsTXT = true
 enableGitInfo = false
+
+[languages]
+  [languages.ru]
+    languageCode = 'ru-RU'
+    languageName = 'Русский'
+    weight = 1
+    [languages.ru.params]
+      dateFormat = '2 January 2006'
 
 [params]
   description = '12 месяцев, 26 600 сообщений, одно сообщество'

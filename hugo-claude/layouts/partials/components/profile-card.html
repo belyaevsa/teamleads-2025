@@ -44,7 +44,7 @@
   {{- end -}}
 
   <h3 class="font-heading font-bold text-lg text-starlight mb-1">{{ $profile.name }}</h3>
-  <div class="font-data text-2xl font-bold text-{{ $profile.color }} mb-1" data-count="{{ $profile.stats.messages }}">0</div>
+  <div class="font-data text-2xl font-bold text-{{ $profile.color }} mb-1">{{ $profile.stats.messages | lang.FormatNumber 0 }}</div>
   <div class="text-slate-400 text-sm">{{ $profile.description }}</div>
 </div>
 

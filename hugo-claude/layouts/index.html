@@ -22,9 +22,9 @@
       <!-- Card 1: Total Messages -->
       <div class="bento-card p-8 group">
         <div class="text-5xl mb-4">💬</div>
-        <div class="font-data text-5xl font-bold text-starlight mb-2" data-count="26 600">0</div>
+        <div class="font-data text-5xl font-bold text-starlight mb-2" data-count="26600">0</div>
         <div class="text-slate-400 text-lg mb-4">коммитов в диалог</div>
-        <a href="#overview" class="text-telegram-blue text-sm hover:underline inline-flex items-center gap-1">
+        <a href="/overview" class="text-telegram-blue text-sm hover:underline inline-flex items-center gap-1">
           → Посмотреть историю
         </a>
       </div>
@@ -32,9 +32,9 @@
       <!-- Card 2: Active Contributors -->
       <div class="bento-card p-8 group">
         <div class="text-5xl mb-4">👥</div>
-        <div class="font-data text-5xl font-bold text-starlight mb-2" data-count="139">0</div>
+        <div class="font-data text-5xl font-bold text-starlight mb-2" data-count="400">0</div>
         <div class="text-slate-400 text-lg mb-4">контрибьютеров</div>
-        <a href="#people" class="text-management-orange-start text-sm hover:underline inline-flex items-center gap-1">
+        <a href="/people" class="text-management-orange-start text-sm hover:underline inline-flex items-center gap-1">
           → Все участники
         </a>
       </div>
@@ -44,7 +44,7 @@
         <div class="text-5xl mb-4">🤖</div>
         <div class="font-heading text-3xl font-bold text-gradient-ai mb-2">AI & ML</div>
         <div class="text-slate-400 text-lg mb-4">Хайп в продакшене</div>
-        <a href="#topics" class="text-telegram-blue text-sm hover:underline inline-flex items-center gap-1">
+        <a href="/topics" class="text-telegram-blue text-sm hover:underline inline-flex items-center gap-1">
           → Все темы
         </a>
       </div>
@@ -54,7 +54,7 @@
         <div class="text-5xl mb-4">😌</div>
         <div class="font-data text-5xl font-bold text-starlight mb-2" data-count="70">0</div>
         <div class="text-slate-400 text-lg mb-4">% спокойных</div>
-        <a href="#sentiment" class="text-telegram-blue text-sm hover:underline inline-flex items-center gap-1">
+        <a href="/sentiment" class="text-telegram-blue text-sm hover:underline inline-flex items-center gap-1">
           → Анализ настроений
         </a>
       </div>
@@ -137,7 +137,9 @@
     entries.forEach(entry => {
       if (entry.isIntersecting && !entry.target.classList.contains('counted')) {
         entry.target.classList.add('counted');
-        const target = parseFloat(entry.target.getAttribute('data-count'));
+        // Remove spaces and non-digit chars (except dots) to handle Russian-formatted numbers
+        const rawValue = entry.target.getAttribute('data-count').replace(/[^\d.]/g, '');
+        const target = parseFloat(rawValue);
         animateCount(entry.target, target);
       }
     });
