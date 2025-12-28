@@ -5,6 +5,70 @@
 {{ partial "components/hero.html" . }}
 </div>
 
+<!-- Message from the Founder -->
+<section id="founders-message" class="relative py-20 px-4 overflow-hidden">
+  <!-- Animated background gradient -->
+  <div class="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-transparent to-orange-900/20 animate-pulse-slow"></div>
+
+  <div class="container mx-auto max-w-4xl relative z-10">
+
+    <div class="text-center mb-12">
+      <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-starlight founder-title opacity-0">
+        Слово <span class="text-gradient-management">Основателя</span>
+      </h2>
+      <div class="flex items-center justify-center gap-4 founder-author opacity-0">
+        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-orange-500 p-0.5">
+          <div class="w-full h-full rounded-full bg-deep-space flex items-center justify-center">
+            <span class="text-2xl">👨‍💻</span>
+          </div>
+        </div>
+        <div class="text-left">
+          <div class="text-starlight font-semibold text-lg">Andrii Kurdiumov</div>
+          <div class="text-slate-400 text-sm">Основатель сообщества</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Message Card with typewriter-style reveal -->
+    <div class="bento-card p-8 md:p-12 relative founder-card opacity-0">
+      <!-- Decorative quote marks -->
+      <div class="absolute top-4 left-4 text-6xl text-purple-500/20 font-serif">"</div>
+      <div class="absolute bottom-4 right-4 text-6xl text-orange-500/20 font-serif rotate-180">"</div>
+
+      <div class="prose prose-invert prose-lg max-w-none space-y-6 founder-text">
+        <p class="text-slate-300 leading-relaxed opacity-0 founder-paragraph" style="animation-delay: 0.2s">
+          Наш чатик растет. Подошел конец года, и судя по всему эксперимент по созданию сообщества показывает успехи. Я не хочу акцентироваться на волшебной цифре, так как она может не показывать всех людей которые есть частью чата и наполняют его жизнью. Мне кажется что в сообществах важны <a href="/people" class="text-telegram-blue hover:underline">люди</a> и то чем конкретно они наполняют чат.
+        </p>
+
+        <p class="text-slate-300 leading-relaxed opacity-0 founder-paragraph" style="animation-delay: 0.4s">
+          Выглядит что общение чата строиться вокруг одних лишь завсегдатаев-флудеров, но хотелось бы чтобы это было не только так. В конце концов это может быть мы, господа завсегдатаи, имеем однобокое видение ситуации. Или мы говорим банальные благоглупости, забывая про то что в жизни это по другому.
+        </p>
+
+        <p class="text-slate-300 leading-relaxed opacity-0 founder-paragraph" style="animation-delay: 0.6s">
+          Так как у нас профессиональное сообщество, мы хотим чтобы несмотря на различие мнений, мы учили друг-друга. А то что мнения у нас разнятся, мы уже проверили на практике. <span class="text-gradient-ai font-semibold">Это точно не сообщество лучших из лучших.</span> Мы в первую очередь сообщество тех кому не безразлично, и кто хочет помочь другим стать лучше.
+        </p>
+
+        <p class="text-slate-300 leading-relaxed opacity-0 founder-paragraph" style="animation-delay: 0.8s">
+          Очень хочется, чтобы это сообщество включало людей которые не хотят чтобы казахстанские ИТ-компании совершали уже известные <a href="/topics" class="text-telegram-blue hover:underline">управленческие ошибки</a>. Вместо своего крови и пота, мне кажется лучше прочитать "Мифический человеко-месяц" и рассматривать это как поход в фильм ужасов, где люди совершают гротескные ошибки.
+        </p>
+
+        <p class="text-slate-300 leading-relaxed opacity-0 founder-paragraph" style="animation-delay: 1.0s">
+          Для меня как для активного флудера, всегда боязно что я переболтаю людей. Хотелось бы слышать ваше мнение чаще, потому что лишь активное выражение позиции по <a href="/topics" class="text-telegram-blue hover:underline">управлению проектами</a>, и <a href="/insights" class="text-telegram-blue hover:underline">техническому лидерству</a> выведет нас из того неприятного тупика в котором мы находимся.
+        </p>
+
+        <p class="text-slate-300 leading-relaxed opacity-0 founder-paragraph" style="animation-delay: 1.2s">
+          Дорогие читатели, хоть вы даже не лайкаете, но я точно знаю что у нас есть регулярные читатели. <span class="text-gradient-management font-semibold">Кто вы?</span> Вы опытные разработчики которым в нагрузку дали вести за собой других? Или вы подумываете чтобы взять на себя это бремя? Или может быть вы менеджер и хотите понять что такого этим техническим людям надо то чтобы хорошо самоуправляться?
+        </p>
+
+        <p class="text-slate-300 leading-relaxed italic border-l-4 border-purple-500 pl-6 opacity-0 founder-paragraph" style="animation-delay: 1.4s">
+          Я очень надеюсь что этот год был вам полезен. "Оставайтесь с нами на канале, лайк, подписка".
+        </p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
 <!-- Key Metrics Section -->
 <section id="metrics" class="relative py-20 px-4">
   <div class="container mx-auto max-w-7xl">
@@ -149,6 +213,34 @@
   document.querySelectorAll('[data-count]').forEach(el => {
     observer.observe(el);
   });
+
+  // Founder's message animation
+  const founderObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        // Animate title, author, and card
+        const section = entry.target;
+        section.querySelector('.founder-title')?.classList.add('animate-in');
+        section.querySelector('.founder-author')?.classList.add('animate-in');
+        section.querySelector('.founder-card')?.classList.add('animate-in');
+
+        // Animate paragraphs with staggered delay
+        const paragraphs = section.querySelectorAll('.founder-paragraph');
+        paragraphs.forEach((p, index) => {
+          setTimeout(() => {
+            p.classList.add('animate-in');
+          }, 600 + (index * 200));
+        });
+
+        founderObserver.unobserve(section);
+      }
+    });
+  }, { threshold: 0.2 });
+
+  const foundersSection = document.getElementById('founders-message');
+  if (foundersSection) {
+    founderObserver.observe(foundersSection);
+  }
 </script>
 
 {{ end }}
