@@ -4,25 +4,152 @@
 <script src="/lib/js/chart.umd.min.js"></script>
 
 <!-- Hero Section with Background Image -->
-<section class="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+<section class="relative min-h-[60vh] flex items-center justify-center overflow-x-clip overflow-y-visible">
   <!-- Hero Background Image -->
   <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
     {{ partial "hero-bg.html" (dict "src" "images/sentiment/hero.png") }}
   </div>
 
   <!-- Content -->
-  <div class="relative z-10 text-center px-4 max-w-5xl mx-auto pt-16">
+  <div class="relative z-10 text-center px-4 max-w-5xl mx-auto pt-24 pb-8">
     <div class="flex items-center justify-center gap-3 mb-6">
       <span class="text-6xl md:text-7xl">😌</span>
     </div>
-    <h1 class="text-4xl md:text-6xl lg:text-7xl font-heading font-bold mb-6 tracking-tight">
-      <span class="text-telegram-blue">Мы не токсичны. Мы реалисты</span>
-    </h1>
+
+    <!-- Title with bubble container -->
+    <div class="relative inline-block" x-data="{ showBubble: true }">
+      <h1 class="text-4xl md:text-6xl lg:text-7xl font-heading font-bold mb-6 tracking-tight">
+        <span class="text-telegram-blue">Мы не токсичны. Мы реалисты</span>
+      </h1>
+
+      <!-- Jumping Bubble (right side) -->
+      <a href="https://t.me/teamleads_kz"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="quote-bubble">
+        <span class="quote-bubble-text">Хочешь узнать кто это сказал?<br><strong>Ищи в чате →</strong></span>
+        <span class="quote-bubble-arrow"></span>
+      </a>
+    </div>
+
     <p class="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
       70% нейтрала, 10% боли, 100% правды
     </p>
   </div>
 </section>
+
+<style>
+/* Jumping Bubble - positioned to the right */
+.quote-bubble {
+  position: absolute;
+  top: 50%;
+  right: -170px;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, rgba(36, 129, 204, 0.8), rgba(168, 85, 247, 0.8));
+  color: white;
+  padding: 16px 20px;
+  border-radius: 20px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+  box-shadow: 0 8px 32px rgba(36, 129, 204, 0.3);
+  animation: bubble-bounce-right 2s ease-in-out infinite;
+  z-index: 100;
+  text-decoration: none;
+  display: block;
+  backdrop-filter: blur(8px);
+}
+
+.quote-bubble:hover {
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 12px 40px rgba(36, 129, 204, 0.5);
+  background: linear-gradient(135deg, rgba(36, 129, 204, 1), rgba(168, 85, 247, 1));
+}
+
+.quote-bubble-text {
+  display: block;
+  text-align: center;
+}
+
+.quote-bubble-arrow {
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+  border-right: 12px solid rgba(36, 129, 204, 0.8);
+}
+
+@keyframes bubble-bounce-right {
+  0%, 100% {
+    transform: translateY(-50%) translateX(0);
+  }
+  25% {
+    transform: translateY(-50%) translateX(8px);
+  }
+  50% {
+    transform: translateY(-50%) translateX(0);
+  }
+  75% {
+    transform: translateY(-50%) translateX(4px);
+  }
+}
+
+/* Tablet and mobile adjustments */
+@media (max-width: 1200px) {
+  .quote-bubble {
+    top: auto;
+    bottom: -80px;
+    right: 50%;
+    transform: translateX(50%);
+    font-size: 14px;
+    padding: 14px 18px;
+    animation: bubble-bounce-bottom 2s ease-in-out infinite;
+  }
+
+  .quote-bubble:hover {
+    transform: translateX(50%) scale(1.05);
+  }
+
+  .quote-bubble-arrow {
+    left: 50%;
+    top: -10px;
+    transform: translateX(-50%);
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 12px solid #2481CC;
+    border-top: none;
+  }
+
+  @keyframes bubble-bounce-bottom {
+    0%, 100% {
+      transform: translateX(50%) translateY(0);
+    }
+    25% {
+      transform: translateX(50%) translateY(8px);
+    }
+    50% {
+      transform: translateX(50%) translateY(0);
+    }
+    75% {
+      transform: translateX(50%) translateY(4px);
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .quote-bubble {
+    font-size: 13px;
+    padding: 12px 16px;
+    white-space: normal;
+    max-width: 220px;
+  }
+}
+</style>
 
 <!-- Overall Sentiment -->
 <section class="relative py-16 px-4">
