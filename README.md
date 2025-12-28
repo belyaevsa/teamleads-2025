@@ -68,12 +68,28 @@ teamleads-2025/
 - Alpine.js v3 (интерактивность)
 - PostCSS
 
+**Требования:**
+- [Hugo Extended](https://gohugo.io/installation/) v0.140.0+ (extended версия обязательна для PostCSS)
+- Node.js 18+
+
 **Как запустить:**
 ```bash
 cd hugo-claude
-npm install           # Установить зависимости
+npm install           # Установить зависимости (TailwindCSS, PostCSS)
 npm run dev          # Запустить dev-сервер
 # Открыть http://localhost:1313
+```
+
+**Установка Hugo (macOS):**
+```bash
+brew install hugo
+```
+
+**Установка Hugo (Linux):**
+```bash
+# Скачать extended версию с https://github.com/gohugoio/hugo/releases
+# Или через snap:
+snap install hugo --channel=extended
 ```
 
 **Как собрать для продакшена:**

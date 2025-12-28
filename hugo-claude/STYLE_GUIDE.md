@@ -50,9 +50,9 @@ Use spaces around en-dashes:
 
 ### Quotation Marks
 
-Use typographic quotes (« »), not straight quotes:
-- ✅ «Большая Четвёрка»
-- ❌ "Большая Четвёрка"
+Use straight quotes (" "), not typographic quotes:
+- ✅ "Большая Четвёрка"
+- ❌ «Большая Четвёрка»
 
 ### Numbers
 
