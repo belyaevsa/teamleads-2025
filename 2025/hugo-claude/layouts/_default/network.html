@@ -1,0 +1,733 @@
+{{ define "main" }}
+{{ $data := .Site.Data.metrics }}
+
+<!-- Hero Section with Background Image -->
+<section class="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+  <!-- Hero Background Image -->
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    {{ partial "hero-bg.html" (dict "src" "images/network/hero.png") }}
+  </div>
+
+  <!-- Content -->
+  <div class="relative z-10 text-center px-4 max-w-5xl mx-auto pt-16">
+    <div class="flex items-center justify-center gap-3 mb-6">
+      <span class="text-6xl md:text-7xl">🔗</span>
+    </div>
+    <h1 class="text-4xl md:text-6xl lg:text-7xl font-heading font-bold mb-6 tracking-tight">
+      <span class="text-gradient-management">Кто с кем разговаривает</span>
+    </h1>
+    <p class="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
+      И почему это важно
+    </p>
+  </div>
+</section>
+
+<!-- Network Stats -->
+<section class="relative py-16 px-4 overflow-hidden">
+  <div class="container mx-auto max-w-7xl">
+
+    <!-- Network Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-16">
+      <div class="bento-card p-4 md:p-6 text-center min-w-0">
+        <div class="text-3xl md:text-4xl mb-2 md:mb-3">👥</div>
+        <div class="font-data text-2xl md:text-4xl font-bold text-telegram-blue mb-1 md:mb-2">{{ $data.total_contributors }}</div>
+        <div class="text-slate-400 text-xs md:text-sm">Участников</div>
+      </div>
+      <div class="bento-card p-4 md:p-6 text-center min-w-0">
+        <div class="text-3xl md:text-4xl mb-2 md:mb-3">💬</div>
+        <div class="font-data text-2xl md:text-4xl font-bold text-ai-purple-start mb-1 md:mb-2">{{ $data.total_messages | lang.FormatNumber 0 }}</div>
+        <div class="text-slate-400 text-xs md:text-sm">Сообщений</div>
+      </div>
+      <div class="bento-card p-4 md:p-6 text-center min-w-0">
+        <div class="text-3xl md:text-4xl mb-2 md:mb-3">🔥</div>
+        <div class="font-data text-2xl md:text-4xl font-bold text-management-orange-start mb-1 md:mb-2">{{ len $data.big_four }}</div>
+        <div class="text-slate-400 text-xs md:text-sm">Ключевых игроков</div>
+      </div>
+      <div class="bento-card p-4 md:p-6 text-center min-w-0">
+        <div class="text-3xl md:text-4xl mb-2 md:mb-3">🌐</div>
+        <div class="font-data text-2xl md:text-4xl font-bold text-green-400 mb-1 md:mb-2">{{ $data.active_days }}</div>
+        <div class="text-slate-400 text-xs md:text-sm">Дней активности</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Network Visualization -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-transparent to-deep-space/50 overflow-hidden">
+  <div class="container mx-auto max-w-7xl overflow-hidden">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      Карта <span class="text-gradient-ai">Связей</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-3xl mx-auto">
+      Многоуровневая структура сообщества – от ядра к периферии
+    </p>
+
+    <!-- SVG Visualization -->
+    <div class="bento-card p-4 md:p-8 mb-12 overflow-hidden">
+      <div id="network-viz" class="relative overflow-hidden" style="height: 400px; min-height: 300px;">
+        <!-- SVG Network Visualization -->
+        <svg id="network-svg" width="100%" height="100%" class="rounded-lg" style="max-width: 100%;">
+          <!-- Network will be rendered here via JavaScript -->
+        </svg>
+      </div>
+      <!-- Mobile hint -->
+      <p class="text-center text-slate-500 text-xs mt-4 md:hidden">
+        Поверните устройство горизонтально для лучшего просмотра
+      </p>
+    </div>
+
+    <!-- Level Details -->
+    <div class="space-y-6 md:space-y-8">
+      <!-- Level 0: Core -->
+      <div class="bento-card p-4 md:p-8 border-l-4 border-yellow-400">
+        <div class="flex items-start gap-3 md:gap-4 mb-4">
+          <div class="text-3xl md:text-5xl">🎯</div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-heading font-bold text-xl md:text-2xl text-starlight mb-2">Уровень 0: Центральное Ядро</h3>
+            <p class="text-slate-400 text-sm mb-3">Большая Четвёрка – генераторы контента</p>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-6">
+          <div>
+            <p class="text-slate-300 mb-4">
+              4 человека формируют центр всей сети взаимодействий. Они не просто самые активные – они связывают всех остальных.
+            </p>
+            <ul class="space-y-2 text-slate-300 text-sm">
+              <li class="flex items-start gap-2">
+                <span class="text-yellow-400">•</span>
+                <span><strong>3 132</strong> взаимодействий внутри ядра (29% от всего чата!)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-yellow-400">•</span>
+                <span>Полносвязный граф – каждый активно общается с каждым</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-yellow-400">•</span>
+                <span>56% всех исходящих сообщений генерируется ядром</span>
+              </li>
+            </ul>
+          </div>
+          <div class="bg-deep-space/50 p-6 rounded-lg">
+            <h4 class="font-heading font-bold text-sm text-starlight mb-3">Топ внутренние связи:</h4>
+            <ol class="space-y-2 text-sm text-slate-300">
+              <li>1. <span class="text-yellow-400">Andrii → Артур:</span> 365</li>
+              <li>2. <span class="text-yellow-400">Теймур → Артур:</span> 362</li>
+              <li>3. <span class="text-yellow-400">Stanislav → Andrii:</span> 356</li>
+              <li>4. <span class="text-yellow-400">Andrii → Stanislav:</span> 334</li>
+              <li>5. <span class="text-yellow-400">Артур → Теймур:</span> 289</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Level 1: Inner Circle -->
+      <div class="bento-card p-4 md:p-8 border-l-4 border-telegram-blue">
+        <div class="flex items-start gap-3 md:gap-4 mb-4">
+          <div class="text-3xl md:text-5xl">🔗</div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-heading font-bold text-xl md:text-2xl text-starlight mb-2">Уровень 1: Внутренний Круг</h3>
+            <p class="text-slate-400 text-sm mb-3">Топ-5 связей каждого члена ядра – мосты и усилители</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-6">
+          {{- range first 6 .Site.Data.profiles.level_1 -}}
+          {{ partial "components/profile-card.html" (dict "profile" . "variant" "level-1") }}
+          {{- end -}}
+        </div>
+        <div class="bg-telegram-blue/10 p-5 rounded-lg border border-telegram-blue/30">
+          <h4 class="font-heading font-bold text-starlight mb-3 flex items-center gap-2">
+            <span class="text-xl">💡</span>
+            Ключевое открытие
+          </h4>
+          <p class="text-slate-300 text-sm mb-2">
+            Уровень 1 – это не просто "буфер" между ядром и остальными. Это <strong class="text-telegram-blue">самостоятельный активный субграф</strong> с высокой внутренней связностью.
+          </p>
+          <p class="text-slate-400 text-xs">
+            Примеры: Arthur pandev.io ↔ Антон (59), Azat ↔ Tair (62), Vassiliy ↔ Антон (47) – участники активно общаются между собой ⭐
+          </p>
+        </div>
+      </div>
+
+      <!-- Level 2: Extended Network -->
+      <div class="bento-card p-4 md:p-8 border-l-4 border-ai-purple-start">
+        <div class="flex items-start gap-3 md:gap-4 mb-4">
+          <div class="text-3xl md:text-5xl">🌐</div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-heading font-bold text-xl md:text-2xl text-starlight mb-2">Уровень 2: Расширенная Сеть</h3>
+            <p class="text-slate-400 text-sm mb-3">Связи участников Уровня 1 – новые участники и периферия</p>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-6">
+          <div>
+            <p class="text-slate-300 mb-4">
+              Люди, с которыми активно общаются участники Внутреннего Круга. Это расширение сети за пределы ядра.
+            </p>
+            <h4 class="font-heading font-bold text-sm text-starlight mb-3">Ключевые подкластеры:</h4>
+            <ul class="space-y-3 text-sm text-slate-300">
+              <li class="flex items-start gap-2">
+                <span class="text-ai-purple-start">•</span>
+                <div>
+                  <strong>Кластер Arthur pandev.io:</strong>
+                  <div class="text-xs text-slate-400 mt-1">Антон (59) ⭐, Dmitriy (54) ⭐, Vassiliy (28) ⭐, Denis (19)</div>
+                </div>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-ai-purple-start">•</span>
+                <div>
+                  <strong>Кластер Azat Jalilov:</strong>
+                  <div class="text-xs text-slate-400 mt-1">Tair (62) ⭐, Nurlan (42) ⭐, Vassiliy (35) ⭐, Zhanar (24)</div>
+                </div>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-ai-purple-start">•</span>
+                <div>
+                  <strong>Кластер Vassiliy:</strong>
+                  <div class="text-xs text-slate-400 mt-1">Антон (47) ⭐, Azat (35) ⭐, Arthur p. (28) ⭐, Daulet (21)</div>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="bg-deep-space/50 p-6 rounded-lg">
+            <h4 class="font-heading font-bold text-sm text-starlight mb-4">Паттерны расширения сети</h4>
+            <div class="space-y-4 text-sm">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-green-400">✓</span>
+                  <strong class="text-starlight">Внутренняя плотность</strong>
+                </div>
+                <p class="text-slate-400 text-xs pl-6">
+                  Уровень 1 активно общается между собой – это снижает зависимость от ядра
+                </p>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-green-400">✓</span>
+                  <strong class="text-starlight">Тройная роль</strong>
+                </div>
+                <p class="text-slate-400 text-xs pl-6">
+                  Vassiliy, Dmitriy, Azat, Антон – связаны с ядром + между собой + с новыми людьми
+                </p>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-green-400">✓</span>
+                  <strong class="text-starlight">Специализированные связи</strong>
+                </div>
+                <p class="text-slate-400 text-xs pl-6">
+                  Некоторые фокусируются на одном члене ядра (тематические дискуссии)
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Network Stats -->
+    <div class="bento-card p-8 mt-12 bg-gradient-to-br from-yellow-400/10 to-telegram-blue/10 border-2 border-yellow-400/30">
+      <h3 class="font-heading font-bold text-2xl text-starlight mb-6 text-center">Количественные Показатели</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-slate-700">
+              <th class="text-left py-3 px-4 font-heading text-starlight">Уровень</th>
+              <th class="text-center py-3 px-4 font-heading text-starlight">Количество</th>
+              <th class="text-center py-3 px-4 font-heading text-starlight">% от активных</th>
+              <th class="text-left py-3 px-4 font-heading text-starlight">Роль</th>
+            </tr>
+          </thead>
+          <tbody class="text-slate-300">
+            <tr class="border-b border-slate-800">
+              <td class="py-3 px-4"><span class="text-yellow-400">●</span> Уровень 0 (Ядро)</td>
+              <td class="text-center py-3 px-4 font-data">4 чел</td>
+              <td class="text-center py-3 px-4 font-data">2.8%</td>
+              <td class="py-3 px-4 text-slate-400">Генераторы контента</td>
+            </tr>
+            <tr class="border-b border-slate-800">
+              <td class="py-3 px-4"><span class="text-telegram-blue">●</span> Уровень 1 (Внутренний)</td>
+              <td class="text-center py-3 px-4 font-data">10 чел</td>
+              <td class="text-center py-3 px-4 font-data">7.1%</td>
+              <td class="py-3 px-4 text-slate-400">Усилители и мосты</td>
+            </tr>
+            <tr class="border-b border-slate-800">
+              <td class="py-3 px-4"><span class="text-ai-purple-start">●</span> Уровень 2 (Расширенный)</td>
+              <td class="text-center py-3 px-4 font-data">10+ чел</td>
+              <td class="text-center py-3 px-4 font-data">7.1%+</td>
+              <td class="py-3 px-4 text-slate-400">Новые участники</td>
+            </tr>
+            <tr class="font-bold">
+              <td class="py-3 px-4 text-starlight">Общее покрытие</td>
+              <td class="text-center py-3 px-4 font-data text-starlight">24+ чел</td>
+              <td class="text-center py-3 px-4 font-data text-starlight">~17%</td>
+              <td class="py-3 px-4 text-starlight">Активное ядро сообщества</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-center text-slate-400 text-sm mt-6">
+        Всего <strong class="text-starlight">~24 человека</strong> (17%) создают <strong class="text-starlight">большую часть активности</strong> в чате
+      </p>
+    </div>
+
+    <!-- Recommendations by Level -->
+    <div class="grid md:grid-cols-3 gap-6 mt-12">
+      <div class="bento-card p-6 border-t-4 border-yellow-400">
+        <h4 class="font-heading font-bold text-lg text-starlight mb-3">Для Уровня 0</h4>
+        <ul class="space-y-2 text-sm text-slate-300">
+          <li class="flex items-start gap-2">
+            <span class="text-green-400">✓</span>
+            <span>Продолжать генерировать контент</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-yellow-400">⚠</span>
+            <span>Делегировать инициативы Уровню 1</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-telegram-blue">→</span>
+            <span>Активно вовлекать Уровень 2</span>
+          </li>
+        </ul>
+      </div>
+      <div class="bento-card p-6 border-t-4 border-telegram-blue">
+        <h4 class="font-heading font-bold text-lg text-starlight mb-3">Для Уровня 1</h4>
+        <ul class="space-y-2 text-sm text-slate-300">
+          <li class="flex items-start gap-2">
+            <span class="text-green-400">✓</span>
+            <span>Поддерживать внутренние связи</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-management-orange-start">🚀</span>
+            <span>Развивать лидерские качества</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-telegram-blue">→</span>
+            <span>Привлекать новых из Уровня 2</span>
+          </li>
+        </ul>
+      </div>
+      <div class="bento-card p-6 border-t-4 border-ai-purple-start">
+        <h4 class="font-heading font-bold text-lg text-starlight mb-3">Для Уровня 2</h4>
+        <ul class="space-y-2 text-sm text-slate-300">
+          <li class="flex items-start gap-2">
+            <span class="text-green-400">✓</span>
+            <span>Активнее участвовать в дискуссиях</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-management-orange-start">🚀</span>
+            <span>Строить связи с Уровнем 1</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-telegram-blue">→</span>
+            <span>Приглашать новых участников</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Connection Patterns -->
+<section class="relative py-16 px-4">
+  <div class="container mx-auto max-w-7xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-12 text-starlight">
+      Паттерны <span class="text-gradient-management">Взаимодействий</span>
+    </h2>
+
+    <div class="grid md:grid-cols-2 gap-8">
+      <div class="bento-card p-8 border-l-4 border-yellow-400">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="text-5xl">🌟</div>
+          <div class="flex-1">
+            <h3 class="font-heading font-bold text-2xl text-starlight mb-2">Звёзды сообщества</h3>
+            <p class="text-slate-400 text-sm mb-3">Star topology pattern</p>
+          </div>
+        </div>
+        <p class="text-slate-300 mb-4">
+          Большая Четвёрка выступает как "хабы" – они отвечают на вопросы, инициируют дискуссии, связывают людей.
+        </p>
+        <ul class="space-y-2 text-slate-300 text-sm">
+          <li class="flex items-start gap-2">
+            <span class="text-yellow-400">•</span>
+            <span><strong>Andrii Kurdiumov:</strong> 6 300 сообщений</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-yellow-400">•</span>
+            <span><strong>Артур Пан:</strong> 4 400 сообщений</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-yellow-400">•</span>
+            <span><strong>Теймур Шайкемелов:</strong> 3 100 сообщений</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-yellow-400">•</span>
+            <span><strong>Stanislav Belyaev:</strong> 3 000 сообщений</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="bento-card p-8 border-l-4 border-telegram-blue">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="text-5xl">🔗</div>
+          <div class="flex-1">
+            <h3 class="font-heading font-bold text-2xl text-starlight mb-2">Кластеры по темам</h3>
+            <p class="text-slate-400 text-sm mb-3">Topic-based communities</p>
+          </div>
+        </div>
+        <p class="text-slate-300 mb-4">
+          Участники группируются вокруг тем: AI-энтузиасты, QA-специалисты, HR-лиды, архитекторы.
+        </p>
+        <ul class="space-y-2 text-slate-300 text-sm">
+          <li class="flex items-start gap-2">
+            <span class="text-ai-purple-start">•</span>
+            <span><strong>AI кластер:</strong> 976 упоминаний</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-telegram-blue">•</span>
+            <span><strong>QA кластер:</strong> 940 упоминаний</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-management-orange-start">•</span>
+            <span><strong>Management кластер:</strong> 499 упоминаний</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-400">•</span>
+            <span><strong>HR кластер:</strong> 482 упоминания</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="bento-card p-8 border-l-4 border-green-400">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="text-5xl">📅</div>
+          <div class="flex-1">
+            <h3 class="font-heading font-bold text-2xl text-starlight mb-2">Временные паттерны</h3>
+            <p class="text-slate-400 text-sm mb-3">Time-based activity</p>
+          </div>
+        </div>
+        <p class="text-slate-300 mb-4">
+          Пик активности – рабочие дни (Пн-Пт). Понедельник лидирует с 22% всех сообщений.
+        </p>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div class="p-3 bg-deep-space/50 rounded-lg">
+            <div class="font-data text-lg text-management-orange-start mb-1">22%</div>
+            <div class="text-slate-400">Понедельник</div>
+          </div>
+          <div class="p-3 bg-deep-space/50 rounded-lg">
+            <div class="font-data text-lg text-telegram-blue mb-1">11:00</div>
+            <div class="text-slate-400">Пик активности</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bento-card p-8 border-l-4 border-ai-purple-start">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="text-5xl">🎓</div>
+          <div class="flex-1">
+            <h3 class="font-heading font-bold text-2xl text-starlight mb-2">Новички → Эксперты</h3>
+            <p class="text-slate-400 text-sm mb-3">Onboarding flow</p>
+          </div>
+        </div>
+        <p class="text-slate-300 mb-4">
+          Здоровая динамика: новички задают вопросы (19% в январе), эксперты отвечают, постепенно все становятся активными участниками.
+        </p>
+        <p class="text-slate-400 text-sm">
+          К декабрю процент вопросов стабилизировался на уровне 13% – признак зрелости.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Community Health -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-deep-space/50 to-transparent">
+  <div class="container mx-auto max-w-6xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-12 text-starlight">
+      Здоровье <span class="text-gradient-ai">Сети</span>
+    </h2>
+
+    <div class="grid md:grid-cols-2 gap-8">
+      <div class="bento-card p-8">
+        <div class="text-5xl mb-4">💪</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">Сильные стороны</h3>
+        <ul class="space-y-3 text-slate-300">
+          <li class="flex items-start gap-3">
+            <span class="text-green-400 text-xl">✓</span>
+            <div>
+              <strong>Активное ядро:</strong> Постоянные участники генерируют контент ежедневно
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-green-400 text-xl">✓</span>
+            <div>
+              <strong>Рост сети:</strong> +112% участников за год, устойчивый тренд
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-green-400 text-xl">✓</span>
+            <div>
+              <strong>Разнообразие:</strong> 8+ кластеров по темам, широкий охват
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="bento-card p-8">
+        <div class="text-5xl mb-4">⚠️</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">Риски</h3>
+        <ul class="space-y-3 text-slate-300">
+          <li class="flex items-start gap-3">
+            <span class="text-yellow-400 text-xl">!</span>
+            <div>
+              <strong>Высокая централизация:</strong> 63% сообщений от 4 человек – зависимость
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-yellow-400 text-xl">!</span>
+            <div>
+              <strong>Lurkers:</strong> 84 участника с <10 сообщений – пассивные наблюдатели
+            </div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-yellow-400 text-xl">!</span>
+            <div>
+              <strong>Выгорание лидеров:</strong> Нужно растить новых активных участников
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="bento-card p-8 mt-8 border-2 border-telegram-blue/30">
+      <h3 class="font-heading font-bold text-2xl text-starlight mb-6 text-center">Рекомендации для роста</h3>
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="text-center">
+          <div class="text-4xl mb-3">🌱</div>
+          <h4 class="font-heading font-bold text-lg text-starlight mb-2">Выращивайте новых лидеров</h4>
+          <p class="text-slate-400 text-sm">Делегируйте модерацию, поощряйте активных участников</p>
+        </div>
+        <div class="text-center">
+          <div class="text-4xl mb-3">🎯</div>
+          <h4 class="font-heading font-bold text-lg text-starlight mb-2">Активизируйте lurkers</h4>
+          <p class="text-slate-400 text-sm">Задавайте вопросы, создавайте опросы, приглашайте делиться опытом</p>
+        </div>
+        <div class="text-center">
+          <div class="text-4xl mb-3">🔗</div>
+          <h4 class="font-heading font-bold text-lg text-starlight mb-2">Укрепляйте связи</h4>
+          <p class="text-slate-400 text-sm">Офлайн встречи, воркшопы, совместные проекты</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Network Visualization Script -->
+<script>
+(function() {
+  const svg = document.getElementById('network-svg');
+  if (!svg) return;
+
+  // Get container dimensions and use viewBox for responsive scaling
+  const container = svg.parentElement;
+  const width = Math.min(container.clientWidth || 800, 800);
+  const height = container.clientHeight || 400;
+
+  // Set viewBox for responsive scaling
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+  // Network data: representing the community structure with avatars
+  const nodes = [
+    // Level 0: Big Four (center nodes)
+    { id: 'ak', name: 'Andrii K.', size: 30, group: 'bigfour', x: width/2 - 100, y: height/2 - 80, connections: 411, avatar: '/images/avatars/andrii.png' },
+    { id: 'ap', name: 'Артур П.', size: 26, group: 'bigfour', x: width/2 + 100, y: height/2 - 80, connections: 365, avatar: '/images/avatars/artur.png' },
+    { id: 'ts', name: 'Теймур Ш.', size: 24, group: 'bigfour', x: width/2 - 100, y: height/2 + 80, connections: 362, avatar: '/images/avatars/teymur.png' },
+    { id: 'sb', name: 'Stanislav B.', size: 24, group: 'bigfour', x: width/2 + 100, y: height/2 + 80, connections: 356, avatar: '/images/avatars/stanislav.png' },
+
+    // Level 1: Inner Circle (medium nodes)
+    { id: 'vas', name: 'Vassiliy', size: 18, group: 'active', x: width/2 - 200, y: height/2 - 160, connections: 411, avatar: '/images/avatars/vassiliy.png' },
+    { id: 'dm', name: 'Dmitriy M.', size: 16, group: 'active', x: width/2 + 200, y: height/2 - 160, connections: 183, avatar: '/images/avatars/dmitriy.png' },
+    { id: 'anton', name: 'Антон', size: 17, group: 'active', x: width/2 - 260, y: height/2, connections: 185, avatar: '/images/avatars/anton.png' },
+    { id: 'azat', name: 'Azat J.', size: 16, group: 'active', x: width/2 + 260, y: height/2, connections: 154, avatar: '/images/avatars/azat.png' },
+        { id: 'tair', name: 'Tair S.', size: 14, group: 'active', x: width/2 + 200, y: height/2 + 160, connections: 135, avatar: '/images/avatars/tair.png' },
+    { id: 'nurlan', name: 'Nurlan N.', size: 13, group: 'active', x: width/2 - 150, y: height/2 - 230, connections: 115, avatar: '/images/avatars/nurlan.png' },
+    { id: 'egor', name: 'Egor', size: 12, group: 'active', x: width/2 + 150, y: height/2 - 230, connections: 82, avatar: '/images/avatars/egor.png' },
+    { id: 'maxim', name: 'Maxim G.', size: 12, group: 'active', x: width/2, y: height/2 + 240, connections: 71, avatar: '/images/avatars/maxim.png' },
+    { id: 'tolegen', name: 'Tоλеген', size: 11, group: 'active', x: width/2, y: height/2 - 240, connections: 67, avatar: '/images/avatars/tolegen.png' },
+
+    // Level 2: Extended Network (small nodes)
+    { id: 'denis', name: 'Denis', size: 9, group: 'participant', x: width/2 - 320, y: height/2 - 100, connections: 32, avatar: '/images/avatars/denis.png' },
+    { id: 'zhanar', name: 'Zhanar M.', size: 9, group: 'participant', x: width/2 - 340, y: height/2 + 50, connections: 24, avatar: '/images/avatars/zhanar.png' },
+    { id: 'daulet', name: 'Daulet', size: 9, group: 'participant', x: width/2 + 320, y: height/2 - 100, connections: 21, avatar: '/images/avatars/daulet.png' },
+    { id: 'iztleu', name: 'Iztleu D.', size: 8, group: 'participant', x: width/2 + 340, y: height/2 + 50, connections: 20, avatar: '/images/avatars/iztleu.png' },
+    { id: 'alex', name: 'Alex D.', size: 8, group: 'participant', x: width/2 - 280, y: height/2 + 200, connections: 18, avatar: '/images/avatars/alex.png' },
+    { id: 'rodion', name: 'Rodion M.', size: 8, group: 'participant', x: width/2 + 280, y: height/2 + 200, connections: 15, avatar: '/images/avatars/rodion.png' },
+
+    // Periphery (tiny nodes - no avatars)
+    { id: 'o1', name: 'Периферия', size: 6, group: 'observer', x: width/2 - 370, y: height/2 - 190 },
+    { id: 'o2', name: 'Периферия', size: 6, group: 'observer', x: width/2 + 370, y: height/2 - 190 },
+    { id: 'o3', name: 'Периферия', size: 6, group: 'observer', x: width/2 - 370, y: height/2 + 190 },
+    { id: 'o4', name: 'Периферия', size: 6, group: 'observer', x: width/2 + 370, y: height/2 + 190 }
+  ];
+
+  // Links between nodes
+  const links = [
+    // Level 0: Big Four interconnections (full mesh)
+    { source: 'ak', target: 'ap' }, { source: 'ak', target: 'ts' }, { source: 'ak', target: 'sb' },
+    { source: 'ap', target: 'ts' }, { source: 'ap', target: 'sb' }, { source: 'ts', target: 'sb' },
+
+    // Level 1 to Big Four (based on top connections)
+    { source: 'vas', target: 'ak' }, { source: 'vas', target: 'ts' }, { source: 'vas', target: 'sb' },
+    { source: 'dm', target: 'ak' }, { source: 'dm', target: 'ts' }, { source: 'dm', target: 'sb' },
+    { source: 'anton', target: 'ak' }, { source: 'anton', target: 'sb' },
+    { source: 'azat', target: 'ap' }, { source: 'azat', target: 'sb' }, { source: 'azat', target: 'ts' },
+        { source: 'tair', target: 'ak' }, { source: 'tair', target: 'sb' }, { source: 'tair', target: 'ts' },
+    { source: 'nurlan', target: 'ak' }, { source: 'nurlan', target: 'ap' },
+    { source: 'egor', target: 'sb' }, { source: 'egor', target: 'ts' },
+    { source: 'maxim', target: 'ak' }, { source: 'maxim', target: 'ts' },
+    { source: 'tolegen', target: 'ap' },
+
+    // Level 1 internal connections (key subgraph)
+        { source: 'azat', target: 'tair' }, { source: 'azat', target: 'nurlan' }, { source: 'azat', target: 'vas' },
+    { source: 'vas', target: 'anton' },
+
+    // Level 2 to Level 1
+    { source: 'denis', target: 'ap' }, { source: 'denis', target: 'dm' },
+    { source: 'zhanar', target: 'azat' },
+    { source: 'daulet', target: 'vas' },
+    { source: 'iztleu', target: 'vas' },
+    { source: 'alex', target: 'ap' },
+    { source: 'rodion', target: 'maxim' },
+
+    // Periphery to core
+    { source: 'o1', target: 'vas' }, { source: 'o2', target: 'dm' },
+    { source: 'o3', target: 'ap' }, { source: 'o4', target: 'azat' }
+  ];
+
+  // Color mapping for borders
+  const colors = {
+    bigfour: '#EAB308',    // Yellow
+    active: '#2481CC',     // Telegram Blue
+    participant: '#A855F7', // Purple
+    observer: '#64748B'    // Gray
+  };
+
+  // Create defs for clip paths
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  nodes.forEach(node => {
+    if (node.avatar) {
+      const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+      clipPath.setAttribute('id', 'clip-' + node.id);
+      const clipCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      clipCircle.setAttribute('cx', node.x);
+      clipCircle.setAttribute('cy', node.y);
+      clipCircle.setAttribute('r', node.size);
+      clipPath.appendChild(clipCircle);
+      defs.appendChild(clipPath);
+    }
+  });
+  svg.appendChild(defs);
+
+  // Draw links
+  links.forEach(link => {
+    const source = nodes.find(n => n.id === link.source);
+    const target = nodes.find(n => n.id === link.target);
+
+    if (source && target) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', source.x);
+      line.setAttribute('y1', source.y);
+      line.setAttribute('x2', target.x);
+      line.setAttribute('y2', target.y);
+      line.setAttribute('stroke', 'rgba(148, 163, 184, 0.3)');
+      line.setAttribute('stroke-width', '1.5');
+      svg.appendChild(line);
+    }
+  });
+
+  // Draw nodes
+  nodes.forEach(node => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.style.cursor = 'pointer';
+
+    if (node.avatar) {
+      // Draw border circle first
+      const borderCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      borderCircle.setAttribute('cx', node.x);
+      borderCircle.setAttribute('cy', node.y);
+      borderCircle.setAttribute('r', node.size + 3);
+      borderCircle.setAttribute('fill', 'none');
+      borderCircle.setAttribute('stroke', colors[node.group]);
+      borderCircle.setAttribute('stroke-width', '3');
+      g.appendChild(borderCircle);
+
+      // Draw avatar image
+      const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+      image.setAttribute('x', node.x - node.size);
+      image.setAttribute('y', node.y - node.size);
+      image.setAttribute('width', node.size * 2);
+      image.setAttribute('height', node.size * 2);
+      image.setAttribute('href', node.avatar);
+      image.setAttribute('clip-path', 'url(#clip-' + node.id + ')');
+      image.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+      g.appendChild(image);
+    } else {
+      // Draw colored circle for nodes without avatars
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', node.x);
+      circle.setAttribute('cy', node.y);
+      circle.setAttribute('r', node.size);
+      circle.setAttribute('fill', colors[node.group]);
+      circle.setAttribute('opacity', '0.7');
+      circle.setAttribute('stroke', '#fff');
+      circle.setAttribute('stroke-width', '1');
+      g.appendChild(circle);
+    }
+
+    // Tooltip
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = node.name + (node.connections ? ' (' + node.connections + ' связей)' : '');
+    g.appendChild(title);
+
+    // Hover effect
+    g.addEventListener('mouseenter', function() {
+      this.style.transform = 'scale(1.1)';
+      this.style.transformOrigin = node.x + 'px ' + node.y + 'px';
+    });
+    g.addEventListener('mouseleave', function() {
+      this.style.transform = 'scale(1)';
+    });
+
+    svg.appendChild(g);
+
+    // Labels for Big Four and Level 1 (Active)
+    if (node.group === 'bigfour' || node.group === 'active') {
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', node.x);
+      text.setAttribute('y', node.y + node.size + 18);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('fill', '#F8FAFC');
+      text.setAttribute('font-size', node.group === 'bigfour' ? '12' : '10');
+      text.setAttribute('font-weight', node.group === 'bigfour' ? 'bold' : 'normal');
+      text.setAttribute('font-family', 'Inter');
+      text.textContent = node.name;
+      svg.appendChild(text);
+    }
+
+    // Labels for Level 2 (Participants) - smaller font
+    if (node.group === 'participant') {
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', node.x);
+      text.setAttribute('y', node.y + node.size + 14);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('fill', '#94A3B8');
+      text.setAttribute('font-size', '8');
+      text.setAttribute('font-family', 'Inter');
+      text.textContent = node.name;
+      svg.appendChild(text);
+    }
+  });
+})();
+</script>
+
+{{ end }}

@@ -1,0 +1,708 @@
+{{ define "main" }}
+{{ $data := .Site.Data.metrics }}
+
+<script src="/lib/js/chart.umd.min.js"></script>
+
+<!-- Hero Section with Background Image -->
+<section class="relative min-h-[60vh] flex items-center justify-center overflow-x-clip overflow-y-visible">
+  <!-- Hero Background Image -->
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    {{ partial "hero-bg.html" (dict "src" "images/sentiment/hero.png") }}
+  </div>
+
+  <!-- Content -->
+  <div class="relative z-10 text-center px-4 max-w-5xl mx-auto pt-24 pb-8">
+    <div class="flex items-center justify-center gap-3 mb-6">
+      <span class="text-6xl md:text-7xl">😌</span>
+    </div>
+
+    <!-- Title with bubble container -->
+    <div class="relative inline-block" x-data="{ showBubble: true }">
+      <h1 class="text-4xl md:text-6xl lg:text-7xl font-heading font-bold mb-6 tracking-tight">
+        <span class="text-telegram-blue">Мы не токсичны. Мы реалисты</span>
+      </h1>
+
+      <!-- Jumping Bubble (right side) -->
+      <a href="https://t.me/teamleads_kz"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="quote-bubble">
+        <span class="quote-bubble-text">Хочешь узнать кто это сказал?<br><strong>Ищи в чате →</strong></span>
+        <span class="quote-bubble-arrow"></span>
+      </a>
+    </div>
+
+    <p class="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
+      70% нейтрала, 10% боли, 100% правды
+    </p>
+  </div>
+</section>
+
+<style>
+/* Jumping Bubble - positioned to the right */
+.quote-bubble {
+  position: absolute;
+  top: 50%;
+  right: -170px;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, rgba(36, 129, 204, 0.8), rgba(168, 85, 247, 0.8));
+  color: white;
+  padding: 16px 20px;
+  border-radius: 20px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+  box-shadow: 0 8px 32px rgba(36, 129, 204, 0.3);
+  animation: bubble-bounce-right 2s ease-in-out infinite;
+  z-index: 100;
+  text-decoration: none;
+  display: block;
+  backdrop-filter: blur(8px);
+}
+
+.quote-bubble:hover {
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 12px 40px rgba(36, 129, 204, 0.5);
+  background: linear-gradient(135deg, rgba(36, 129, 204, 1), rgba(168, 85, 247, 1));
+}
+
+.quote-bubble-text {
+  display: block;
+  text-align: center;
+}
+
+.quote-bubble-arrow {
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+  border-right: 12px solid rgba(36, 129, 204, 0.8);
+}
+
+@keyframes bubble-bounce-right {
+  0%, 100% {
+    transform: translateY(-50%) translateX(0);
+  }
+  25% {
+    transform: translateY(-50%) translateX(8px);
+  }
+  50% {
+    transform: translateY(-50%) translateX(0);
+  }
+  75% {
+    transform: translateY(-50%) translateX(4px);
+  }
+}
+
+/* Tablet and mobile adjustments */
+@media (max-width: 1200px) {
+  .quote-bubble {
+    top: auto;
+    bottom: -80px;
+    right: 50%;
+    transform: translateX(50%);
+    font-size: 14px;
+    padding: 14px 18px;
+    animation: bubble-bounce-bottom 2s ease-in-out infinite;
+  }
+
+  .quote-bubble:hover {
+    transform: translateX(50%) scale(1.05);
+  }
+
+  .quote-bubble-arrow {
+    left: 50%;
+    top: -10px;
+    transform: translateX(-50%);
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 12px solid #2481CC;
+    border-top: none;
+  }
+
+  @keyframes bubble-bounce-bottom {
+    0%, 100% {
+      transform: translateX(50%) translateY(0);
+    }
+    25% {
+      transform: translateX(50%) translateY(8px);
+    }
+    50% {
+      transform: translateX(50%) translateY(0);
+    }
+    75% {
+      transform: translateX(50%) translateY(4px);
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .quote-bubble {
+    font-size: 13px;
+    padding: 12px 16px;
+    white-space: normal;
+    max-width: 220px;
+  }
+}
+</style>
+
+<!-- Overall Sentiment -->
+<section class="relative py-16 px-4 overflow-hidden">
+  <div class="container mx-auto max-w-7xl">
+
+    <!-- Overall Sentiment Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-16">
+      <div class="bento-card p-4 md:p-6 text-center hover:border-gray-400/50 transition-all min-w-0">
+        {{ partial "img.html" (dict "src" "images/sentiment/neutral.png" "alt" "Neutral" "class" "w-12 h-12 md:w-16 md:h-16 mx-auto mb-2 md:mb-3 rounded-full") }}
+        <div class="font-data text-2xl md:text-4xl font-bold text-gray-400 mb-1 md:mb-2">{{ $data.sentiment.neutral | lang.FormatNumber 1 }}%</div>
+        <div class="text-slate-400 text-xs md:text-sm">Нейтральные</div>
+      </div>
+      <div class="bento-card p-4 md:p-6 text-center hover:border-blue-400/50 transition-all min-w-0">
+        {{ partial "img.html" (dict "src" "images/sentiment/question.png" "alt" "Questions" "class" "w-12 h-12 md:w-16 md:h-16 mx-auto mb-2 md:mb-3 rounded-full") }}
+        <div class="font-data text-2xl md:text-4xl font-bold text-blue-400 mb-1 md:mb-2">{{ $data.sentiment.questions | lang.FormatNumber 1 }}%</div>
+        <div class="text-slate-400 text-xs md:text-sm">Вопросы</div>
+      </div>
+      <div class="bento-card p-4 md:p-6 text-center hover:border-red-400/50 transition-all min-w-0">
+        {{ partial "img.html" (dict "src" "images/sentiment/negative.png" "alt" "Negative" "class" "w-12 h-12 md:w-16 md:h-16 mx-auto mb-2 md:mb-3 rounded-full") }}
+        <div class="font-data text-2xl md:text-4xl font-bold text-red-400 mb-1 md:mb-2">{{ $data.sentiment.negative | lang.FormatNumber 1 }}%</div>
+        <div class="text-slate-400 text-xs md:text-sm">Негативные</div>
+      </div>
+      <div class="bento-card p-4 md:p-6 text-center hover:border-green-400/50 transition-all min-w-0">
+        {{ partial "img.html" (dict "src" "images/sentiment/positive.png" "alt" "Positive" "class" "w-12 h-12 md:w-16 md:h-16 mx-auto mb-2 md:mb-3 rounded-full") }}
+        <div class="font-data text-2xl md:text-4xl font-bold text-green-400 mb-1 md:mb-2">{{ $data.sentiment.positive | lang.FormatNumber 1 }}%</div>
+        <div class="text-slate-400 text-xs md:text-sm">Позитивные</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Sentiment Timeline -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-transparent to-deep-space/50 overflow-hidden">
+  <div class="container mx-auto max-w-7xl overflow-hidden">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      Динамика <span class="text-gradient-management">по Месяцам</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Как менялась тональность обсуждений в течение года
+    </p>
+
+    <div class="relative mb-12">
+      <canvas id="sentiment-timeline-chart" style="max-height: 450px;"></canvas>
+    </div>
+
+    <!-- Key Moments -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+      <div class="bento-card p-4 md:p-6 border-l-4 border-green-400">
+        <h3 class="font-heading font-bold text-lg text-starlight mb-3">😊 Пик позитива</h3>
+        <p class="text-slate-300 mb-2">
+          <strong class="text-green-400">Апрель 2025:</strong> 11.3% позитивных сообщений
+        </p>
+        <p class="text-slate-400 text-sm">
+          Рост активности, новые участники, успешные запуски проектов
+        </p>
+      </div>
+      <div class="bento-card p-4 md:p-6 border-l-4 border-blue-400">
+        <h3 class="font-heading font-bold text-lg text-starlight mb-3">❓ Больше всего вопросов</h3>
+        <p class="text-slate-300 mb-2">
+          <strong class="text-blue-400">Январь 2025:</strong> 19% вопросов
+        </p>
+        <p class="text-slate-400 text-sm">
+          Начало года, новые участники активно спрашивают и учатся
+        </p>
+      </div>
+      <div class="bento-card p-4 md:p-6 border-l-4 border-gray-400">
+        <h3 class="font-heading font-bold text-lg text-starlight mb-3">😌 Стабильный тон</h3>
+        <p class="text-slate-300 mb-2">
+          <strong class="text-gray-400">Август 2025:</strong> 73.8% нейтральных
+        </p>
+        <p class="text-slate-400 text-sm">
+          Летний период, меньше активности, больше технических обсуждений
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Sentiment by Topic -->
+<section class="relative py-16 px-4 overflow-hidden">
+  <div class="container mx-auto max-w-7xl overflow-hidden">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-4 text-starlight">
+      Тональность по <span class="text-gradient-ai">Темам</span>
+    </h2>
+    <p class="text-center text-slate-400 mb-12 max-w-2xl mx-auto">
+      Разные темы вызывают разные эмоции
+    </p>
+
+    <div class="relative mb-12">
+      <canvas id="sentiment-by-topic-chart" style="max-height: 400px;"></canvas>
+    </div>
+
+    <!-- Topic Sentiment Analysis -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+      <div class="bento-card p-4 md:p-8 border-l-4 border-ai-purple-start">
+        <div class="flex items-start gap-3 md:gap-4 mb-4">
+          <div class="text-3xl md:text-5xl">🤖</div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-heading font-bold text-xl md:text-2xl text-starlight mb-2">AI & ML</h3>
+            <div class="flex flex-wrap gap-3 md:gap-4 mb-3">
+              <div>
+                <div class="font-data text-2xl text-green-400">{{ $data.sentiment_by_topic.ai_ml.positive | lang.FormatNumber 1 }}%</div>
+                <div class="text-slate-400 text-xs">Позитив</div>
+              </div>
+              <div>
+                <div class="font-data text-2xl text-blue-400">{{ $data.sentiment_by_topic.ai_ml.questions | lang.FormatNumber 1 }}%</div>
+                <div class="text-slate-400 text-xs">Вопросы</div>
+              </div>
+              <div>
+                <div class="font-data text-2xl text-red-400">{{ $data.sentiment_by_topic.ai_ml.negative | lang.FormatNumber 1 }}%</div>
+                <div class="text-slate-400 text-xs">Негатив</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-slate-300 text-sm">
+          <strong class="text-starlight">Самая позитивная тема!</strong> AI вызывает энтузиазм (12.5% позитива) и любопытство (14.2% вопросов). Минимум негатива – технология вдохновляет.
+        </p>
+      </div>
+
+      <div class="bento-card p-4 md:p-8 border-l-4 border-telegram-blue">
+        <div class="flex items-start gap-3 md:gap-4 mb-4">
+          <div class="text-3xl md:text-5xl">🧪</div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-heading font-bold text-xl md:text-2xl text-starlight mb-2">QA & Testing</h3>
+            <div class="flex flex-wrap gap-3 md:gap-4 mb-3">
+              <div>
+                <div class="font-data text-2xl text-green-400">{{ $data.sentiment_by_topic.qa_testing.positive | lang.FormatNumber 1 }}%</div>
+                <div class="text-slate-400 text-xs">Позитив</div>
+              </div>
+              <div>
+                <div class="font-data text-2xl text-blue-400">{{ $data.sentiment_by_topic.qa_testing.questions | lang.FormatNumber 1 }}%</div>
+                <div class="text-slate-400 text-xs">Вопросы</div>
+              </div>
+              <div>
+                <div class="font-data text-2xl text-red-400">{{ $data.sentiment_by_topic.qa_testing.negative | lang.FormatNumber 1 }}%</div>
+                <div class="text-slate-400 text-xs">Негатив</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-slate-300 text-sm">
+          <strong class="text-starlight">Технический фокус.</strong> Высокий % нейтральных (72.1%) и вопросов (15.3%). Обсуждения практичные: как настроить, как внедрить.
+        </p>
+      </div>
+
+      <div class="bento-card p-4 md:p-8 border-l-4 border-management-orange-start">
+        <div class="flex items-start gap-3 md:gap-4 mb-4">
+          <div class="text-3xl md:text-5xl">📊</div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-heading font-bold text-xl md:text-2xl text-starlight mb-2">Management</h3>
+            <div class="flex flex-wrap gap-3 md:gap-4 mb-3">
+              <div>
+                <div class="font-data text-2xl text-green-400">{{ $data.sentiment_by_topic.management.positive | lang.FormatNumber 1 }}%</div>
+                <div class="text-slate-400 text-xs">Позитив</div>
+              </div>
+              <div>
+                <div class="font-data text-2xl text-blue-400">{{ $data.sentiment_by_topic.management.questions | lang.FormatNumber 1 }}%</div>
+                <div class="text-slate-400 text-xs">Вопросы</div>
+              </div>
+              <div>
+                <div class="font-data text-2xl text-red-400">{{ $data.sentiment_by_topic.management.negative | lang.FormatNumber 1 }}%</div>
+                <div class="text-slate-400 text-xs">Негатив</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-slate-300 text-sm">
+          <strong class="text-starlight">Сложные вопросы.</strong> Больше негатива (16.6%) – управление людьми, конфликты, увольнения. Реальные проблемы реальных лидов.
+        </p>
+      </div>
+
+      <div class="bento-card p-4 md:p-8 border-l-4 border-green-400">
+        <div class="flex items-start gap-3 md:gap-4 mb-4">
+          <div class="text-3xl md:text-5xl">👥</div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-heading font-bold text-xl md:text-2xl text-starlight mb-2">HR</h3>
+            <div class="flex flex-wrap gap-3 md:gap-4 mb-3">
+              <div>
+                <div class="font-data text-2xl text-green-400">{{ $data.sentiment_by_topic.hr.positive | lang.FormatNumber 1 }}%</div>
+                <div class="text-slate-400 text-xs">Позитив</div>
+              </div>
+              <div>
+                <div class="font-data text-2xl text-blue-400">{{ $data.sentiment_by_topic.hr.questions | lang.FormatNumber 1 }}%</div>
+                <div class="text-slate-400 text-xs">Вопросы</div>
+              </div>
+              <div>
+                <div class="font-data text-2xl text-red-400">{{ $data.sentiment_by_topic.hr.negative | lang.FormatNumber 1 }}%</div>
+                <div class="text-slate-400 text-xs">Негатив</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-slate-300 text-sm">
+          <strong class="text-starlight">Самая эмоциональная тема.</strong> Максимум негатива (22.5%) – найм, увольнения, выгорание. Работа с людьми – всегда challenge.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Key Insights -->
+<section class="relative py-16 px-4 bg-gradient-to-b from-deep-space/50 to-transparent overflow-hidden">
+  <div class="container mx-auto max-w-6xl">
+    <h2 class="text-3xl md:text-4xl font-heading font-bold text-center mb-12 text-starlight">
+      Ключевые <span class="text-gradient-management">Инсайты</span>
+    </h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+      <div class="bento-card p-4 md:p-8">
+        <div class="text-5xl mb-4">🎯</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">Профессиональное сообщество</h3>
+        <p class="text-slate-300 mb-4">
+          <strong class="text-telegram-blue">70% нейтральных</strong> сообщений – признак зрелого профессионального сообщества. Фокус на фактах, опыте, конкретных решениях.
+        </p>
+        <p class="text-slate-400 text-sm">
+          Это не чат эмоций, а площадка для обмена экспертизой.
+        </p>
+      </div>
+
+      <div class="bento-card p-4 md:p-8">
+        <div class="text-5xl mb-4">📚</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">Культура вопросов</h3>
+        <p class="text-slate-300 mb-4">
+          <strong class="text-blue-400">12% вопросов</strong> – здоровый показатель. Люди не боятся спрашивать, сообщество помогает расти.
+        </p>
+        <p class="text-slate-400 text-sm">
+          Высокий % вопросов в январе (19%) – новички адаптируются.
+        </p>
+      </div>
+
+      <div class="bento-card p-4 md:p-8">
+        <div class="text-5xl mb-4">⚠️</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">Негатив – это нормально</h3>
+        <p class="text-slate-300 mb-4">
+          <strong class="text-red-400">10% негатива</strong> – адекватный уровень. Тимлиды обсуждают реальные проблемы: конфликты, увольнения, технические долги.
+        </p>
+        <p class="text-slate-400 text-sm">
+          HR-темы генерируют больше негатива (22.5%) – работа с людьми сложна.
+        </p>
+      </div>
+
+      <div class="bento-card p-4 md:p-8">
+        <div class="text-5xl mb-4">✨</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">AI вдохновляет</h3>
+        <p class="text-slate-300 mb-4">
+          AI & ML – самая позитивная тема (<strong class="text-green-400">12.5%</strong>). Технология вызывает энтузиазм, любопытство, желание экспериментировать.
+        </p>
+        <p class="text-slate-400 text-sm">
+          2025 – год, когда AI стал частью повседневной работы тимлидов.
+        </p>
+      </div>
+
+      <div class="bento-card p-4 md:p-8">
+        <div class="text-5xl mb-4">📈</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">Тональность стабильна</h3>
+        <p class="text-slate-300 mb-4">
+          В течение года тональность колебалась незначительно. Нейтральный тон доминирует всегда (67-74%).
+        </p>
+        <p class="text-slate-400 text-sm">
+          Это говорит о стабильности и зрелости сообщества.
+        </p>
+      </div>
+
+      <div class="bento-card p-4 md:p-8">
+        <div class="text-5xl mb-4">🎭</div>
+        <h3 class="font-heading font-bold text-xl text-starlight mb-3">Разные темы = разные эмоции</h3>
+        <p class="text-slate-300 mb-4">
+          QA (72% нейтральных) vs HR (59% нейтральных). Технические темы более "холодные", человеческие – более эмоциональные.
+        </p>
+        <p class="text-slate-400 text-sm">
+          Это естественно: код предсказуем, люди – нет.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Sentiment Timeline Chart Script -->
+<script>
+(function() {
+  const ctx = document.getElementById('sentiment-timeline-chart');
+  if (!ctx) return;
+
+  const labels = {{ $data.sentiment_monthly.labels }};
+  const neutral = {{ $data.sentiment_monthly.neutral }};
+  const questions = {{ $data.sentiment_monthly.questions }};
+  const negative = {{ $data.sentiment_monthly.negative }};
+  const positive = {{ $data.sentiment_monthly.positive }};
+
+  if (!Array.isArray(labels) || !Array.isArray(neutral)) {
+    console.error('Invalid sentiment timeline data');
+    return;
+  }
+
+  const config = {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Нейтральные',
+          data: neutral,
+          borderColor: '#9E9E9E',
+          backgroundColor: 'rgba(158, 158, 158, 0.1)',
+          borderWidth: 3,
+          tension: 0.4,
+          pointRadius: 4,
+          pointBackgroundColor: '#9E9E9E',
+          fill: false
+        },
+        {
+          label: 'Вопросы',
+          data: questions,
+          borderColor: '#3B82F6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderWidth: 3,
+          tension: 0.4,
+          pointRadius: 4,
+          pointBackgroundColor: '#3B82F6',
+          fill: false
+        },
+        {
+          label: 'Негативные',
+          data: negative,
+          borderColor: '#EF4444',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          borderWidth: 3,
+          tension: 0.4,
+          pointRadius: 4,
+          pointBackgroundColor: '#EF4444',
+          fill: false
+        },
+        {
+          label: 'Позитивные',
+          data: positive,
+          borderColor: '#10B981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          borderWidth: 3,
+          tension: 0.4,
+          pointRadius: 4,
+          pointBackgroundColor: '#10B981',
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            color: '#94A3B8',
+            font: { family: 'Inter', size: 13 },
+            padding: 15,
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          titleColor: '#F8FAFC',
+          bodyColor: '#94A3B8',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 12,
+          titleFont: { family: 'Inter', size: 14, weight: 'bold' },
+          bodyFont: { family: 'JetBrains Mono', size: 12 },
+          callbacks: {
+            label: function(context) {
+              return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + '%';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#94A3B8',
+            font: { family: 'Inter', size: 12, weight: 'bold' }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          max: 80,
+          grid: {
+            color: 'rgba(148, 163, 184, 0.1)',
+            drawBorder: false
+          },
+          ticks: {
+            color: '#64748B',
+            font: { family: 'JetBrains Mono', size: 11 },
+            callback: function(value) {
+              return value + '%';
+            }
+          }
+        }
+      },
+      animation: {
+        duration: 2000,
+        easing: 'easeInOutQuart'
+      }
+    }
+  };
+
+  new Chart(ctx, config);
+})();
+</script>
+
+<!-- Sentiment by Topic Chart Script -->
+<script>
+(function() {
+  const ctx = document.getElementById('sentiment-by-topic-chart');
+  if (!ctx) return;
+
+  const sentimentByTopic = {{ $data.sentiment_by_topic }};
+
+  if (!sentimentByTopic || typeof sentimentByTopic !== 'object') {
+    console.error('Invalid sentiment by topic data');
+    return;
+  }
+
+  const config = {
+    type: 'bar',
+    data: {
+      labels: ['AI & ML', 'QA & Testing', 'Management', 'HR'],
+      datasets: [
+        {
+          label: 'Позитивные',
+          data: [
+            sentimentByTopic.ai_ml.positive,
+            sentimentByTopic.qa_testing.positive,
+            sentimentByTopic.management.positive,
+            sentimentByTopic.hr.positive
+          ],
+          backgroundColor: 'rgba(16, 185, 129, 0.7)',
+          borderColor: '#10B981',
+          borderWidth: 2
+        },
+        {
+          label: 'Нейтральные',
+          data: [
+            sentimentByTopic.ai_ml.neutral,
+            sentimentByTopic.qa_testing.neutral,
+            sentimentByTopic.management.neutral,
+            sentimentByTopic.hr.neutral
+          ],
+          backgroundColor: 'rgba(158, 158, 158, 0.7)',
+          borderColor: '#9E9E9E',
+          borderWidth: 2
+        },
+        {
+          label: 'Вопросы',
+          data: [
+            sentimentByTopic.ai_ml.questions,
+            sentimentByTopic.qa_testing.questions,
+            sentimentByTopic.management.questions,
+            sentimentByTopic.hr.questions
+          ],
+          backgroundColor: 'rgba(59, 130, 246, 0.7)',
+          borderColor: '#3B82F6',
+          borderWidth: 2
+        },
+        {
+          label: 'Негативные',
+          data: [
+            sentimentByTopic.ai_ml.negative,
+            sentimentByTopic.qa_testing.negative,
+            sentimentByTopic.management.negative,
+            sentimentByTopic.hr.negative
+          ],
+          backgroundColor: 'rgba(239, 68, 68, 0.7)',
+          borderColor: '#EF4444',
+          borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            color: '#94A3B8',
+            font: { family: 'Inter', size: 13 },
+            padding: 15,
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          titleColor: '#F8FAFC',
+          bodyColor: '#94A3B8',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 12,
+          titleFont: { family: 'Inter', size: 14, weight: 'bold' },
+          bodyFont: { family: 'JetBrains Mono', size: 12 },
+          callbacks: {
+            label: function(context) {
+              return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + '%';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: { display: false },
+          ticks: {
+            color: '#94A3B8',
+            font: { family: 'Inter', size: 12, weight: 'bold' }
+          }
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          max: 100,
+          grid: {
+            color: 'rgba(148, 163, 184, 0.1)',
+            drawBorder: false
+          },
+          ticks: {
+            color: '#64748B',
+            font: { family: 'JetBrains Mono', size: 11 },
+            callback: function(value) {
+              return value + '%';
+            }
+          }
+        }
+      },
+      animation: {
+        duration: 1500,
+        easing: 'easeInOutQuart',
+        delay: function(context) {
+          return context.dataIndex * 100;
+        }
+      }
+    }
+  };
+
+  new Chart(ctx, config);
+})();
+</script>
+
+{{ end }}

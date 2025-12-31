@@ -1,0 +1,201 @@
+{{ define "main" }}
+<!-- Hero Section -->
+<section class="hero">
+    {{ partial "hero-bg.html" . }}
+
+    <nav class="nav">
+        <div class="nav-logo">
+            <span class="logo-icon">◇</span>
+            <span class="logo-text">тимлид не кодит</span>
+        </div>
+        <a href="{{ .Site.Params.telegram }}" class="nav-cta" target="_blank" rel="noopener">
+            Присоединиться
+        </a>
+    </nav>
+
+    <div class="hero-content">
+        <div class="badge">
+            <span class="badge-dot"></span>
+            Сообщество для тимлидов и tech-лидеров
+        </div>
+
+        <h1 class="hero-title">
+            <span class="title-line">Расти как лидер</span>
+            <span class="title-line title-accent">среди своих</span>
+        </h1>
+
+        <p class="hero-subtitle">
+            Место, где тимлиды Казахстана делятся опытом, решают проблемы и развиваются вместе.
+            Архитектура, люди, процессы – всё, что важно для технического лидера.
+        </p>
+
+        <div class="hero-actions">
+            <a href="{{ .Site.Params.telegram }}" class="btn btn-primary" target="_blank" rel="noopener">
+                {{ partial "icons/send.html" }}
+                Вступить в Telegram
+            </a>
+            <a href="#about" class="btn btn-secondary">
+                Узнать больше
+            </a>
+        </div>
+
+        {{ partial "hero-stats.html" . }}
+    </div>
+
+    <div class="scroll-indicator">
+        <span>Листайте вниз</span>
+        {{ partial "icons/arrow-down.html" }}
+    </div>
+</section>
+
+<!-- Year Review Banner -->
+<section class="year-review">
+    <div class="container">
+        <a href="https://2025.teamleads.kz" class="year-review-card" target="_blank" rel="noopener">
+            <div class="year-review-content">
+                <span class="year-review-badge">Итоги года</span>
+                <h3 class="year-review-title">Как прошёл 2025 год</h3>
+                <p class="year-review-desc">Аналитика сообщества: темы, люди, тренды и главные инсайты года</p>
+            </div>
+            <div class="year-review-arrow">→</div>
+        </a>
+    </div>
+</section>
+
+<!-- About Section -->
+<section class="about" id="about">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">О сообществе</span>
+            <h2 class="section-title">Место силы для технических лидеров</h2>
+            <p class="section-desc">
+                «Тимлид не кодит» – это не просто чат, а профессиональное сообщество,
+                где лидеры казахстанского IT обмениваются опытом и поддерживают друг друга.
+            </p>
+        </div>
+
+        <div class="features-grid">
+            {{ partial "feature-card.html" (dict
+                "icon" "users"
+                "title" "Живое общение"
+                "desc" "Реальные кейсы, честные ответы. Никаких теорий – только практика от тех, кто прошёл через это."
+            ) }}
+            {{ partial "feature-card.html" (dict
+                "icon" "layers"
+                "title" "Глубокие темы"
+                "desc" "AI/ML, архитектура, найм, конфликты в команде, карьерный рост – обсуждаем всё, что волнует лидеров."
+            ) }}
+            {{ partial "feature-card.html" (dict
+                "icon" "clock"
+                "title" "Всегда на связи"
+                "desc" "Пик активности в рабочие часы. Задайте вопрос – получите ответ от опытных коллег за минуты."
+            ) }}
+            {{ partial "feature-card.html" (dict
+                "icon" "activity"
+                "title" "Профессиональный тон"
+                "desc" "Сообщество экспертов, где ценят факты и конструктивный диалог. Без флуда и токсичности."
+            ) }}
+            {{ partial "feature-card.html" (dict
+                "icon" "sun"
+                "title" "Локальный контекст"
+                "desc" "Понимаем специфику рынка Казахстана и СНГ. Зарплаты, найм, культура – всё с учётом региона."
+            ) }}
+            {{ partial "feature-card.html" (dict
+                "icon" "users"
+                "title" "Нетворкинг"
+                "desc" "Знакомства с коллегами из Kaspi, Kolesa, DAR, Chocofamily и других топовых компаний."
+            ) }}
+        </div>
+    </div>
+</section>
+
+<!-- Topics Section -->
+<section class="topics" id="topics">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">Что обсуждаем</span>
+            <h2 class="section-title">Темы, которые волнуют</h2>
+        </div>
+
+        <div class="topics-grid">
+            <div class="topic-card topic-featured">
+                <h3 class="topic-title">AI & ML</h3>
+                <p class="topic-desc">Claude, ChatGPT, Cursor, автоматизация код-ревью, AI в продакшене, промпт-инжиниринг</p>
+            </div>
+            <div class="topic-card">
+                <h3 class="topic-title">Управление командой</h3>
+                <p class="topic-desc">Мотивация, делегирование, развитие сотрудников, сложные разговоры, обратная связь</p>
+            </div>
+            <div class="topic-card">
+                <h3 class="topic-title">Архитектура</h3>
+                <p class="topic-desc">Микросервисы vs монолит, технический долг, масштабирование, выбор стека</p>
+            </div>
+            <div class="topic-card">
+                <h3 class="topic-title">Найм</h3>
+                <p class="topic-desc">Собеседования, оценка кандидатов, онбординг, удержание талантов, рынок труда</p>
+            </div>
+            <div class="topic-card">
+                <h3 class="topic-title">Процессы</h3>
+                <p class="topic-desc">Agile, Scrum, code review, CI/CD, метрики производительности, планирование</p>
+            </div>
+            <div class="topic-card">
+                <h3 class="topic-title">Карьера и рост</h3>
+                <p class="topic-desc">Путь от разработчика к лиду, зарплаты, переговоры, выгорание, work-life balance</p>
+            </div>
+        </div>
+
+        <div class="topics-insight">
+            <div class="insight-icon">
+                {{ partial "icons/sun.html" }}
+            </div>
+            <p>
+                <strong>AI/ML доминирует в обсуждениях</strong> – большинство технических дискуссий связаны с искусственным интеллектом и его применением в разработке.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta" id="join">
+    <div class="container">
+        <div class="cta-content">
+            <div class="cta-ornament cta-ornament-1"></div>
+            <div class="cta-ornament cta-ornament-2"></div>
+
+            <h2 class="cta-title">Готовы расти вместе?</h2>
+            <p class="cta-desc">
+                Присоединяйтесь к сообществу тимлидов Казахстана.
+                Здесь ваш опыт ценен, а вопросы находят ответы.
+            </p>
+
+            <a href="{{ .Site.Params.telegram }}" class="btn btn-cta" target="_blank" rel="noopener">
+                {{ partial "icons/send.html" }}
+                Вступить в {{ .Site.Params.telegramHandle }}
+            </a>
+
+            <p class="cta-note">Это бесплатно. Просто нажмите и присоединяйтесь.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-content">
+            <div class="footer-logo">
+                <span class="logo-icon">◇</span>
+                <span>тимлид не кодит</span>
+            </div>
+            <p class="footer-tagline">Сообщество технических лидеров Казахстана</p>
+            <div class="footer-links">
+                <a href="{{ .Site.Params.telegram }}" target="_blank" rel="noopener">Telegram</a>
+            </div>
+            <p class="footer-copyright">© {{ now.Year }} Тимлид не кодит</p>
+        </div>
+    </div>
+</footer>
+{{ end }}
+
+{{ define "scripts" }}
+<script src="{{ "js/main.js" | relURL }}"></script>
+{{ end }}
