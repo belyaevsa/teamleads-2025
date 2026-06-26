@@ -35,21 +35,21 @@ id = "find"
 cmd = "find карьера"
 run = "find карьера"
 desc = "Ранжированный поиск материалов сообщества по релевантности."
-out = ["→ articles/Карьерный трек разработчика после сеньора", "→ events/Встреча сообщества – 24 июня 2026"]
+out = ["→ articles/Карьерный трек разработчика после сеньора", "→ events/Встреча сообщества – {latest-event-human}"]
 
 [[commands]]
 id = "cat"
-cmd = "cat events/meetup-2026-06-24"
-run = "cat events/meetup-2026-06-24"
+cmd = "cat events/{latest-event}"
+run = "cat events/{latest-event}"
 desc = "Прочитать материал прямо в терминале."
-out = ["# Встреча сообщества – 24 июня 2026", "Основная тема: продуктовые разработчики и экспертиза"]
+out = ["# Встреча сообщества – {latest-event-human}", "Основная тема: продуктовые разработчики и экспертиза"]
 
 [[commands]]
 id = "latest"
 cmd = "latest"
 run = "latest"
 desc = "Открыть последнюю встречу сообщества."
-out = ["последняя встреча: 24 июня 2026  →"]
+out = ["последняя встреча: {latest-event-human}  →"]
 
 [[commands]]
 id = "random"
@@ -116,10 +116,10 @@ out = ["guest отсутствует в файле sudoers.", "Инцидент 
 
 [[commands]]
 id = "git-blame"
-cmd = "git blame events/meetup-2026-06-24"
-run = "git blame events/meetup-2026-06-24"
+cmd = "git blame events/{latest-event}"
+run = "git blame events/{latest-event}"
 desc = "Кто стоит за материалом: участники встречи или автор статьи."
-out = ["a1b2c3d (Андрей            24.06.2026)", "git show <стр> – открыть коммит"]
+out = ["a1b2c3d (Андрей            {latest-event-date})", "git show <стр> – открыть коммит"]
 
 [[commands]]
 id = "git-log"
@@ -291,31 +291,31 @@ out = ["Оставить отзыв о «Kaspi.kz»:", "→ Открыть фо�
 
 [[commands]]
 id = "head"
-cmd = "head events/meetup-2026-06-24"
-run = "head events/meetup-2026-06-24"
+cmd = "head events/{latest-event}"
+run = "head events/{latest-event}"
 desc = "Первые строки markdown-страницы прямо в терминале (как unix head)."
-out = ["# Встреча сообщества – 24 июня 2026", "– head -n 10 · cat <стр> – полностью"]
+out = ["# Встреча сообщества – {latest-event-human}", "– head -n 10 · cat <стр> – полностью"]
 
 [[commands]]
 id = "tail"
-cmd = "tail events/meetup-2026-06-24"
-run = "tail events/meetup-2026-06-24"
+cmd = "tail events/{latest-event}"
+run = "tail events/{latest-event}"
 desc = "Последние строки markdown-страницы (как unix tail)."
 out = ["…последние строки страницы", "– tail -n 10 · cat <стр> – полностью"]
 
 [[commands]]
 id = "wc"
-cmd = "wc events/meetup-2026-06-24"
-run = "wc events/meetup-2026-06-24"
+cmd = "wc events/{latest-event}"
+run = "wc events/{latest-event}"
 desc = "Подсчёт строк, слов и символов страницы + время чтения."
 out = ["строк   слов   символов · ~6 мин чтения"]
 
 [[commands]]
 id = "stat"
-cmd = "stat events/meetup-2026-06-24"
-run = "stat events/meetup-2026-06-24"
+cmd = "stat events/{latest-event}"
+run = "stat events/{latest-event}"
 desc = "Метаданные страницы: раздел, дата, объём, время чтения, ссылка."
-out = ["Section: events · Date: 24.06.2026", "Size: ~1200 слов · ~6 мин"]
+out = ["Section: events · Date: {latest-event-date}", "Size: ~1200 слов · ~6 мин"]
 
 [[commands]]
 id = "apropos"

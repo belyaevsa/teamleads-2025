@@ -1,18 +1,55 @@
 {{/* Generate one share page per Shell command from data/shell_commands.toml. */}}
 {{/* One share card per catalog command. (Per-page `cat` cards are produced by the
      `catshare` output format on content pages – see layouts/_default/single.catshare.html.) */}}
+
+{{/* Build-time placeholders so catalog examples never go stale when content changes
+     (e.g. a new meeting report is added). The latest event is read from the content
+     folder on disk – site.RegularPages isn't available this early, but os.ReadDir is.
+     Events are named meetup-YYYY-MM-DD.md, so the last name sorted = the newest.
+       {latest-event}        newest event slug       → meetup-2026-06-24
+       {latest-event-date}   newest event date       → 24.06.2026
+       {latest-event-human}  newest event, Russian   → 24 июня 2026
+     Adding a meetup auto-refreshes every card – no edits to the catalog or the JS shell. */}}
+{{ $ruMon := slice "" "января" "февраля" "марта" "апреля" "мая" "июня" "июля" "августа" "сентября" "октября" "ноября" "декабря" }}
+{{ $slugs := slice }}
+{{ range (os.ReadDir "content/events") }}
+  {{ if and (strings.HasPrefix .Name "meetup-") (strings.HasSuffix .Name ".md") }}
+    {{ $slugs = $slugs | append (strings.TrimSuffix ".md" .Name) }}
+  {{ end }}
+{{ end }}
+{{ $slugs = sort $slugs }}
+{{ $latestEvent := "" }}{{ $latestEventDate := "" }}{{ $latestEventHuman := "" }}
+{{ if gt (len $slugs) 0 }}
+  {{ $latestEvent = index $slugs (sub (len $slugs) 1) }}
+  {{ $p := split (strings.TrimPrefix "meetup-" $latestEvent) "-" }}
+  {{ if eq (len $p) 3 }}
+    {{ $latestEventDate = printf "%s.%s.%s" (index $p 2) (index $p 1) (index $p 0) }}
+    {{ $latestEventHuman = printf "%d %s %s" (int (index $p 2)) (index $ruMon (int (index $p 1))) (index $p 0) }}
+  {{ end }}
+{{ end }}
+{{ $repl := dict "{latest-event}" $latestEvent "{latest-event-date}" $latestEventDate "{latest-event-human}" $latestEventHuman }}
+
 {{ range $c := site.Data.shell_commands.commands }}
+  {{/* resolve placeholders in every user-facing field */}}
+  {{ $cmd := $c.cmd }}{{ $run := (or $c.run $c.cmd) }}{{ $desc := $c.desc }}
+  {{ range $k, $v := $repl }}{{ $cmd = replace $cmd $k $v }}{{ $run = replace $run $k $v }}{{ $desc = replace $desc $k $v }}{{ end }}
+  {{ $out := slice }}
+  {{ range $line := ($c.out | default slice) }}
+    {{ $l := $line }}
+    {{ range $k, $v := $repl }}{{ $l = replace $l $k $v }}{{ end }}
+    {{ $out = $out | append $l }}
+  {{ end }}
   {{ $.AddPage (dict
     "kind" "page"
     "path" $c.id
-    "title" (printf "$ %s – терминал «Тимлид не кодит»" $c.cmd)
-    "description" $c.desc
+    "title" (printf "$ %s – терминал «Тимлид не кодит»" $cmd)
+    "description" $desc
     "params" (dict
       "id" $c.id
-      "cmd" $c.cmd
-      "run" (or $c.run $c.cmd)
-      "desc" $c.desc
-      "out" $c.out
+      "cmd" $cmd
+      "run" $run
+      "desc" $desc
+      "out" $out
     )
     "content" (dict "mediaType" "text/markdown" "value" "")
   ) }}
