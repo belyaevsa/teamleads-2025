@@ -116,10 +116,45 @@ out = ["guest отсутствует в файле sudoers.", "Инцидент 
 
 [[commands]]
 id = "git-blame"
-cmd = "git blame"
-run = "git blame"
-desc = "Винить некого."
-out = ["fatal: винить некого – 404 это не баг,", "а фича вашего URL."]
+cmd = "git blame events/meetup-2026-06-24"
+run = "git blame events/meetup-2026-06-24"
+desc = "Кто стоит за материалом: участники встречи или автор статьи."
+out = ["a1b2c3d (Андрей            24.06.2026)", "git show <стр> – открыть коммит"]
+
+[[commands]]
+id = "git-log"
+cmd = "git log"
+run = "git log"
+desc = "Лента материалов сообщества как git-коммиты: автор, дата, заголовок."
+out = ["commit a1b2c3d (events) · Author: Сообщество", "git log --oneline · git log articles – по разделу"]
+
+[[commands]]
+id = "git-status"
+cmd = "git status"
+run = "git status"
+desc = "Где вы на сайте и что в открытом бэклоге обсуждений."
+out = ["On branch master · up to date with origin", "Untracked questions: N тем  →  discuss"]
+
+[[commands]]
+id = "git-diff"
+cmd = "git diff"
+run = "git diff"
+desc = "Что нового появилось с прошлой встречи сообщества."
+out = ["diff a1b2c3d..e4f5g6h (с прошлой встречи)", "+ новые статьи, инсайты и материалы"]
+
+[[commands]]
+id = "git-shortlog"
+cmd = "git shortlog"
+run = "git shortlog"
+desc = "Вклад участников сообщества по числу материалов и встреч."
+out = ["git shortlog -sn: рейтинг участников", "git blame <стр> – авторство конкретной страницы"]
+
+[[commands]]
+id = "git-branch"
+cmd = "git branch"
+run = "git branch"
+desc = "Разделы сайта как git-ветки: events, articles, insights и другие."
+out = ["* master · events · articles · insights", "git checkout <ветка> – перейти в раздел"]
 
 [[commands]]
 id = "coffee"

@@ -6,7 +6,14 @@
   {{- $pages := (where site.RegularPages "Section" $s).ByDate.Reverse -}}
   {{- $items := slice -}}
   {{- range $pages -}}
-    {{- $items = $items | append (dict "n" .File.ContentBaseName "u" .RelPermalink "t" .Title "d" (.Date.Format "02.01.2006")) -}}
+    {{- /* `a` author + `p` participant names power `git blame` / `git shortlog`.
+           Articles/showcase carry `author`; events carry `participants` (collective). */ -}}
+    {{- $author := .Params.author | default "Сообщество «Тимлид не кодит»" -}}
+    {{- $parts := slice -}}
+    {{- range (.Params.participants | default slice) -}}
+      {{- with .name -}}{{- $parts = $parts | append . -}}{{- end -}}
+    {{- end -}}
+    {{- $items = $items | append (dict "n" .File.ContentBaseName "u" .RelPermalink "t" .Title "d" (.Date.Format "02.01.2006") "a" $author "p" $parts) -}}
   {{- end -}}
   {{- $sections = merge $sections (dict $s $items) -}}
 {{- end -}}
@@ -23,7 +30,13 @@
        the right OG-card page as commands run. Single source: shell_commands.toml. */ -}}
 {{- $share := dict -}}
 {{- range site.Data.shell_commands.commands -}}
-  {{- $verb := index (split .run " ") 0 -}}
+  {{- $toks := split .run " " -}}
+  {{- $verb := index $toks 0 -}}
+  {{- /* `git` is a multiplexer: key its share cards by the two-word `git <sub>` so each
+         subcommand gets its own /s/<id>/ card (syncUrl matches the same two-word verb). */ -}}
+  {{- if and (eq $verb "git") (gt (len $toks) 1) -}}
+    {{- $verb = printf "git %s" (index $toks 1) -}}
+  {{- end -}}
   {{- $share = merge $share (dict $verb .id) -}}
 {{- end -}}
 
