@@ -171,6 +171,20 @@ desc = "Тимлид-симулятор: развилки управленчес
 out = ["сценарий 1/…  – что выберете?", "a) … b) … c) …"]
 
 [[commands]]
+id = "games"
+cmd = "games"
+run = "games"
+desc = "Игры сообщества «Тимлид не кодит»: тимлид-симулятор и судоку."
+out = ["• sim     развилки и решения  · в терминале", "• sudoku  классическое 9×9     · в окне"]
+
+[[commands]]
+id = "sudoku"
+cmd = "sudoku"
+run = "sudoku"
+desc = "Классическое судоку 9×9 – мини-игра сообщества прямо из терминала."
+out = ["открываю судоку в новом окне…", "грейды сложности · подсказки · таймер"]
+
+[[commands]]
 id = "principles"
 cmd = "principles"
 run = "principles"
@@ -239,3 +253,80 @@ cmd = "addreview kaspi"
 run = "addreview kaspi"
 desc = "Оставить свой отзыв о компании на techinterview.space."
 out = ["Оставить отзыв о «Kaspi.kz»:", "→ Открыть форму отзыва"]
+
+[[commands]]
+id = "head"
+cmd = "head events/meetup-2026-06-24"
+run = "head events/meetup-2026-06-24"
+desc = "Первые строки markdown-страницы прямо в терминале (как unix head)."
+out = ["# Встреча сообщества – 24 июня 2026", "– head -n 10 · cat <стр> – полностью"]
+
+[[commands]]
+id = "tail"
+cmd = "tail events/meetup-2026-06-24"
+run = "tail events/meetup-2026-06-24"
+desc = "Последние строки markdown-страницы (как unix tail)."
+out = ["…последние строки страницы", "– tail -n 10 · cat <стр> – полностью"]
+
+[[commands]]
+id = "wc"
+cmd = "wc events/meetup-2026-06-24"
+run = "wc events/meetup-2026-06-24"
+desc = "Подсчёт строк, слов и символов страницы + время чтения."
+out = ["строк   слов   символов · ~6 мин чтения"]
+
+[[commands]]
+id = "stat"
+cmd = "stat events/meetup-2026-06-24"
+run = "stat events/meetup-2026-06-24"
+desc = "Метаданные страницы: раздел, дата, объём, время чтения, ссылка."
+out = ["Section: events · Date: 24.06.2026", "Size: ~1200 слов · ~6 мин"]
+
+[[commands]]
+id = "apropos"
+cmd = "apropos зарплат"
+run = "apropos зарплат"
+desc = "Найти команды терминала по описанию (как unix apropos)."
+out = ["salary   зарплаты рынка РК (живые данные)", "submit   отправить данные сообществу"]
+
+[[commands]]
+id = "whatis"
+cmd = "whatis grep"
+run = "whatis grep"
+desc = "Короткое описание команды одной строкой."
+out = ["grep – полнотекстовый ранжированный поиск по всем страницам"]
+
+[[commands]]
+id = "which"
+cmd = "which dir"
+run = "which dir"
+desc = "К какой команде сводится имя или алиас."
+out = ["dir → ls  (алиас)"]
+
+[[commands]]
+id = "alias"
+cmd = "alias"
+run = "alias"
+desc = "Список псевдонимов команд терминала."
+out = ["ls    dir, gci, get-childitem, ll", "cd    sl, chdir, set-location"]
+
+[[commands]]
+id = "theme"
+cmd = "theme ps"
+run = "theme ps"
+desc = "Переключить оформление терминала: PowerShell (синяя) или стандартное."
+out = ["тема: powershell", "PS C:\\Users\\guest>"]
+
+[[commands]]
+id = "share"
+cmd = "share"
+run = "share"
+desc = "Скопировать ссылку на последнюю выполненную команду."
+out = ["ссылка скопирована: teamleads.kz/s/…"]
+
+[[commands]]
+id = "feedback"
+cmd = "feedback"
+run = "feedback"
+desc = "Оставить обратную связь по сайту – откроется новый issue на GitHub."
+out = ["Откроется форма нового issue на GitHub.", "→ github.com/belyaevsa/teamleads-2025/issues/new"]

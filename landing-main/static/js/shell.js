@@ -33,6 +33,12 @@
       WIN = /win/i.test(plat) || /Windows/i.test(ua);
     } catch (e) {}
     if (WIN) root.classList.add('term--ps');
+    // A saved `theme` choice overrides the OS-based default.
+    try {
+      var savedTheme = w.localStorage && w.localStorage.getItem('tnk_shell_theme');
+      if (savedTheme === 'powershell') root.classList.add('term--ps');
+      else if (savedTheme === 'bash') root.classList.remove('term--ps');
+    } catch (e) {}
     var TG = root.getAttribute('data-tg') || 'https://t.me/teamleads_kz';
     var FS = {};
     try { FS = JSON.parse(root.getAttribute('data-fs') || '{}') || {}; } catch (e) { FS = {}; }
@@ -42,6 +48,8 @@
     try { FRIENDS = JSON.parse(root.getAttribute('data-friends') || '[]') || []; } catch (e) { FRIENDS = []; }
     var SCEN = {};
     try { SCEN = JSON.parse(root.getAttribute('data-scenarios') || '{}') || {}; } catch (e) { SCEN = {}; }
+    var QUIZZES = {};
+    try { QUIZZES = JSON.parse(root.getAttribute('data-quizzes') || '{}') || {}; } catch (e) { QUIZZES = {}; }
     var SHARE = {};  // verb → /s/<id>/ card id (from data/shell_commands.toml)
     try { SHARE = JSON.parse(root.getAttribute('data-share') || '{}') || {}; } catch (e) { SHARE = {}; }
     var QUESTIONS = [];  // open discussion backlog (events' nextQuestions) → `discuss`
@@ -60,6 +68,7 @@
 
     var reduced = w.matchMedia && w.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var cwd = '';            // '' = root, otherwise a section name
+    var prevCwd = '';        // last directory, for `cd -`
     var vimMode = false;
     var hist = [], hpos = -1;
     var comp = { base: '', list: [], idx: 0, full: null };  // Tab-completion cycling state
@@ -119,15 +128,63 @@
       for (i = 0; i < COMPANIES.length; i++) { var c = COMPANIES[i]; if (c.name.toLowerCase().indexOf(q) !== -1 || c.slug.indexOf(q) !== -1) return c; }
       return null;
     }
+    // Resolve a `section/name` (or bare name in cwd) to a baked page item – shared by cat/head/tail/wc/stat.
+    function resolvePage(arg) {
+      arg = (arg || '').replace(/^\/|\/$/g, '');
+      if (!arg || links[arg]) return null;
+      var sec = null, name = arg;
+      if (arg.indexOf('/') !== -1) { var p = arg.split('/'); sec = p[0]; name = p[1]; }
+      else if (cwd) sec = cwd;
+      var hit = null;
+      if (sec && sections[sec]) sections[sec].forEach(function (it) { if (it.n === name) hit = it; });
+      if (!hit) pool.forEach(function (it) { if (it.n === name) hit = it; });
+      return hit;
+    }
+    // Fetch a page's raw markdown with a transient "загрузка…" line. Centralizes the
+    // loading/error dance repeated across cat/company/find/grep.
+    function fetchPageText(hit, onText) {
+      if (!w.fetch) { print('fetch недоступен в этом браузере – попробуйте open ' + hit.n, 'err'); return; }
+      var loading = print('загрузка…', 'dim');
+      w.fetch(hit.u + 'index.md').then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+        .then(function (txt) { if (loading && loading.parentNode) loading.parentNode.removeChild(loading); onText(txt); })
+        .catch(function (e) { if (loading && loading.parentNode) loading.parentNode.removeChild(loading); print('не удалось загрузить – ' + e.message, 'err'); });
+    }
+    // Strip YAML front-matter + markdown noise → plain prose, for word counts / reading time.
+    function plainText(md) {
+      return md.replace(/^---[\s\S]*?\n---\n/, '').replace(/```[\s\S]*?```/g, ' ')
+        .replace(/[#>*_`~\-|]/g, ' ').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+    }
+    // head/tail: print the first/last N lines of a page's markdown. Accepts -n N or -N.
+    function headTail(kind, a) {
+      a = (a || []).slice(); var n = 10;
+      for (var i = 0; i < a.length; i++) {
+        if (a[i] === '-n' && /^\d+$/.test(a[i + 1] || '')) { n = parseInt(a[i + 1], 10); a.splice(i, 2); i--; }
+        else if (/^-n?\d+$/.test(a[i])) { n = parseInt(a[i].replace(/^-n?/, ''), 10); a.splice(i, 1); i--; }
+      }
+      var hit = resolvePage(a[0]);
+      if (!hit) { print(kind + ': не найдено: ' + (a[0] || '') + '. Список – ls.', 'err'); return; }
+      fetchPageText(hit, function (txt) {
+        var lines = txt.replace(/\s+$/, '').split('\n');
+        var slice = kind === 'head' ? lines.slice(0, n) : lines.slice(Math.max(0, lines.length - n));
+        slice.forEach(function (l) { print(l || ''); });
+        print('– ' + kind + ' -n ' + n + ' · всего строк: ' + lines.length + ' · cat ' + hit.n + ' – полностью', 'dim');
+      });
+    }
+    // Short one-line gist of a man page (drops the "<name> –" prefix, first sentence).
+    function manSummary(k) {
+      var rest = (MANPAGES[k] || '').split(' – ').slice(1).join(' – ');
+      return (rest.split(/[.·]/)[0] || rest).trim();
+    }
     function pathStr() { return '/' + cwd; }
     // PowerShell maps the section to a Windows path: C:\Users\guest[\section].
     function winPath() { return 'C:\\Users\\guest' + (cwd ? '\\' + cwd : ''); }
+    function psActive() { return root.classList.contains('term--ps'); }   // PowerShell skin live state (toggled by `theme`)
     function promptMarkup() {
-      return WIN ? ('PS ' + winPath() + '>') : ('<b>guest@teamleads</b>:' + pathStr() + '$');
+      return psActive() ? ('PS ' + winPath() + '>') : ('<b>guest@teamleads</b>:' + pathStr() + '$');
     }
     function setPrompt() {
       if (promptEl) promptEl.innerHTML = promptMarkup();
-      if (titleEl) titleEl.textContent = WIN ? ('Windows PowerShell – ' + winPath()) : ('guest@teamleads: ' + pathStr());
+      if (titleEl) titleEl.textContent = psActive() ? ('Windows PowerShell – ' + winPath()) : ('guest@teamleads: ' + pathStr());
     }
     function go(href) { print(''); print('переход → ' + href, 'ok'); setTimeout(function () { w.location.href = href; }, reduced ? 0 : 360); }
 
@@ -207,6 +264,7 @@
     //    append-only lines, it takes over the terminal body with a card that
     //    re-renders in place on each step. Scenarios come from data-scenarios.
     var simSt = null;   // { list, idx, score, phase: 'choice'|'outcome'|'done', chosen }
+    var SIM = null;     // active dataset (SCEN for sim, a quiz for `quiz`); set in simStart
     var simToastT = null;
     function copyText(t) {
       if (w.navigator && w.navigator.clipboard && w.navigator.clipboard.writeText) return w.navigator.clipboard.writeText(t);
@@ -228,17 +286,18 @@
       clearTimeout(simToastT); simToastT = setTimeout(function () { t.classList.remove('show'); }, 2000);
     }
     function simFocus() { if (!simPanel) return; try { simPanel.focus({ preventScroll: true }); } catch (e) { simPanel.focus(); } }
-    function simStart() {
-      if (!simPanel) { print('sim: панель симулятора недоступна на этой странице.', 'err'); return; }
-      var list = (SCEN.scenarios || []).slice();
-      if (!list.length) { print('sim: сценарии не загружены', 'err'); return; }
-      for (var i = list.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = list[i]; list[i] = list[j]; list[j] = t; }
-      list = list.slice(0, 6);
+    function simStart(set) {
+      if (!simPanel) { print('sim: панель недоступна на этой странице.', 'err'); return; }
+      SIM = set || SCEN;
+      var list = (SIM.scenarios || []).slice();
+      if (!list.length) { print((SIM.slug || 'sim') + ': вопросы не загружены', 'err'); return; }
+      if (SIM.shuffle !== false) { for (var i = list.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = list[i]; list[i] = list[j]; list[j] = t; } }
+      list = list.slice(0, SIM.limit || 6);
       simSt = { list: list, idx: 0, score: 0, phase: 'choice', chosen: null };
       body.style.display = 'none';
       if (keysBar) keysBar.style.display = 'none';
       simPanel.hidden = false;
-      if (titleEl) titleEl.textContent = 'guest@teamleads: ~/sim';
+      if (titleEl) titleEl.textContent = 'guest@teamleads: ~/' + (SIM.slug || 'sim');
       simRender();
       simPanel.focus();
     }
@@ -263,18 +322,20 @@
         if (simSt.idx >= simSt.list.length) simSt.phase = 'done';
         else { simSt.phase = 'choice'; simSt.chosen = null; }
         simRender();
-      } else if (simSt.phase === 'done') simStart();
+      } else if (simSt.phase === 'done') simStart(SIM);
     }
     function simShareUI() {
-      var url = SCEN.shareUrl || (w.location.origin + '/shell/#sim');
+      var slug = SIM.slug || 'sim';
+      var url = SIM.shareUrl || (w.location.origin + '/shell/#' + slug);
+      var label = SIM.shareLabel || 'Тимлид-симулятор';
       var played = simSt.phase === 'done' || simSt.idx > 0 || simSt.phase === 'outcome';
-      var txt = played ? ('Тимлид-симулятор: ' + simSt.score + '/' + simSt.list.length + ' разумных решений. Пройди и ты: ' + url)
-        : ('Тимлид-симулятор: ' + url);
+      var txt = played ? (label + ': ' + simSt.score + '/' + simSt.list.length + '. Пройди и ты: ' + url)
+        : (label + ': ' + url);
       copyText(txt).then(function () { simToast('Ссылка скопирована'); }, function () { simToast('Не удалось скопировать'); });
     }
     function simHead() {
       var head = el('div', 'sim-head');
-      head.appendChild(el('span', 'sim-kicker', SCEN.title || 'Тимлид-симулятор'));
+      head.appendChild(el('span', 'sim-kicker', SIM.title || 'Тимлид-симулятор'));
       head.appendChild(el('span', 'sim-progress', simSt.phase === 'done' ? 'итог' : (simSt.idx + 1) + ' / ' + simSt.list.length));
       head.appendChild(simBtn('✕', 'sim-x', simExit));
       simPanel.appendChild(head);
@@ -339,10 +400,10 @@
     function simRenderDone() {
       var n = simSt.list.length, sc = simSt.score;
       var card = el('div', 'sim-done');
-      card.appendChild(el('p', 'sim-score', 'ИТОГ: ' + sc + ' / ' + n + ' разумных решений'));
-      card.appendChild(el('p', 'sim-verdict', sc === n ? 'Чистый прогон. Тимлид не кодит – тимлид анблокает.'
-        : sc >= Math.ceil(n / 2) ? 'Крепко. Но часть развилок стоит обсудить вживую.'
-          : 'Есть над чем подумать – как раз тема для встречи.'));
+      card.appendChild(el('p', 'sim-score', 'ИТОГ: ' + sc + ' / ' + n + ' ' + (SIM.scoreLabel || 'разумных решений')));
+      var v = SIM.verdicts || ['Чистый прогон. Тимлид не кодит – тимлид анблокает.', 'Крепко. Но часть развилок стоит обсудить вживую.', 'Есть над чем подумать – как раз тема для встречи.'];
+      var vi = sc === n ? 0 : (sc >= Math.ceil(n / 2) ? 1 : 2);
+      card.appendChild(el('p', 'sim-verdict', v[vi]));
       var funnel = el('div', 'sim-funnel');
       funnel.appendChild(d.createTextNode('Продолжить вживую: '));
       var j = el('a', null, 'join'); j.href = '/join/'; funnel.appendChild(j);
@@ -443,47 +504,132 @@
       if (SAL.disclaimer) print(SAL.disclaimer, 'dim');
       salaryNudge();
     }
+    function submitSalary() {
+      var url = 'https://techinterview.space/salaries/add-new';
+      try { if (w.ym) w.ym(106055675, 'reachGoal', 'salary_submit', { source: 'shell' }); } catch (e) {}
+      print('Поделиться своей зарплатой – анонимно, пара минут.', 'accent');
+      print('Откроется форма techinterview.space. Нужна авторизация (вход через GitHub/Google).', 'dim');
+      printNode(link(url, url, true));
+      print('Чем больше анкет – тем точнее цифры в salary для всего сообщества.', 'dim');
+      w.open(url, '_blank', 'noopener');
+    }
+
+    // ── man pages: single source for `man`, `whatis`, `apropos`. Each value is a
+    //    one-paragraph "<name> – описание." Hoisted so the meta-commands can search it.
+    var MANPAGES = {
+      ls: 'ls [раздел] – содержимое текущего или указанного раздела.',
+      cd: 'cd <раздел> – войти. cd .. – наверх. cd – в корень. cd - – предыдущий раздел.',
+      open: 'open <страница> – открыть страницу в браузере.',
+      cat: 'cat <страница> – показать markdown-версию страницы с подсветкой (заголовки, цитаты, ссылки). cat <страница> --raw – без подсветки.',
+      head: 'head [-n N] <страница> – первые N строк markdown-страницы (по умолчанию 10).',
+      tail: 'tail [-n N] <страница> – последние N строк markdown-страницы (по умолчанию 10).',
+      wc: 'wc <страница> – подсчёт строк, слов и символов страницы + оценка времени чтения.',
+      stat: 'stat <страница> – метаданные страницы: раздел, дата, ссылка, объём, время чтения.',
+      pwd: 'pwd – текущий путь.',
+      tree: 'tree – всё дерево сайта со счётчиками.',
+      find: 'find <запрос> – ранжированный поиск по всем материалам (по релевантности).',
+      grep: 'grep <запрос> – полнотекстовый ранжированный поиск по всем страницам. grep --exact <строка> (или -e) – буквальная подстрока.',
+      latest: 'latest – открыть последнюю встречу.',
+      random: 'random – открыть случайный материал.',
+      discuss: 'discuss – случайная тема для обсуждения из бэклога /questions/ + что есть по ней в архиве. Синонимы: topic, тема, обсудить.',
+      tools: 'tools – топ инструментов сообщества.',
+      toolkit: 'toolkit – рабочие шаблоны (1-on-1, ретро, постмортем, найм, ADR). cat toolkit/<имя> – открыть шаблон здесь.',
+      voices: 'voices – реальные реплики участников из чата сообщества.',
+      companies: 'companies [поиск] – рейтинг компаний РК по отзывам (techinterview.space).',
+      company: 'company <имя> – отзывы о компании в терминале + ссылка на источник.',
+      addreview: 'addreview <имя> – открыть форму отзыва о компании на techinterview.space.',
+      salary: 'salary [грейд] [роль] – зарплаты рынка РК: живые данные techinterview.space (медиана, среднее, ремоут-премия, грейд-лестница, распределение). Без аргументов – обзор всего рынка. Напр.: salary senior backend. При офлайне – оценка сообщества. salary submit – добавить свою вилку.',
+      submit: 'submit <salary|review|project> – отправить данные сообществу: свою зарплату (salary), отзыв о компании (review <имя>) или проект в витрину (project).',
+      showcase: 'showcase – витрина проектов участников. showcase submit – открыть инструкцию SHOWCASE.md (форк → шаблон → Pull Request).',
+      sim: 'sim – тимлид-симулятор: развилки из реальных споров сообщества. Выбор a/b/c, [s] поделиться, [q] выйти. Синоним: simulator.',
+      games: 'games – список игр сообщества. games <имя> – запустить. sim – в терминале, sudoku – в отдельном окне. Синонимы: game, play, arcade.',
+      sudoku: 'sudoku – классическое судоку 9×9 в отдельном окне: грейды сложности, подсказки, проверка, таймер. То же, что games sudoku.',
+      principles: 'principles – доктрина сообщества: принципы управления, выжатые из реальных кейсов и статей. Синонимы: doctrine, manifesto.',
+      friends: 'friends – дружественные сообщества и сервисы (Claude Community KZ, techinterview.space).',
+      claude: 'claude <вопрос> – Claude-окно: офлайн-ответ по материалам сообщества. Ищет по полному тексту (как grep), показывает сниппеты и ссылки.',
+      codex: 'codex <вопрос> – Codex-окно: офлайн-ответ по материалам сообщества. Ищет по полному тексту (как grep), показывает сниппеты и ссылки.',
+      join: 'join – ссылка на еженедельную встречу.',
+      telegram: 'telegram – открыть Telegram сообщества.',
+      contribute: 'contribute – открыть репозиторий сайта на GitHub (правки, PR). Синонимы: github, gh, pr.',
+      feedback: 'feedback [текст] – открыть форму нового issue на GitHub с предзаполненным текстом. Синоним: bug.',
+      theme: 'theme [ps|bash] – переключить оформление терминала (PowerShell/стандартное). Выбор сохраняется в браузере.',
+      share: 'share – скопировать ссылку на последнюю команду (страница /s/<id>/ с OG-карточкой).',
+      whoami: 'whoami – кто такие «Тимлид не кодит». Синоним: about.',
+      apropos: 'apropos <слово> – найти команды по описанию. Напр.: apropos зарплат. Синоним: справка.',
+      whatis: 'whatis <команда> – короткое описание команды одной строкой.',
+      which: 'which <имя> – к какой команде сводится имя (и алиас ли это).',
+      alias: 'alias [имя] – список псевдонимов команд или цель конкретного алиаса.',
+      man: 'man <команда> – подробная справка по команде. Синонимы тоже понимает.',
+      neofetch: 'neofetch – сводка о «системе» сообщества.',
+      date: 'date – текущие дата и время.',
+      echo: 'echo <текст> – вывести текст.',
+      history: 'history – список введённых команд.',
+      clear: 'clear – очистить экран (Ctrl+L). Синоним: cls.',
+      fortune: 'fortune – случайная мудрость тимлида.',
+      vim: 'vim – открыть редактор. Выход: :q (если повезёт).',
+      sudo: 'sudo – для guest недоступно.',
+      help: 'help – список всех команд.'
+    };
+
+    // ── alias table: registering through alias() keeps a name→target map (for `which`
+    //    and `alias`) and refuses to clobber an existing command – the guard that would
+    //    have caught the historical `submit`→`addreview` collision.
+    var ALIASES = {};
+    function alias(name, target) {
+      if (Object.prototype.hasOwnProperty.call(commands, name) && !ALIASES[name]) {
+        try { if (w.console) w.console.warn('shell: alias "' + name + '" перекрывает команду'); } catch (e) {}
+        return;
+      }
+      commands[name] = commands[target]; ALIASES[name] = target;
+    }
+    function canonName(name) { var seen = {}; while (ALIASES[name] && !seen[name]) { seen[name] = 1; name = ALIASES[name]; } return name; }
 
     var commands = {
       help: function () {
+        function rows(list) { list.forEach(function (r) { print('  ' + pad(r[0], 18) + r[1]); }); }
         print('НАВИГАЦИЯ', 'accent');
-        [
+        rows([
           ['ls [раздел]', 'что вокруг / содержимое раздела'],
-          ['cd <раздел>', 'войти в раздел (cd .. – наверх)'],
+          ['cd <раздел>', 'войти в раздел (cd .. – наверх, cd - – назад)'],
           ['open <стр>', 'открыть страницу в браузере'],
-          ['cat <стр>', 'показать markdown страницы здесь'],
-          ['pwd', 'где я сейчас'],
           ['tree', 'всё дерево сайта'],
           ['find <запрос>', 'поиск по материалам (ранжированный)'],
           ['grep <запрос>', 'полнотекстовый поиск; --exact – подстрока'],
-          ['latest', 'последняя встреча'],
-          ['random', 'случайный материал']
-        ].forEach(function (r) { print('  ' + pad(r[0], 16) + r[1]); });
+          ['latest / random', 'последняя встреча / случайный материал']
+        ]);
+        print(''); print('ЧТЕНИЕ СТРАНИЦ', 'accent');
+        rows([
+          ['cat <стр>', 'markdown страницы здесь (--raw – без подсветки)'],
+          ['head/tail <стр>', 'первые / последние N строк (-n N)'],
+          ['wc <стр>', 'строки, слова, символы + время чтения'],
+          ['stat <стр>', 'метаданные: раздел, дата, объём, ссылка']
+        ]);
         print(''); print('УТИЛИТЫ', 'accent');
-        [
-          ['claude <вопрос>', 'спросить Claude (офлайн-демо)'],
-          ['codex <вопрос>', 'спросить Codex (офлайн-демо)'],
+        rows([
+          ['claude/codex <q>', 'офлайн-ассистенты по материалам сообщества'],
           ['salary', 'зарплаты рынка (живые данные): salary senior backend'],
-          ['submit salary', 'добавить свою вилку в выборку (нужна авторизация)'],
-          ['sim', 'тимлид-симулятор: развилки и решения'],
+          ['submit <что>', 'отправить: salary · review <фирма> · project'],
+          ['sim / games', 'тимлид-симулятор · игры (sim, sudoku)'],
           ['discuss', 'случайная тема из бэклога + разбор по ней'],
-          ['principles', 'доктрина сообщества: принципы из реальных кейсов'],
-          ['tools', 'топ инструментов сообщества'],
-          ['toolkit', 'шаблоны операционки: 1-on-1, ретро, постмортем…'],
-          ['showcase submit', 'добавить свой проект в витрину (инструкция)'],
+          ['principles', 'доктрина сообщества из реальных кейсов'],
+          ['tools / toolkit', 'инструменты · рабочие шаблоны операционки'],
           ['voices', 'реальные реплики участников из чата'],
-          ['companies', 'отзывы о компаниях (techinterview.space)'],
-          ['company <имя>', 'читать отзывы о компании + ссылка'],
-          ['addreview <имя>', 'оставить свой отзыв о компании'],
-          ['friends', 'дружественные сообщества и сервисы'],
-          ['join', 'ссылка на встречу'],
-          ['telegram', 'наш Telegram'],
-          ['contribute', 'код сайта на GitHub'],
-          ['man <cmd>', 'справка по команде'],
-          ['neofetch / date', 'инфо / время'],
-          ['clear', 'очистить (Ctrl+L)'],
-          ['home', 'на главную сайта']
-        ].forEach(function (r) { print('  ' + pad(r[0], 16) + r[1]); });
+          ['companies', 'отзывы о компаниях (company <имя>, addreview)'],
+          ['showcase', 'витрина проектов (showcase submit – добавить)'],
+          ['friends / join', 'дружественные сервисы · ссылка на встречу'],
+          ['telegram / contribute', 'Telegram · код сайта на GitHub']
+        ]);
+        print(''); print('СПРАВКА И НАСТРОЙКИ', 'accent');
+        rows([
+          ['man <cmd>', 'подробная справка по команде'],
+          ['apropos <слово>', 'найти команды по описанию'],
+          ['whatis / which', 'что делает команда / куда сводится имя'],
+          ['alias', 'список псевдонимов команд'],
+          ['theme [ps|bash]', 'оформление терминала (сохраняется)'],
+          ['share', 'скопировать ссылку на последнюю команду'],
+          ['feedback [текст]', 'оставить обратную связь (GitHub issue)'],
+          ['neofetch / date', 'инфо / время · clear (Ctrl+L) · home']
+        ]);
         print(''); print('Пасхалки: fortune, vim, top, sudo, git blame, coffee, 42, rm -rf /.', 'dim');
       },
       ls: function (a) {
@@ -517,9 +663,10 @@
       },
       cd: function (a) {
         var t = (a[0] || '').replace(/\/+$/, '');
-        if (t === '' || t === '~' || t === '/' || t === '..') { cwd = ''; setPrompt(); return; }
+        if (t === '-') { var d0 = prevCwd; prevCwd = cwd; cwd = d0; setPrompt(); print(pathStr(), 'dim'); return; }
+        if (t === '' || t === '~' || t === '/' || t === '..') { prevCwd = cwd; cwd = ''; setPrompt(); return; }
         if (t.indexOf('/') !== -1) { return commands.open(a); }
-        if (sections[t]) { cwd = t; setPrompt(); return; }
+        if (sections[t]) { prevCwd = cwd; cwd = t; setPrompt(); return; }
         if (links[t]) { go(links[t]); return; }
         print('cd: нет такого раздела: ' + t, 'err');
         print('доступно: ' + sectionNames.concat(linkNames).join(', '), 'dim');
@@ -782,7 +929,7 @@
           print('Добавить свою вилку в выборку: salary submit', 'hint');
           return;
         }
-        if (/^(submit|add|добавить|поделиться)$/.test((a[0] || '').toLowerCase())) { return commands.submit(); }
+        if (/^(submit|add|добавить|поделиться)$/.test((a[0] || '').toLowerCase())) { return submitSalary(); }
         // Resolve every token to a grade / role / city / skill (via RU aliases); last grade & role win, cities/skills accumulate.
         var grade = '', role = '', cities = [], skills = [];
         a.forEach(function (raw) {
@@ -830,14 +977,17 @@
         printNode(link(url, url, true));
         w.open(url, '_blank', 'noopener');
       },
-      submit: function () {
-        var url = 'https://techinterview.space/salaries/add-new';
-        try { if (w.ym) w.ym(106055675, 'reachGoal', 'salary_submit', { source: 'shell' }); } catch (e) {}
-        print('Поделиться своей зарплатой – анонимно, пара минут.', 'accent');
-        print('Откроется форма techinterview.space. Нужна авторизация (вход через GitHub/Google).', 'dim');
-        printNode(link(url, url, true));
-        print('Чем больше анкет – тем точнее цифры в salary для всего сообщества.', 'dim');
-        w.open(url, '_blank', 'noopener');
+      // Unified submission hub. Routes to the right form so a single `submit` verb
+      // covers salary, company review and showcase project (no name collisions).
+      submit: function (a) {
+        var what = (a[0] || '').toLowerCase();
+        if (/^(salary|зарплат|вилк)/.test(what)) { submitSalary(); return; }
+        if (/^(review|отзыв)/.test(what)) { commands.addreview(a.slice(1)); return; }
+        if (/^(project|projects|showcase|проект|витрин)/.test(what)) { commands.showcase(['submit']); return; }
+        print('Что отправить сообществу?', 'accent');
+        print('  submit salary            – свою зарплату в выборку (techinterview.space)', 'dim');
+        print('  submit review <компания> – отзыв о компании', 'dim');
+        print('  submit project           – проект в витрину (showcase)', 'dim');
       },
       showcase: function (a) {
         var sub = (a[0] || '').toLowerCase();
@@ -898,36 +1048,9 @@
       history: function () { if (!hist.length) { print('история пуста', 'dim'); return; } hist.forEach(function (c, i) { print('  ' + pad(i + 1, 4) + c); }); },
       clear: function () { out.innerHTML = ''; },
       man: function (a) {
-        var pages = {
-          ls: 'ls [раздел] – содержимое текущего или указанного раздела.',
-          cd: 'cd <раздел> – войти. cd .. – наверх. cd – в корень.',
-          open: 'open <страница> – открыть страницу в браузере.',
-          cat: 'cat <страница> – показать markdown-версию страницы с подсветкой (заголовки, цитаты, ссылки). cat <страница> --raw – без подсветки.',
-          pwd: 'pwd – текущий путь.',
-          tree: 'tree – всё дерево сайта со счётчиками.',
-          find: 'find <запрос> – ранжированный поиск по всем материалам (по релевантности).',
-          grep: 'grep <запрос> – полнотекстовый ранжированный поиск по всем страницам. grep --exact <строка> (или -e) – буквальная подстрока.',
-          latest: 'latest – открыть последнюю встречу.',
-          random: 'random – открыть случайный материал.',
-          discuss: 'discuss – случайная тема для обсуждения из бэклога /questions/ + что есть по ней в архиве. Синонимы: topic, тема, обсудить.',
-          tools: 'tools – топ инструментов сообщества.',
-          toolkit: 'toolkit – рабочие шаблоны (1-on-1, ретро, постмортем, найм, ADR). cat toolkit/<имя> – открыть шаблон здесь.',
-          salary: 'salary [грейд] [роль] – зарплаты рынка РК: живые данные techinterview.space (медиана, среднее, ремоут-премия, грейд-лестница, распределение). Без аргументов – обзор всего рынка. Напр.: salary senior backend. При офлайне – оценка сообщества. salary submit – добавить свою вилку.',
-          submit: 'submit (salary) – открыть форму techinterview.space/salaries/add-new и добавить свою зарплату в общую выборку. Анонимно; нужна авторизация (GitHub/Google). Синонимы: salary submit, salary add.',
-          showcase: 'showcase – витрина проектов участников. showcase submit – открыть инструкцию SHOWCASE.md (форк → шаблон → Pull Request).',
-          sim: 'sim – тимлид-симулятор: развилки из реальных споров сообщества. Выбор a/b/c, [s] поделиться, [q] выйти. Синонимы: simulator, game, play.',
-          principles: 'principles – доктрина сообщества: принципы управления, выжатые из реальных кейсов и статей. Синонимы: doctrine, manifesto.',
-          friends: 'friends – дружественные сообщества и сервисы (Claude Community KZ, techinterview.space).',
-          claude: 'claude <вопрос> – Claude-окно: офлайн-ответ по материалам сообщества. Ищет по полному тексту (как grep), показывает сниппеты и ссылки.',
-          codex: 'codex <вопрос> – Codex-окно: офлайн-ответ по материалам сообщества. Ищет по полному тексту (как grep), показывает сниппеты и ссылки.',
-          join: 'join – ссылка на еженедельную встречу.',
-          contribute: 'contribute – открыть репозиторий сайта на GitHub (правки, PR). Синонимы: github, gh, pr.',
-          fortune: 'fortune – случайная мудрость тимлида.',
-          vim: 'vim – открыть редактор. Выход: :q (если повезёт).',
-          sudo: 'sudo – для guest недоступно.',
-          help: 'help – список всех команд.'
-        };
+        var pages = MANPAGES;
         var k = (a[0] || '').toLowerCase();
+        k = canonName(k);
         if (!k) { print('Использование: man <команда>. Напр.: man tree', 'dim'); return; }
         print(pages[k] || ('man: нет страницы для ' + k), pages[k] ? null : 'err');
       },
@@ -940,7 +1063,154 @@
         var f = ['Сеньора не дают – сеньора берут.', 'Бас-фактор – это плата за экономию, отложенная во времени.', 'Документ говорит «что». Человек знает «почему».', 'Срочно – значит, некачественно. Автоматически.', 'За большим хайпом скрывается большой попил.', 'Тимлид и техлид – две разные работы с одним названием.', 'Стоять надо не там, где интересно, а у кормушки с деньгами.', 'Молчаливое большинство, которое читает, – здоровый показатель.'];
         print('« ' + f[Math.floor(Math.random() * f.length)] + ' »', 'accent');
       },
-      sim: function () { simStart(); },
+      sim: function () { simStart(SCEN); },
+      quiz: function (a) {
+        var list = (QUIZZES && QUIZZES.quizzes) ? QUIZZES.quizzes : [];
+        if (!list.length) { print('quiz: квизы не загружены', 'err'); return; }
+        var id = (a[0] || '').trim(), q = null;
+        if (id) { list.forEach(function (x) { if (x.id === id) q = x; }); }
+        else { q = list[0]; }
+        if (!q) { print('quiz: нет квиза «' + id + '». Доступны: ' + list.map(function (x) { return x.id; }).join(', '), 'dim'); return; }
+        simStart(q);
+      },
+      // Mini-arcade. Each game launches either in the terminal panel (sim) or a
+      // popup window (sudoku). New games: add a row to GAMES and a launch branch.
+      games: function (a) {
+        var GAMES = [
+          ['sim', 'тимлид-симулятор: развилки и решения', 'в терминале'],
+          ['sudoku', 'классическое судоку 9×9', 'в окне']
+        ];
+        var pick = (a[0] || '').toLowerCase();
+        if (!pick) {
+          print('Игры сообщества:', 'accent');
+          GAMES.forEach(function (g) {
+            var n = el('span'); n.appendChild(el('span', 'accent', '• '));
+            var a2 = el('a', null, pad(g[0], 10)); a2.href = 'javascript:void(0)';
+            a2.addEventListener('click', (function (name) { return function (e) { e.preventDefault(); run('games ' + name); }; })(g[0]));
+            n.appendChild(a2); n.appendChild(d.createTextNode(g[1] + ' ')); n.appendChild(el('span', 'dim', '· ' + g[2])); printNode(n);
+          });
+          print('Запуск: games <имя>. Напр.: games sudoku', 'hint');
+          return;
+        }
+        if (pick === 'sim' || pick === 'simulator') { simStart(); return; }
+        if (pick === 'sudoku') {
+          try { if (w.ym) w.ym(106055675, 'reachGoal', 'game_open', { source: 'shell', game: 'sudoku' }); } catch (e) {}
+          var url = (w.location.origin || '') + '/games/sudoku.html';
+          print('открываю судоку в новом окне…', 'cy');
+          printNode(link(url, url, true));
+          var win = w.open(url, 'tnk_sudoku', 'width=540,height=760,menubar=no,toolbar=no,location=no');
+          if (!win) print('окно заблокировано браузером – кликните по ссылке выше.', 'dim');
+          return;
+        }
+        print('games: нет такой игры: ' + pick, 'err');
+        print('доступно: sim, sudoku. Список – games.', 'dim');
+      },
+      sudoku: function () { commands.games(['sudoku']); },
+
+      // ── file utilities: head / tail / wc / stat over a page's markdown ──
+      head: function (a) { headTail('head', a); },
+      tail: function (a) { headTail('tail', a); },
+      wc: function (a) {
+        var hit = resolvePage(a[0]);
+        if (!hit) { print('wc: не найдено: ' + (a[0] || ''), 'err'); return; }
+        fetchPageText(hit, function (txt) {
+          var prose = plainText(txt);
+          var lines = txt.replace(/\s+$/, '').split('\n').length;
+          var words = (prose.match(/\S+/g) || []).length;
+          var mins = Math.max(1, Math.round(words / 200));
+          print('  ' + pad(lines, 6) + pad(words, 7) + txt.length + '  ' + hit.n, 'cy');
+          print('  строк   слов   символов · ~' + mins + ' мин чтения', 'dim');
+        });
+      },
+      stat: function (a) {
+        var hit = resolvePage(a[0]);
+        if (!hit) { print('stat: не найдено: ' + (a[0] || '') + '. Список – ls.', 'err'); return; }
+        var sec = ''; sectionNames.forEach(function (s) { (sections[s] || []).forEach(function (it) { if (it === hit) sec = s; }); });
+        print('  File:    ' + hit.n, 'accent');
+        print('  Title:   ' + hit.t);
+        if (sec) print('  Section: ' + sec);
+        if (hit.d) print('  Date:    ' + hit.d);
+        var ln = el('span'); ln.appendChild(el('span', 'dim', '  URL:     ')); ln.appendChild(link(hit.u, hit.u)); printNode(ln);
+        fetchPageText(hit, function (txt) {
+          var words = (plainText(txt).match(/\S+/g) || []).length;
+          print('  Size:    ' + words + ' слов · ~' + Math.max(1, Math.round(words / 200)) + ' мин · cat ' + hit.n + ' – прочитать', 'dim');
+        });
+      },
+
+      // ── meta: apropos / whatis / which / alias ──
+      apropos: function (a) {
+        var q = a.join(' ').toLowerCase().trim();
+        if (!q) { print('apropos <слово> – найти команды по описанию. Напр.: apropos зарплат', 'dim'); return; }
+        var hits = Object.keys(MANPAGES).filter(function (k) { return k.indexOf(q) !== -1 || MANPAGES[k].toLowerCase().indexOf(q) !== -1; });
+        if (!hits.length) { print('apropos: ничего по «' + q + '»', 'dim'); return; }
+        print('Найдено ' + hits.length + ':', 'dim');
+        hits.forEach(function (k) { var n = el('span'); n.appendChild(el('span', 'accent', pad(k, 12))); n.appendChild(d.createTextNode(manSummary(k))); printNode(n); });
+      },
+      whatis: function (a) {
+        var k = canonName((a[0] || '').toLowerCase());
+        if (!k) { print('whatis <команда> – короткое описание. Напр.: whatis grep', 'dim'); return; }
+        if (MANPAGES[k]) print(k + ' – ' + manSummary(k)); else print('whatis: ' + (a[0] || '') + ': нет описания', 'err');
+      },
+      which: function (a) {
+        var k = (a[0] || '').toLowerCase();
+        if (!k) { print('which <имя> – к какой команде сводится имя.', 'dim'); return; }
+        if (!Object.prototype.hasOwnProperty.call(commands, k)) { print('which: ' + k + ': команда не найдена', 'err'); return; }
+        if (ALIASES[k]) print(k + ' → ' + canonName(k) + '  (алиас)', 'cy');
+        else print(k + '  – встроенная команда', null);
+      },
+      alias: function (a) {
+        var k = (a[0] || '').toLowerCase();
+        if (k) {
+          if (ALIASES[k]) print(k + ' → ' + ALIASES[k], 'cy');
+          else if (Object.prototype.hasOwnProperty.call(commands, k)) print(k + ' – команда, не алиас', 'dim');
+          else print('alias: ' + k + ' не найден', 'err');
+          return;
+        }
+        var byTarget = {};
+        Object.keys(ALIASES).sort().forEach(function (n) { (byTarget[ALIASES[n]] = byTarget[ALIASES[n]] || []).push(n); });
+        var targets = Object.keys(byTarget).sort();
+        print('Псевдонимы команд (' + targets.length + '):', 'accent');
+        targets.forEach(function (t) { var n = el('span'); n.appendChild(el('span', 'accent', pad(t, 12))); n.appendChild(el('span', 'dim', byTarget[t].join(', '))); printNode(n); });
+      },
+
+      // ── environment: theme / share / feedback ──
+      theme: function (a) {
+        var t = (a[0] || '').toLowerCase();
+        var MAP = { ps: 'powershell', powershell: 'powershell', win: 'powershell', bash: 'bash', default: 'bash', unix: 'bash', dark: 'bash' };
+        if (!t) {
+          print('Текущая тема: ' + (psActive() ? 'powershell' : 'bash'), 'accent');
+          print('theme ps – PowerShell (синяя) · theme bash – стандартная. Выбор сохраняется.', 'dim');
+          return;
+        }
+        if (!MAP[t]) { print('theme: неизвестная тема: ' + t + '. Доступно: ps, bash', 'err'); return; }
+        if (MAP[t] === 'powershell') root.classList.add('term--ps'); else root.classList.remove('term--ps');
+        try { if (w.localStorage) w.localStorage.setItem('tnk_shell_theme', MAP[t]); } catch (e) {}
+        setPrompt(); print('тема: ' + MAP[t], 'ok');
+      },
+      share: function () {
+        var last = null;
+        for (var i = hist.length - 1; i >= 0; i--) { var v = (hist[i].split(/\s+/)[0] || '').toLowerCase(); if (v !== 'share' && SHARE[v]) { last = hist[i]; break; } }
+        var url;
+        if (last) {
+          var parts = last.split(/\s+/), verb = parts[0].toLowerCase(), args = parts.slice(1).join(' ');
+          url = (w.location.origin || '') + '/s/' + SHARE[verb] + '/';
+          if (args) url += '?cmd=' + encodeURIComponent(args).replace(/%20/g, '+');
+        } else {
+          url = (w.location.origin || '') + '/shell/';
+        }
+        copyText(url).then(function () { print('ссылка скопирована: ' + url, 'ok'); }, function () { print('ссылка: ' + url, 'cy'); });
+        printNode(link(url, url, true));
+      },
+      feedback: function (a) {
+        var body = a.join(' ').trim();
+        var base = 'https://github.com/belyaevsa/teamleads-2025/issues/new';
+        var url = base + '?title=' + encodeURIComponent('[shell] обратная связь') + (body ? '&body=' + encodeURIComponent(body) : '');
+        try { if (w.ym) w.ym(106055675, 'reachGoal', 'shell_feedback', { source: 'shell' }); } catch (e) {}
+        print('Спасибо! Откроется форма нового issue на GitHub.', 'accent');
+        printNode(link(url, url, true));
+        w.open(url, '_blank', 'noopener');
+      },
+
       vim: function () { vimMode = true; print('~', 'dim'); print('~  VIM – Vi IMproved', 'dim'); print('~', 'dim'); print('Вы в vim. Удачи с выходом: :q (или :q!).', 'hint'); },
       top: function () {
         print('PID   COMMAND           %CPU  STATE', 'dim');
@@ -963,32 +1233,35 @@
       home: function () { go('/'); },
       exit: function () { go('/'); }
     };
-    commands.go = commands.open; commands.search = commands.find;
-    commands.answer = commands['42']; commands.vi = commands.vim;
-    commands.ai = commands.claude; commands.ask = commands.claude;
-    commands.gpt = commands.codex; commands.openai = commands.codex;
-    commands.github = commands.contribute; commands.gh = commands.contribute; commands.pr = commands.contribute;
-    commands.simulator = commands.sim; commands.game = commands.sim; commands.play = commands.sim;
-    commands.topic = commands.discuss; commands['обсудить'] = commands.discuss; commands['тема'] = commands.discuss;
-    commands.chat = commands.voices; commands['голоса'] = commands.voices; commands.quotes = commands.voices;
-    commands.reviews = commands.company; commands.review = commands.company; commands.submit = commands.addreview;
-    commands['компании'] = commands.companies; commands['компания'] = commands.company;
-    commands.about = commands.whoami; commands.manifesto = commands.principles; commands.doctrine = commands.principles;
-    commands.contribute_salary = commands.submit; commands['добавить-зарплату'] = commands.submit;
-    commands.projects = commands.showcase; commands['витрина'] = commands.showcase;
-
-    // PowerShell dialect – so Windows visitors can drive the shell with the verbs
-    // (and aliases) they already know. Cmdlet names arrive lowercased via run().
-    commands.dir = commands.gci = commands['get-childitem'] = commands.ls;
-    commands.sl = commands.chdir = commands['set-location'] = commands.cd;
-    commands.type = commands.gc = commands['get-content'] = commands.cat;
-    commands.gl = commands['get-location'] = commands.pwd;
-    commands.cls = commands['clear-host'] = commands.clear;
-    commands.del = commands.erase = commands.ri = commands['remove-item'] = commands.rm;
-    commands.sls = commands['select-string'] = commands.grep;
-    commands['write-output'] = commands['write-host'] = commands.echo;
-    commands.ghy = commands['get-history'] = commands.history;
-    commands.start = commands.ii = commands['invoke-item'] = commands.open;
+    // Aliases go through alias(name, target): it records the mapping (powering `which`
+    // and `alias`) and refuses to overwrite a real command, so a future duplicate like
+    // the old `submit`→`addreview` clash is caught at load instead of silently breaking.
+    [
+      ['go', 'open'], ['search', 'find'], ['answer', '42'], ['vi', 'vim'],
+      ['ai', 'claude'], ['ask', 'claude'], ['gpt', 'codex'], ['openai', 'codex'],
+      ['github', 'contribute'], ['gh', 'contribute'], ['pr', 'contribute'],
+      ['simulator', 'sim'], ['game', 'games'], ['play', 'games'], ['arcade', 'games'],
+      ['topic', 'discuss'], ['обсудить', 'discuss'], ['тема', 'discuss'],
+      ['chat', 'voices'], ['голоса', 'voices'], ['quotes', 'voices'],
+      ['reviews', 'company'], ['review', 'company'], ['addreviews', 'addreview'],
+      ['компании', 'companies'], ['компания', 'company'],
+      ['about', 'whoami'], ['manifesto', 'principles'], ['doctrine', 'principles'],
+      ['contribute_salary', 'submit'], ['добавить-зарплату', 'submit'],
+      ['projects', 'showcase'], ['витрина', 'showcase'],
+      ['bug', 'feedback'], ['справка', 'apropos'], ['ll', 'ls'],
+      // PowerShell dialect – Windows visitors drive the shell with the verbs they know.
+      ['dir', 'ls'], ['gci', 'ls'], ['get-childitem', 'ls'],
+      ['sl', 'cd'], ['chdir', 'cd'], ['set-location', 'cd'],
+      ['type', 'cat'], ['gc', 'cat'], ['get-content', 'cat'],
+      ['gl', 'pwd'], ['get-location', 'pwd'],
+      ['cls', 'clear'], ['clear-host', 'clear'],
+      ['del', 'rm'], ['ri', 'rm'], ['remove-item', 'rm'],
+      ['sls', 'grep'], ['select-string', 'grep'],
+      ['write-output', 'echo'], ['write-host', 'echo'],
+      ['ghy', 'history'], ['get-history', 'history'],
+      ['start', 'open'], ['ii', 'open'], ['invoke-item', 'open'],
+      ['gal', 'alias'], ['gcm', 'help'], ['get-command', 'help']
+    ].forEach(function (p) { alias(p[0], p[1]); });
 
     // Analytics: count each typed command as a Yandex.Metrika goal (counter 106055675).
     // Sends only the command NAME (first token) – never the free-text arguments – so no PII.
@@ -1075,7 +1348,7 @@
           print('пример: salary senior backend almaty python', 'hint');
           comp.full = null; return;
         }
-      } else if (/^(company|reviews|review|addreview|submit)$/.test(verb0)) {
+      } else if (/^(company|reviews|review|addreview|addreviews)$/.test(verb0)) {
         // `company <Tab>` → complete company slugs from the baked list
         if (!frag) {
           echoLine();
