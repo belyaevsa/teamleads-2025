@@ -330,3 +330,10 @@ cmd = "feedback"
 run = "feedback"
 desc = "Оставить обратную связь по сайту – откроется новый issue на GitHub."
 out = ["Откроется форма нового issue на GitHub.", "→ github.com/belyaevsa/teamleads-2025/issues/new"]
+
+[[commands]]
+id = "fun"
+cmd = "fun"
+run = "fun"
+desc = "Инженерные задачки сообщества – открыть условие в Claude/Codex и скачать файл."
+out = ["• prime-numbers   «Жай сандар» кроссворд", "• magic-square    Сиқырлы квадраттар · fun <имя>"]

@@ -192,7 +192,18 @@
     lastQ = t; userBubble(t); input.value = ''; autoGrow(); botReply(t);
   }
 
-  function open(initial) {
+  // Render a loaded document (e.g. a /fun puzzle) as a bot "I loaded this" bubble,
+  // without running retrieval over its full text. ctx = { title, content }.
+  function loadContext(ctx) {
+    if (!ctx || !ctx.content) return;
+    var bb = bubble('bot');
+    bb.appendChild(el('p', null, 'Загрузил условие задачи «' + (ctx.title || 'задачка') + '». Разберём по шагам? Спросите, с чего начать, или попросите подсказку.'));
+    var pre = el('div', 'cl-context'); pre.textContent = ctx.content; bb.appendChild(pre);
+    msgs.scrollTop = msgs.scrollHeight;
+    lastQ = ctx.title || lastQ;
+  }
+
+  function open(initial, ctx) {
     build(); readFS();
     if (!msgs.childNodes.length) {
       typeInto(bubble('bot'), 'Здравствуйте! Я офлайн-ассистент в стиле Claude. Сетевых вызовов нет – отвечаю по материалам сообщества «Тимлид не кодит». О чём расскажете?', []);
@@ -200,6 +211,7 @@
     root.removeAttribute('hidden');
     d.body.classList.add('cl-lock');
     setTimeout(function () { input.focus(); }, 50);
+    if (ctx) loadContext(ctx);
     if (initial && initial.trim()) { lastQ = initial.trim(); userBubble(lastQ); botReply(lastQ); }
   }
   function close() { if (root) { root.setAttribute('hidden', ''); d.body.classList.remove('cl-lock'); } }

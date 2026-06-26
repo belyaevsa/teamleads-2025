@@ -1,6 +1,6 @@
 {{- /* Reusable terminal component. Call: {{ partial "shell.html" (dict "mode" "full") }} */ -}}
 {{- $mode := .mode | default "full" -}}
-{{- $sectionList := slice "events" "articles" "insights" "showcase" "toolkit" -}}
+{{- $sectionList := slice "events" "articles" "insights" "showcase" "toolkit" "fun" -}}
 {{- $sections := dict -}}
 {{- range $s := $sectionList -}}
   {{- $pages := (where site.RegularPages "Section" $s).ByDate.Reverse -}}
@@ -62,7 +62,7 @@
   {{- end -}}
 {{- end -}}
 
-<div class="term" data-term data-mode="{{ $mode }}" data-tg="{{ site.Params.telegram }}" data-fs='{{ $fs | jsonify }}' data-salary='{{ site.Data.salaries | jsonify }}' data-friends='{{ $friends | jsonify }}' data-scenarios='{{ site.Data.scenarios | jsonify }}' data-share='{{ $share | jsonify }}' data-questions='{{ $questions | jsonify }}' data-voices='{{ site.Data.voices | jsonify }}' data-companies='{{ $companies | jsonify }}'>
+<div class="term" data-term data-mode="{{ $mode }}"{{ if .urlsync }} data-urlsync="1"{{ end }} data-tg="{{ site.Params.telegram }}" data-fs='{{ $fs | jsonify }}' data-salary='{{ site.Data.salaries | jsonify }}' data-friends='{{ $friends | jsonify }}' data-scenarios='{{ site.Data.scenarios | jsonify }}' data-share='{{ $share | jsonify }}' data-questions='{{ $questions | jsonify }}' data-voices='{{ site.Data.voices | jsonify }}' data-companies='{{ $companies | jsonify }}'>
   <div class="term-bar">
     <span class="term-dot red"></span><span class="term-dot yellow"></span><span class="term-dot green"></span>
     <span class="term-title" data-term-title>guest@teamleads: /</span>

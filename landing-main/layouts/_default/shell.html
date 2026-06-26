@@ -6,7 +6,7 @@
       <p class="section-desc">Навигация по сайту сообщества из терминала.{{ with .Params.proof }}{{ with .entries }} {{ range $i, $e := . }}{{ if $i }} · {{ end }}<a href="{{ $e.href }}">{{ $e.label }}</a>{{ end }}{{ end }}{{ end }}</p>
     </div>
 
-    {{ partial "shell.html" (dict "mode" "full") }}
+    {{ partial "shell.html" (dict "mode" "full" "urlsync" true) }}
 
   </div>
 </section>

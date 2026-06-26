@@ -23,6 +23,9 @@
     if (!out || !body || !input) return;
 
     var mode = root.getAttribute('data-mode') || 'full';
+    // Only the dedicated /shell/ page rewrites the address bar as commands run (data-urlsync="1").
+    // Embedded terminals (homepage, 404) must not touch the URL.
+    var URLSYNC = root.getAttribute('data-urlsync') === '1';
     // Windows visitors get a PowerShell skin (blue theme + PS prompt + PS aliases);
     // everyone else keeps the bash-style shell. Detect via UA-CH, then platform/UA.
     var WIN = false;
@@ -174,6 +177,25 @@
     function manSummary(k) {
       var rest = (MANPAGES[k] || '').split(' – ').slice(1).join(' – ');
       return (rest.split(/[.·]/)[0] || rest).trim();
+    }
+    // Trigger a client-side file download of `text` named `name`.
+    function downloadText(name, text) {
+      try {
+        var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        var url = (w.URL || w.webkitURL).createObjectURL(blob);
+        var a = d.createElement('a'); a.href = url; a.download = name; a.style.display = 'none';
+        d.body.appendChild(a); a.click();
+        setTimeout(function () { d.body.removeChild(a); (w.URL || w.webkitURL).revokeObjectURL(url); }, 0);
+        return true;
+      } catch (e) { return false; }
+    }
+    // Markdown puzzle → readable plain text: drop front-matter & images, <br> → newline, strip tags.
+    function cleanPuzzle(md) {
+      return md.replace(/^---[\s\S]*?\n---\n/, '')
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/?[^>]+>/g, '')
+        .replace(/\n{3,}/g, '\n\n').trim();
     }
     function pathStr() { return '/' + cwd; }
     // PowerShell maps the section to a Windows path: C:\Users\guest[\section].
@@ -544,6 +566,7 @@
       sim: 'sim – тимлид-симулятор: развилки из реальных споров сообщества. Выбор a/b/c, [s] поделиться, [q] выйти. Синоним: simulator.',
       games: 'games – список игр сообщества. games <имя> – запустить. sim – в терминале, sudoku – в отдельном окне. Синонимы: game, play, arcade.',
       sudoku: 'sudoku – классическое судоку 9×9 в отдельном окне: грейды сложности, подсказки, проверка, таймер. То же, что games sudoku.',
+      fun: 'fun [имя] [codex] – инженерные задачки сообщества. Без имени – список. fun <имя> открывает условие в ассистенте Claude (или Codex) и скачивает файл задачки. Синонимы: puzzles, задачки.',
       principles: 'principles – доктрина сообщества: принципы управления, выжатые из реальных кейсов и статей. Синонимы: doctrine, manifesto.',
       friends: 'friends – дружественные сообщества и сервисы (Claude Community KZ, techinterview.space).',
       claude: 'claude <вопрос> – Claude-окно: офлайн-ответ по материалам сообщества. Ищет по полному тексту (как grep), показывает сниппеты и ссылки.',
@@ -610,6 +633,7 @@
           ['salary', 'зарплаты рынка (живые данные): salary senior backend'],
           ['submit <что>', 'отправить: salary · review <фирма> · project'],
           ['sim / games', 'тимлид-симулятор · игры (sim, sudoku)'],
+          ['fun [имя]', 'инженерные задачки – открыть с Claude/Codex'],
           ['discuss', 'случайная тема из бэклога + разбор по ней'],
           ['principles', 'доктрина сообщества из реальных кейсов'],
           ['tools / toolkit', 'инструменты · рабочие шаблоны операционки'],
@@ -1106,6 +1130,44 @@
         print('доступно: sim, sudoku. Список – games.', 'dim');
       },
       sudoku: function () { commands.games(['sudoku']); },
+      // ── fun: inженerные задачки from content/fun. Open one in the Claude/Codex
+      //    assistant with its text loaded as context, and download the puzzle file.
+      fun: function (a) {
+        var items = sections.fun || [];
+        if (!items.length) { print('fun: задачки не загружены', 'err'); return; }
+        var rest = a.slice(), tool = 'claude';
+        rest = rest.filter(function (x) {
+          var lx = x.toLowerCase();
+          if (/^(--codex|codex|-x)$/.test(lx)) { tool = 'codex'; return false; }
+          if (/^(--claude|claude|-c)$/.test(lx)) { tool = 'claude'; return false; }
+          return true;
+        });
+        var name = (rest[0] || '').replace(/^fun\//, '').replace(/^\/|\/$/g, '');
+        if (!name) {
+          print('Инженерные задачки сообщества:', 'accent');
+          items.forEach(function (it) {
+            var n = el('span'); n.appendChild(el('span', 'accent', '• '));
+            var lnk = el('a', null, pad(it.n, 16)); lnk.href = 'javascript:void(0)';
+            lnk.addEventListener('click', (function (nm) { return function (e) { e.preventDefault(); run('fun ' + nm); }; })(it.n));
+            n.appendChild(lnk); n.appendChild(d.createTextNode(it.t)); printNode(n);
+          });
+          print('Открыть с ассистентом: fun <имя> [codex]. Напр.: fun ' + (items[0] && items[0].n) + ' codex', 'hint');
+          print('Откроется Claude/Codex с условием, файл задачки скачается.', 'dim');
+          return;
+        }
+        var hit = null; items.forEach(function (it) { if (it.n === name) hit = it; });
+        if (!hit) { print('fun: задачка не найдена: ' + name + '. Список – fun.', 'err'); return; }
+        var TOOL = tool === 'codex' ? w.TeamleadsCodex : w.TeamleadsClaude;
+        if (!TOOL || !TOOL.open) { print('fun: окно ' + tool + ' недоступно на этой странице. Откройте: open fun/' + name, 'err'); return; }
+        try { if (w.ym) w.ym(106055675, 'reachGoal', 'fun_open', { source: 'shell', tool: tool, puzzle: name }); } catch (e) {}
+        print('загружаю «' + hit.t + '» в ' + (tool === 'codex' ? 'Codex' : 'Claude') + '…', 'cy');
+        fetchPageText(hit, function (txt) {
+          var clean = cleanPuzzle(txt);
+          TOOL.open('', { title: hit.t, content: clean });
+          if (downloadText(name + '.txt', clean)) print('условие скачано: ' + name + '.txt', 'ok');
+          var ln = el('span'); ln.appendChild(el('span', 'dim', 'страница задачки: ')); ln.appendChild(link(hit.u, hit.u)); printNode(ln);
+        });
+      },
 
       // ── file utilities: head / tail / wc / stat over a page's markdown ──
       head: function (a) { headTail('head', a); },
@@ -1249,6 +1311,7 @@
       ['contribute_salary', 'submit'], ['добавить-зарплату', 'submit'],
       ['projects', 'showcase'], ['витрина', 'showcase'],
       ['bug', 'feedback'], ['справка', 'apropos'], ['ll', 'ls'],
+      ['puzzles', 'fun'], ['задачки', 'fun'], ['задачка', 'fun'],
       // PowerShell dialect – Windows visitors drive the shell with the verbs they know.
       ['dir', 'ls'], ['gci', 'ls'], ['get-childitem', 'ls'],
       ['sl', 'cd'], ['chdir', 'cd'], ['set-location', 'cd'],
@@ -1278,6 +1341,7 @@
     // OG-card page when one exists, else /shell/#<cmd>. Copying the URL = sharing.
     function syncUrl(cmd) {
       try {
+        if (!URLSYNC) return;   // embedded terminals (homepage, 404) leave the address bar alone
         if (!(w.history && w.history.replaceState)) return;
         var parts = cmd.split(/\s+/), verb = (parts[0] || '').toLowerCase(), args = parts.slice(1).join(' ');
         var id = SHARE[verb], url;
