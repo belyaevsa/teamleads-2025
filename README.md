@@ -11,10 +11,12 @@ Telegram: [@teamleads_kz](https://t.me/teamleads_kz)
 ```
 .
 ├── landing-main/          # Main site (teamleads.kz) – Hugo
-│   ├── content/events/    # Meeting report pages
-│   ├── layouts/           # Templates, OG image generation
+│   ├── content/           # events, articles, insights, showcase, toolkit, fun, shell
+│   ├── data/              # salaries, companies, voices, scenarios, shell_commands…
+│   ├── layouts/           # Templates, OG image generation, shell page
 │   ├── assets/            # CSS, fonts, images
-│   ├── static/            # Fonts, favicons
+│   ├── static/js/         # shell.js (terminal), claude/codex chat, salary, retrieval
+│   ├── static/games/      # sudoku.html (standalone game)
 │   ├── deploy.sh          # rsync to production
 │   └── Dockerfile         # Minimal Docker build
 │
@@ -59,6 +61,39 @@ Two-stage build: `hugomods/hugo:exts-0.153.4` + `scratch`. Final image ~5MB, con
 ```
 
 Builds and rsyncs to `ps-enter:/opt/teamleads.kz/latest/`.
+
+## Shell (interactive terminal)
+
+The site ships an in-browser terminal that turns the whole site into a navigable
+filesystem. It lives at [/shell/](https://teamleads.kz/shell/), and is also embedded
+as a sticky dock on the homepage and on the 404 page.
+
+- **Core:** `static/js/shell.js` (dependency-free), mounted via `layouts/partials/shell.html`.
+  Config is passed through `data-*` attributes (filesystem, salary data, scenarios, share map…).
+- **Commands:**
+  - *Navigation / reading:* `ls`, `cd`, `open`, `cat`, `find`, `grep`, `tree`, `head`, `tail`, `wc`, `stat`
+  - *Data:* `salary` (live market data from techinterview.space), `companies` / `company` / `addreview` (company reviews)
+  - *Interactive:* `sim` (тимлид-симулятор), `games` / `sudoku`, `fun` (engineering puzzles loaded into the assistant)
+  - *Assistants:* `claude` / `codex` – offline chat overlays (`static/js/claude-chat.js`, `codex-chat.js`) answering from site content
+  - *Meta / utils:* `man`, `apropos`, `whatis`, `which`, `alias`, `theme`, `share`, `feedback`, `submit`
+- **Data sources:** `data/*.{yaml,json,toml}` – `salaries`, `companies`, `voices`, `scenarios`, `quizzes`, `shell_commands`.
+- **Windows visitors** get a PowerShell skin (blue theme, `PS C:\>` prompt, cmdlet aliases like `dir`/`gci`); `theme ps|bash` toggles it.
+
+### Hugo output formats (for the shell)
+
+Defined in `hugo.toml`:
+
+- `cat` – plain-markdown `index.md` next to each page's HTML; the `cat` command fetches it on demand.
+- `shellindex` – one `shell-index.json` full-text index, fetched once for ranked `grep` / `find`.
+- `catshare` – per-page "open in shell" share card (`/<section>/<base>/shell.html`) with a terminal-style OG image.
+
+### Shareable command pages
+
+`data/shell_commands.toml` is the single catalog of shareable commands. `content/s/_content.gotmpl`
+mints a real page at `/s/<id>/` for each entry, with a terminal OG card
+(`layouts/partials/og-shell.html`) and a redirect into `/shell/` that auto-runs the command.
+On the `/shell/` page (only), the address bar is rewritten to the matching `/s/<id>/` link as
+commands run, so copying the URL shares the exact command.
 
 ## Meeting reports
 
