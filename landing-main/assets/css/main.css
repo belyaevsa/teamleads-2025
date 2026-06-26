@@ -3278,6 +3278,14 @@ body > .nav {
 /* ── Тимлид-симулятор: interactive panel that replaces the terminal body ── */
 .term-sim{flex:1 1 auto;min-height:0;overflow-y:auto;padding:22px;color:#c9d1d9;font-size:14px;line-height:1.6;outline:none;scrollbar-width:thin;scrollbar-color:#30363d #0d1117}
 .term-sim[hidden]{display:none}
+.term-editor{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;background:#0d1117}
+.term-editor[hidden]{display:none}
+.term-editor-bar{display:flex;align-items:center;gap:12px;padding:8px 14px;background:#161b22;border-bottom:1px solid #21262d;color:#39c5cf;font-size:13px;font-weight:600}
+.term-editor-meta{margin-left:auto;color:#8b949e;font-weight:400;font-variant-numeric:tabular-nums}
+.term-editor-area{flex:1 1 auto;min-height:0;width:100%;box-sizing:border-box;resize:none;border:0;outline:none;padding:14px;background:#0d1117;color:#c9d1d9;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;tab-size:2}
+.term-editor-keys{display:flex;gap:8px;padding:8px 14px;background:#161b22;border-top:1px solid #21262d}
+.term-editor-keys>button{padding:6px 12px;background:#21262d;border:1px solid #30363d;border-radius:8px;color:#c9d1d9;font:inherit;font-size:13px;cursor:pointer}
+.term-editor-keys>button:hover{border-color:#39c5cf}
 .term-sim::-webkit-scrollbar{width:9px}.term-sim::-webkit-scrollbar-thumb{background:#30363d;border-radius:5px}
 .sim-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .sim-kicker{color:#FEC50C;font-weight:600;font-size:12px;letter-spacing:.08em;text-transform:uppercase}

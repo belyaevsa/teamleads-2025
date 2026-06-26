@@ -372,3 +372,48 @@ cmd = "fun"
 run = "fun"
 desc = "Инженерные задачки сообщества – открыть условие в Claude/Codex и скачать файл."
 out = ["• prime-numbers   «Жай сандар» кроссворд", "• magic-square    Сиқырлы квадраттар · fun <имя>"]
+
+# ── Writable filesystem (user files in localStorage). The safe demos auto-run as-is;
+#    rm/mv/cp share a benign `run` (bare verb → usage) so the share link never errors.
+
+[[commands]]
+id = "nano"
+cmd = "nano notes.md"
+run = "nano notes.md"
+desc = "Редактор прямо в терминале: создавайте и правьте свои файлы. Хранится в браузере с автором и датой."
+out = ["GNU nano · /notes.md  (новый)", "^O Сохранить · ^X Выход · файл в localStorage"]
+
+[[commands]]
+id = "mkdir"
+cmd = "mkdir projects"
+run = "mkdir projects"
+desc = "Своя файловая система в терминале: каталоги и файлы поверх контента сайта."
+out = ["каталог создан: /projects", "ls · cd projects · touch/nano – создать файл"]
+
+[[commands]]
+id = "touch"
+cmd = "touch readme.md"
+run = "touch readme.md"
+desc = "Создать пустой файл в вашей файловой системе (localStorage) – с автором и датой."
+out = ["readme.md  0 Б · автор guest", "nano readme.md – наполнить · stat – метаданные"]
+
+[[commands]]
+id = "rm"
+cmd = "rm notes.md"
+run = "rm"
+desc = "Удалить свой файл или каталог (rm -r). Материал сайта только скрывается у вас – исходник цел."
+out = ["rm [-r] <файл|каталог> – удалить", "rm -rf / … обошлось. На проде так не надо."]
+
+[[commands]]
+id = "mv"
+cmd = "mv draft.md notes.md"
+run = "mv"
+desc = "Переместить или переименовать свой файл/каталог. В существующий каталог – переносит внутрь."
+out = ["mv <откуда> <куда>", "ls – проверить · cp – копия вместо переноса"]
+
+[[commands]]
+id = "cp"
+cmd = "cp events/{latest-event} my-notes.md"
+run = "cp"
+desc = "Скопировать свой файл (cp -r) или сделать редактируемую копию материала сайта."
+out = ["cp [-r] <откуда> <куда>", "cp <страница> <имя> – копия материала в ваш файл"]

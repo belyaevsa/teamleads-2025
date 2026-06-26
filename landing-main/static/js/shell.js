@@ -21,6 +21,10 @@
     var promptEl = root.querySelector('[data-term-prompt]');
     var titleEl = root.querySelector('[data-term-title]');
     var simPanel = root.querySelector('[data-term-sim]');
+    var edPanel = root.querySelector('[data-term-editor]');
+    var edArea = root.querySelector('[data-term-editor-area]');
+    var edName = root.querySelector('[data-term-editor-name]');
+    var edMeta = root.querySelector('[data-term-editor-meta]');
     if (!out || !body || !input) return;
 
     var mode = root.getAttribute('data-mode') || 'full';
@@ -71,7 +75,7 @@
     sectionNames.forEach(function (s) { (sections[s] || []).forEach(function (it) { pool.push(it); }); });
 
     var reduced = w.matchMedia && w.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var cwd = '';            // '' = root, otherwise a section name
+    var cwd = '';            // '' = root; otherwise a path with no leading slash (events, projects/sub)
     var prevCwd = '';        // last directory, for `cd -`
     var vimMode = false;
     var hist = [], hpos = -1;
@@ -144,6 +148,136 @@
       if (!hit) pool.forEach(function (it) { if (it.n === name) hit = it; });
       return hit;
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // User filesystem: a writable overlay in localStorage, unioned OVER the baked
+    // read-only content. Full-overlay model: user nodes may be created at ANY path
+    // (even inside /events), a user node SHADOWS the baked node at the same path,
+    // and deleting a baked node records a tombstone (whiteout) that hides it.
+    // Keyed by a normalized path string with NO leading slash – same encoding as
+    // `cwd` ('' = root, 'projects', 'projects/sub/idea.md').
+    // ════════════════════════════════════════════════════════════════════════
+    var UFS_KEY = 'tnk_shell_fs';
+    var ufs = { v: 1, nodes: {}, tombs: {} };  // nodes: path→{type,content,ctime,mtime,author}; tombs: path→1
+    var ufsMem = false;                          // localStorage blocked → session-only, with a warning
+    try {
+      var _ufsRaw = w.localStorage && w.localStorage.getItem(UFS_KEY);
+      if (_ufsRaw) { var _up = JSON.parse(_ufsRaw); if (_up && _up.nodes) ufs = { v: _up.v || 1, nodes: _up.nodes || {}, tombs: _up.tombs || {} }; }
+    } catch (e) { ufsMem = true; }
+    function ufsSave() {
+      if (ufsMem) return true;
+      try { w.localStorage.setItem(UFS_KEY, JSON.stringify(ufs)); return true; }
+      catch (e) { ufsMem = true; print('диск недоступен или переполнен – правки сохранены только в этой вкладке', 'err'); return false; }
+    }
+    function ufsUser() { try { return (w.localStorage && w.localStorage.getItem('tnk_shell_user')) || 'guest'; } catch (e) { return 'guest'; } }
+    function ufsNow() { try { return Date.now(); } catch (e) { return 0; } }
+    function fmtTs(ms) {
+      if (!ms) return '–';
+      try { var t = new Date(ms), z = function (n) { return (n < 10 ? '0' : '') + n; };
+        return z(t.getDate()) + '.' + z(t.getMonth() + 1) + '.' + t.getFullYear() + ' ' + z(t.getHours()) + ':' + z(t.getMinutes()); }
+      catch (e) { return '–'; }
+    }
+    // Normalize an arg to a path with NO leading/trailing slash ('' = root). Leading
+    // / or ~ → absolute; otherwise relative to cwd. Resolves '.' and '..'.
+    function normPath(arg) {
+      arg = String(arg == null ? '' : arg);
+      var absolute = arg.charAt(0) === '/' || arg.charAt(0) === '~';
+      if (arg.charAt(0) === '~') arg = arg.slice(1);
+      var parts = absolute ? [] : (cwd ? cwd.split('/') : []);
+      arg.split('/').forEach(function (seg) {
+        if (seg === '' || seg === '.') return;
+        if (seg === '..') { parts.pop(); return; }
+        parts.push(seg);
+      });
+      return parts.join('/');
+    }
+    function parentOf(p) { var i = p.lastIndexOf('/'); return i < 0 ? '' : p.slice(0, i); }
+    function baseName(p) { var i = p.lastIndexOf('/'); return i < 0 ? p : p.slice(i + 1); }
+    // Baked lookup: is `path` baked content? → {type, item?, link?} or null.
+    function bakedAt(path) {
+      if (path === '') return { type: 'dir' };
+      var segs = path.split('/');
+      if (segs.length === 1) {
+        if (sections[segs[0]]) return { type: 'dir' };
+        if (links[segs[0]]) return { type: 'file', link: links[segs[0]] };
+        return null;
+      }
+      if (segs.length === 2 && sections[segs[0]]) {
+        var hit = null; (sections[segs[0]] || []).forEach(function (it) { if (it.n === segs[1]) hit = it; });
+        if (hit) return { type: 'file', item: hit };
+      }
+      return null;
+    }
+    // Baked children of a dir path, or null if it isn't a baked dir.
+    function bakedChildren(path) {
+      if (path === '') {
+        var r = [];
+        sectionNames.forEach(function (s) { r.push({ name: s, type: 'dir', source: 'baked' }); });
+        linkNames.forEach(function (k) { r.push({ name: k, type: 'file', source: 'baked', link: links[k] }); });
+        return r;
+      }
+      if (sections[path]) return (sections[path] || []).map(function (it) { return { name: it.n, type: 'file', source: 'baked', item: it }; });
+      return null;
+    }
+    // Union resolve: {type, source:'user'|'baked', node?|item?|link?} or null (missing/whiteout).
+    function statPath(path) {
+      var u = ufs.nodes[path];
+      if (u) return { type: u.type, source: 'user', node: u };
+      if (ufs.tombs[path]) return null;
+      var b = bakedAt(path);
+      if (b) return { type: b.type, source: 'baked', item: b.item, link: b.link };
+      return null;
+    }
+    function isDir(path) { if (path === '') return true; var s = statPath(path); return !!(s && s.type === 'dir'); }
+    function ufsChildrenCount(path) { var n = 0; Object.keys(ufs.nodes).forEach(function (p) { if (parentOf(p) === path) n++; }); return n; }
+    // Union listing: baked children overlaid with user children, tombstones removed; dirs first.
+    function listDir(path) {
+      var byName = {};
+      var bk = bakedChildren(path);
+      if (bk) bk.forEach(function (e) { byName[e.name] = e; });
+      Object.keys(ufs.nodes).forEach(function (p) {
+        if (parentOf(p) === path) { var n = ufs.nodes[p]; byName[baseName(p)] = { name: baseName(p), type: n.type, source: 'user', node: n }; }
+      });
+      Object.keys(ufs.tombs).forEach(function (p) { if (parentOf(p) === path && !ufs.nodes[p]) delete byName[baseName(p)]; });
+      return Object.keys(byName).sort(function (a, b) {
+        var da = byName[a].type === 'dir', db = byName[b].type === 'dir';
+        if (da !== db) return da ? -1 : 1;
+        return a < b ? -1 : a > b ? 1 : 0;
+      }).map(function (k) { return byName[k]; });
+    }
+    // Create a dir and any missing parents (mkdir -p). Returns an error string or null.
+    function ensureDir(path, author, now) {
+      if (path === '') return null;
+      var segs = path.split('/'), cur = '';
+      for (var i = 0; i < segs.length; i++) {
+        cur = cur ? cur + '/' + segs[i] : segs[i];
+        var s = statPath(cur);
+        if (s) { if (s.type !== 'dir') return 'не каталог: /' + cur; continue; }
+        ufs.nodes[cur] = { type: 'dir', ctime: now, mtime: now, author: author };
+      }
+      return null;
+    }
+    // Drop a user node and all its descendants.
+    function ufsRemoveSubtree(path) {
+      delete ufs.nodes[path];
+      var pre = path + '/';
+      Object.keys(ufs.nodes).forEach(function (p) { if (p.indexOf(pre) === 0) delete ufs.nodes[p]; });
+    }
+    // Render one ls entry (baked page/section/link or user file/dir) with metadata.
+    function lsRenderEntry(e, full) {
+      var n = el('span');
+      if (e.type === 'dir') {
+        n.appendChild(el('span', 'dim', 'd '));
+        if (e.source === 'baked' && sections[full]) { n.appendChild(linkpad('/' + full + '/', e.name + '/', 18)); n.appendChild(el('span', 'dim', (sections[full] || []).length + ' материалов')); }
+        else { n.appendChild(el('span', 'accent', pad(e.name + '/', 18))); n.appendChild(el('span', 'dim', fmtTs(e.node && e.node.mtime) + ' · ' + ((e.node && e.node.author) || ''))); }
+      } else {
+        n.appendChild(el('span', 'dim', '- '));
+        if (e.source === 'baked' && e.item) { n.appendChild(linkpad(e.item.u, e.name, 18)); n.appendChild(el('span', 'dim', e.item.d || '')); }
+        else if (e.source === 'baked' && e.link) { n.appendChild(linkpad(e.link, e.name, 18)); }
+        else { n.appendChild(el('span', null, pad(e.name, 18))); var sz = ((e.node && e.node.content) || '').length; n.appendChild(el('span', 'dim', sz + ' Б · ' + fmtTs(e.node && e.node.mtime) + ' · ' + ((e.node && e.node.author) || ''))); }
+      }
+      printNode(n);
+    }
     // Fetch a page's raw markdown with a transient "загрузка…" line. Centralizes the
     // loading/error dance repeated across cat/company/find/grep.
     function fetchPageText(hit, onText) {
@@ -165,14 +299,17 @@
         if (a[i] === '-n' && /^\d+$/.test(a[i + 1] || '')) { n = parseInt(a[i + 1], 10); a.splice(i, 2); i--; }
         else if (/^-n?\d+$/.test(a[i])) { n = parseInt(a[i].replace(/^-n?/, ''), 10); a.splice(i, 1); i--; }
       }
-      var hit = resolvePage(a[0]);
-      if (!hit) { print(kind + ': не найдено: ' + (a[0] || '') + '. Список – ls.', 'err'); return; }
-      fetchPageText(hit, function (txt) {
+      function show(txt, label) {
         var lines = txt.replace(/\s+$/, '').split('\n');
         var slice = kind === 'head' ? lines.slice(0, n) : lines.slice(Math.max(0, lines.length - n));
         slice.forEach(function (l) { print(l || ''); });
-        print('– ' + kind + ' -n ' + n + ' · всего строк: ' + lines.length + ' · cat ' + hit.n + ' – полностью', 'dim');
-      });
+        print('– ' + kind + ' -n ' + n + ' · всего строк: ' + lines.length + ' · cat ' + label + ' – полностью', 'dim');
+      }
+      var un = ufs.nodes[normPath(a[0])];
+      if (un) { if (un.type === 'dir') { print(kind + ': /' + normPath(a[0]) + ' – каталог', 'err'); return; } show(un.content || '', a[0]); return; }
+      var hit = resolvePage(a[0]);
+      if (!hit) { print(kind + ': не найдено: ' + (a[0] || '') + '. Список – ls.', 'err'); return; }
+      fetchPageText(hit, function (txt) { show(txt, hit.n); });
     }
     // Short one-line gist of a man page (drops the "<name> –" prefix, first sentence).
     function manSummary(k) {
@@ -200,7 +337,7 @@
     }
     function pathStr() { return '/' + cwd; }
     // PowerShell maps the section to a Windows path: C:\Users\guest[\section].
-    function winPath() { return 'C:\\Users\\guest' + (cwd ? '\\' + cwd : ''); }
+    function winPath() { return 'C:\\Users\\guest' + (cwd ? '\\' + cwd.replace(/\//g, '\\') : ''); }
     function psActive() { return root.classList.contains('term--ps'); }   // PowerShell skin live state (toggled by `theme`)
     function promptMarkup() {
       return psActive() ? ('PS ' + winPath() + '>') : ('<b>guest@teamleads</b>:' + pathStr() + '$');
@@ -289,6 +426,50 @@
     var simSt = null;   // { list, idx, score, phase: 'choice'|'outcome'|'done', chosen }
     var SIM = null;     // active dataset (SCEN for sim, a quiz for `quiz`); set in simStart
     var simToastT = null;
+
+    // ── nano: a modal editor for the user FS. Like sim, it OWNS the keyboard while
+    //    open (editorSt gates the prompt). ^O writes back to localStorage, ^X exits.
+    var editorSt = null;   // { path, dirty }
+    function nanoStart(path) {
+      if (!edPanel || !edArea) { print('nano: редактор недоступен на этой странице. Откройте /shell/.', 'err'); return; }
+      var existing = ufs.nodes[path];
+      if (existing && existing.type === 'dir') { print('nano: /' + path + ' – это каталог', 'err'); return; }
+      var content = existing ? (existing.content || '') : '';
+      // seed from a baked page? no – nano edits the user FS only; baked stays read-only.
+      editorSt = { path: path, dirty: false };
+      edName.textContent = '  GNU nano · /' + path + (existing ? '' : '  (новый)');
+      edArea.value = content;
+      edPanel.hidden = false;
+      nanoMeta();
+      try { edArea.focus({ preventScroll: true }); } catch (e) { edArea.focus(); }
+      edArea.setSelectionRange(content.length, content.length);
+    }
+    function nanoMeta() {
+      if (!editorSt || !edMeta) return;
+      var v = edArea.value;
+      edMeta.textContent = (editorSt.dirty ? '● ' : '') + v.length + ' Б · ' + (v ? v.split('\n').length : 0) + ' строк  ^O Сохранить · ^X Выход';
+    }
+    function nanoSave() {
+      if (!editorSt) return;
+      var now = ufsNow(), node = ufs.nodes[editorSt.path];
+      if (node && node.type === 'file') { node.content = edArea.value; node.mtime = now; }
+      else {
+        var parent = parentOf(editorSt.path);
+        if (parent !== '' && !isDir(parent)) { /* create missing parents so save never fails */ ensureDir(parent, ufsUser(), now); }
+        ufs.nodes[editorSt.path] = { type: 'file', content: edArea.value, ctime: now, mtime: now, author: ufsUser() };
+        delete ufs.tombs[editorSt.path];
+      }
+      ufsSave();
+      editorSt.dirty = false; nanoMeta();
+    }
+    function nanoExit() {
+      var path = editorSt && editorSt.path, wasDirty = editorSt && editorSt.dirty;
+      editorSt = null;
+      if (edPanel) { edPanel.hidden = true; }
+      if (edArea) edArea.value = '';
+      input.focus();
+      print('nano: ' + (wasDirty ? 'выход без сохранения · ' : '') + '/' + path + ' закрыт. cat ' + (path || '') + ' – посмотреть.', 'dim');
+    }
     function copyText(t) {
       if (w.navigator && w.navigator.clipboard && w.navigator.clipboard.writeText) return w.navigator.clipboard.writeText(t);
       return new Promise(function (res, rej) {
@@ -540,10 +721,17 @@
     // ── man pages: single source for `man`, `whatis`, `apropos`. Each value is a
     //    one-paragraph "<name> – описание." Hoisted so the meta-commands can search it.
     var MANPAGES = {
-      ls: 'ls [раздел] – содержимое текущего или указанного раздела.',
-      cd: 'cd <раздел> – войти. cd .. – наверх. cd – в корень. cd - – предыдущий раздел.',
-      open: 'open <страница> – открыть страницу в браузере.',
-      cat: 'cat <страница> – показать markdown-версию страницы с подсветкой (заголовки, цитаты, ссылки). cat <страница> --raw – без подсветки.',
+      ls: 'ls [путь] – содержимое каталога: материалы сайта и ваши файлы вместе (union). Каталоги, затем файлы. ls <раздел> [N] – с пагинацией.',
+      cd: 'cd <путь> – перейти в каталог. Поддерживает вложенные пути (cd projects/sub), .. наверх, / и ~ в корень, cd - – предыдущий каталог.',
+      open: 'open <страница> – открыть страницу сайта в браузере.',
+      cat: 'cat <файл> – показать markdown-версию страницы сайта с подсветкой ИЛИ содержимое вашего файла. cat <файл> --raw – без подсветки.',
+      mkdir: 'mkdir [-p] <каталог>… – создать каталог в вашей файловой системе (localStorage). -p создаёт промежуточные каталоги. Можно и внутри разделов сайта.',
+      touch: 'touch <файл>… – создать пустой файл или обновить время изменения. Файлы хранятся в браузере (localStorage) с автором и датой.',
+      rm: 'rm [-r] <путь>… – удалить ваш файл или каталог (-r рекурсивно). Материал сайта rm только скрывает в вашем виде (whiteout), исходник цел. rm -rf / по-прежнему пасхалка.',
+      rmdir: 'rmdir <каталог>… – удалить пустой каталог.',
+      mv: 'mv <откуда> <куда> – переместить/переименовать ваш файл или каталог. Если <куда> – существующий каталог, перемещает внутрь.',
+      cp: 'cp [-r] <откуда> <куда> – скопировать ваш файл/каталог (-r рекурсивно). cp <материал сайта> <имя> делает редактируемую копию страницы в вашей ФС.',
+      nano: 'nano <файл> – создать или редактировать файл в браузере. ^O сохранить, ^X сохранить и выйти, Esc выйти без сохранения. Хранится в localStorage с автором и датой.',
       head: 'head [-n N] <страница> – первые N строк markdown-страницы (по умолчанию 10).',
       tail: 'tail [-n N] <страница> – последние N строк markdown-страницы (по умолчанию 10).',
       wc: 'wc <страница> – подсчёт строк, слов и символов страницы + оценка времени чтения.',
@@ -835,6 +1023,13 @@
           ['wc <стр>', 'строки, слова, символы + время чтения'],
           ['stat <стр>', 'метаданные: раздел, дата, объём, ссылка']
         ]);
+        print(''); print('ФАЙЛЫ (ваши, в браузере)', 'accent');
+        rows([
+          ['nano <файл>', 'создать / редактировать файл (^O сохр · ^X выход)'],
+          ['mkdir / touch', 'создать каталог (-p) / пустой файл'],
+          ['mv / cp [-r]', 'переместить / скопировать (cp материала – копия)'],
+          ['rm [-r] / rmdir', 'удалить файл/каталог · cd, ls, cat работают и с ними']
+        ]);
         print(''); print('УТИЛИТЫ', 'accent');
         rows([
           ['claude/codex <q>', 'офлайн-ассистенты по материалам сообщества'],
@@ -865,43 +1060,34 @@
         print(''); print('Пасхалки: fortune, vim, top, sudo, git blame, coffee, 42, rm -rf /.', 'dim');
       },
       ls: function (a) {
-        // accept and ignore flags (-l, -a, -la, -al …); first non-flag arg is the path,
-        // a trailing number is the page (ls articles 2)
+        // accept and ignore flags (-l, -a, -la …); first non-flag arg is the path,
+        // a trailing number is the page (ls articles 2). Union view: baked + user FS.
         var args = (a || []).filter(function (x) { return x && x.charAt(0) !== '-'; });
         var lsPage = 1;
         for (var ai = args.length - 1; ai >= 0; ai--) { if (/^\d+$/.test(args[ai])) { lsPage = parseInt(args[ai], 10); args.splice(ai, 1); break; } }
-        var where = (args[0] || '').replace(/^\/|\/$/g, '') || cwd;
-        if (!where) {
-          print('drwxr-xr-x  разделы:', 'dim');
-          sectionNames.forEach(function (s) {
-            var n = el('span'); n.appendChild(el('span', 'dim', '  ')); n.appendChild(linkpad('/' + s + '/', s + '/', 13)); n.appendChild(el('span', 'dim', (sections[s] || []).length + ' материалов')); printNode(n);
-          });
-          if (linkNames.length) { print(''); print('-rw-r--r--  страницы:', 'dim'); linkNames.forEach(function (k) { var n = el('span'); n.appendChild(el('span', 'dim', '  ')); n.appendChild(link(links[k], k)); printNode(n); }); }
-          print(''); print('cd <раздел> – войти, open <страница> – открыть, find <слово> – поиск.', 'dim');
-          return;
-        }
-        if (sections[where]) {
-          var items = sections[where];
-          if (!items.length) { print('пусто', 'dim'); return; }
-          var lp = paginate(items, lsPage, 8);
-          lp.slice.forEach(function (it) {
-            var n = el('span'); n.appendChild(el('span', 'dim', '  ')); n.appendChild(linkpad(it.u, it.n, 26));
-            if (it.d) n.appendChild(el('span', 'dim', it.d + '  ')); n.appendChild(d.createTextNode(it.t)); printNode(n);
-          });
-          pageNav(lp, 'ls ' + where);
-          return;
-        }
-        print('ls: нет такого раздела: ' + where, 'err');
+        var path = normPath(args[0] || '');
+        var st = path === '' ? { type: 'dir' } : statPath(path);
+        if (!st) { print('ls: нет такого файла или каталога: /' + path, 'err'); return; }
+        if (st.type === 'file') { lsRenderEntry({ name: baseName(path), type: 'file', source: st.source, node: st.node, item: st.item, link: st.link }, path); return; }
+        var entries = listDir(path);
+        if (!entries.length) { print('пусто. mkdir/touch/nano – создать.', 'dim'); return; }
+        var lp = paginate(entries, lsPage, 12);
+        lp.slice.forEach(function (e) { lsRenderEntry(e, path === '' ? e.name : path + '/' + e.name); });
+        pageNav(lp, 'ls' + (args[0] ? ' ' + args[0] : ''));
+        print('cd <кат> · cat <файл> · mkdir/touch/nano – создать', 'dim');
       },
       cd: function (a) {
-        var t = (a[0] || '').replace(/\/+$/, '');
-        if (t === '-') { var d0 = prevCwd; prevCwd = cwd; cwd = d0; setPrompt(); print(pathStr(), 'dim'); return; }
-        if (t === '' || t === '~' || t === '/' || t === '..') { prevCwd = cwd; cwd = ''; setPrompt(); return; }
-        if (t.indexOf('/') !== -1) { return commands.open(a); }
-        if (sections[t]) { prevCwd = cwd; cwd = t; setPrompt(); return; }
-        if (links[t]) { go(links[t]); return; }
-        print('cd: нет такого раздела: ' + t, 'err');
-        print('доступно: ' + sectionNames.concat(linkNames).join(', '), 'dim');
+        var arg = (a[0] || '');
+        if (arg === '-') { var d0 = prevCwd; prevCwd = cwd; cwd = d0; setPrompt(); print(pathStr(), 'dim'); return; }
+        // a bare link name navigates to the real page (join, salary, …), from anywhere
+        if (arg && arg.indexOf('/') === -1 && links[arg] && !ufs.nodes[normPath(arg)] && !sections[arg]) { go(links[arg]); return; }
+        var target = normPath(arg === '' ? '~' : arg);
+        if (target !== '' && !isDir(target)) {
+          var s = statPath(target);
+          print(s && s.type === 'file' ? ('cd: не каталог: /' + target) : ('cd: нет такого каталога: /' + target), 'err');
+          return;
+        }
+        prevCwd = cwd; cwd = target; setPrompt();
       },
       open: function (a) {
         var arg = (a[0] || '').replace(/^\/|\/$/g, '');
@@ -921,7 +1107,18 @@
         var raw = false;
         a = a.filter(function (x) { if (x === '--raw' || x === '-r') { raw = true; return false; } return true; });
         var arg = (a[0] || '').replace(/^\/|\/$/g, '');
-        if (!arg) { print('cat: укажите страницу. Список – ls.', 'err'); return; }
+        if (!arg) { print('cat: укажите файл. Список – ls.', 'err'); return; }
+        // user FS file → print stored content (shadows a baked page at the same path)
+        var upath = normPath(a[0]);
+        var unode = ufs.nodes[upath];
+        if (unode) {
+          if (unode.type === 'dir') { print('cat: /' + upath + ' – это каталог', 'err'); return; }
+          var ulines = (unode.content || '').split('\n');
+          if (raw) ulines.forEach(function (l) { print(l); });
+          else for (var uli = 0; uli < ulines.length; uli++) { var unode2 = mdLine(ulines[uli]); if (unode2) out.appendChild(unode2); }
+          if (!unode.content) print('(пустой файл) · nano ' + a[0] + ' – редактировать', 'dim');
+          body.scrollTop = body.scrollHeight; return;
+        }
         if (links[arg]) { print('cat: «' + arg + '» – служебная страница без markdown. Откройте: open ' + arg, 'dim'); return; }
         var sec = null, name = arg;
         if (arg.indexOf('/') !== -1) { var p = arg.split('/'); sec = p[0]; name = p[1]; }
@@ -1381,6 +1578,13 @@
       head: function (a) { headTail('head', a); },
       tail: function (a) { headTail('tail', a); },
       wc: function (a) {
+        var un = ufs.nodes[normPath(a[0])];
+        if (un) {
+          if (un.type === 'dir') { print('wc: /' + normPath(a[0]) + ' – каталог', 'err'); return; }
+          var c = un.content || '', l = c === '' ? 0 : c.replace(/\s+$/, '').split('\n').length, wds = (c.match(/\S+/g) || []).length;
+          print('  ' + pad(l, 6) + pad(wds, 7) + c.length + '  ' + a[0], 'cy');
+          print('  строк   слов   символов', 'dim'); return;
+        }
         var hit = resolvePage(a[0]);
         if (!hit) { print('wc: не найдено: ' + (a[0] || ''), 'err'); return; }
         fetchPageText(hit, function (txt) {
@@ -1393,6 +1597,16 @@
         });
       },
       stat: function (a) {
+        var path = normPath(a[0]), un = ufs.nodes[path];
+        if (un) {
+          print('  File:    /' + path, 'accent');
+          print('  Type:    ' + (un.type === 'dir' ? 'каталог' : 'файл') + (un.type === 'dir' ? '' : ' · ' + ((un.content || '').length) + ' Б'));
+          print('  Author:  ' + (un.author || 'guest'));
+          print('  Created: ' + fmtTs(un.ctime));
+          print('  Modified:' + fmtTs(un.mtime), 'dim');
+          if (un.type === 'file') print('  cat /' + path + ' · nano /' + path + ' – редактировать', 'dim');
+          return;
+        }
         var hit = resolvePage(a[0]);
         if (!hit) { print('stat: не найдено: ' + (a[0] || '') + '. Список – ls.', 'err'); return; }
         var sec = ''; sectionNames.forEach(function (s) { (sections[s] || []).forEach(function (it) { if (it === hit) sec = s; }); });
@@ -1501,10 +1715,134 @@
         }
       },
       coffee: function () { print('☕  Тимлид не кодит. Тимлид пьёт кофе и анблокает команду.', 'accent'); },
+      // ── writable filesystem: mkdir / touch / rm / rmdir / mv / cp on the user FS ──
+      mkdir: function (a) {
+        a = a || []; var parents = / -p\b| -[a-z]*p/.test(' ' + a.join(' '));
+        var dirs = a.filter(function (x) { return x && x.charAt(0) !== '-'; });
+        if (!dirs.length) { print('mkdir [-p] <каталог>…', 'dim'); return; }
+        var author = ufsUser(), now = ufsNow(), changed = false;
+        dirs.forEach(function (raw) {
+          var path = normPath(raw);
+          if (path === '') { print('mkdir: нельзя создать /', 'err'); return; }
+          if (statPath(path)) { print('mkdir: уже существует: /' + path, 'err'); return; }
+          var parent = parentOf(path);
+          if (parents) { var err = ensureDir(parent, author, now); if (err) { print('mkdir: ' + err, 'err'); return; } }
+          else if (parent !== '' && !isDir(parent)) { print('mkdir: нет каталога: /' + parent + ' (добавьте -p)', 'err'); return; }
+          ufs.nodes[path] = { type: 'dir', ctime: now, mtime: now, author: author }; changed = true;
+          print('каталог создан: /' + path, 'ok');
+        });
+        if (changed) ufsSave();
+      },
+      touch: function (a) {
+        var files = (a || []).filter(function (x) { return x && x.charAt(0) !== '-'; });
+        if (!files.length) { print('touch <файл>…', 'dim'); return; }
+        var author = ufsUser(), now = ufsNow(), changed = false;
+        files.forEach(function (raw) {
+          var path = normPath(raw);
+          if (path === '') { print('touch: неверный путь', 'err'); return; }
+          var u = ufs.nodes[path];
+          if (u) { u.mtime = now; changed = true; return; }
+          var b = bakedAt(path);
+          if (b && b.type === 'dir') { print('touch: /' + path + ' – каталог', 'err'); return; }
+          var parent = parentOf(path);
+          if (parent !== '' && !isDir(parent)) { print('touch: нет каталога: /' + parent, 'err'); return; }
+          ufs.nodes[path] = { type: 'file', content: '', ctime: now, mtime: now, author: author }; changed = true;
+        });
+        if (changed) ufsSave();
+      },
       rm: function (a) {
-        var s = ' ' + a.join(' ') + ' ';
-        if (/ -[a-z]*[rf][a-z]* /.test(s) && / \/ /.test(s)) { print('rm: удаляю / …', 'err'); print('…', 'dim'); setTimeout(function () { print('обошлось. В этот раз. На проде так не надо.', 'ok'); }, reduced ? 0 : 550); return; }
-        print('rm: давайте без rm здесь. Это не тот терминал.', 'dim');
+        a = a || [];
+        var rec = false, paths = [];
+        a.forEach(function (x) { if (x.charAt(0) === '-' && x.length > 1) { if (/[rR]/.test(x)) rec = true; } else if (x) paths.push(x); });
+        // the classic gag: rm -rf / still refuses, with a wink
+        if (rec && paths.some(function (p) { return normPath(p) === ''; })) {
+          print('rm: удаляю / …', 'err'); print('…', 'dim');
+          setTimeout(function () { print('обошлось. В этот раз. На проде так не надо.', 'ok'); }, reduced ? 0 : 550); return;
+        }
+        if (!paths.length) { print('rm [-r] <файл|каталог>…', 'dim'); return; }
+        var changed = false;
+        paths.forEach(function (raw) {
+          var path = normPath(raw), u = ufs.nodes[path];
+          if (u) {
+            if (u.type === 'dir' && !rec && ufsChildrenCount(path) > 0) { print('rm: /' + path + ' – каталог не пуст (rm -r)', 'err'); return; }
+            ufsRemoveSubtree(path); changed = true; return;
+          }
+          var b = bakedAt(path);
+          if (b) {
+            if (b.type === 'dir' && !rec) { print('rm: /' + path + ' – раздел сайта (rm -r чтобы скрыть его в вашем виде)', 'err'); return; }
+            ufs.tombs[path] = 1; changed = true; print('скрыто: /' + path + ' (это материал сайта; скрыт только у вас)', 'dim'); return;
+          }
+          if (ufs.tombs[path]) { print('rm: уже удалено: /' + path, 'dim'); return; }
+          print('rm: нет такого файла: /' + path, 'err');
+        });
+        if (changed) ufsSave();
+      },
+      rmdir: function (a) {
+        var dirs = (a || []).filter(function (x) { return x && x.charAt(0) !== '-'; });
+        if (!dirs.length) { print('rmdir <каталог>…', 'dim'); return; }
+        var changed = false;
+        dirs.forEach(function (raw) {
+          var path = normPath(raw), u = ufs.nodes[path];
+          if (!u || u.type !== 'dir') { print('rmdir: нет каталога: /' + path, 'err'); return; }
+          if (ufsChildrenCount(path) > 0) { print('rmdir: /' + path + ' не пуст', 'err'); return; }
+          delete ufs.nodes[path]; changed = true;
+        });
+        if (changed) ufsSave();
+      },
+      mv: function (a) {
+        var args = (a || []).filter(function (x) { return x && x.charAt(0) !== '-'; });
+        if (args.length < 2) { print('mv <откуда> <куда>', 'dim'); return; }
+        var src = normPath(args[0]), dst = normPath(args[1]), u = ufs.nodes[src];
+        if (!u) { print(bakedAt(src) ? ('mv: /' + src + ' – материал сайта (только чтение). cp скопирует его в файл.') : ('mv: нет: /' + src), 'err'); return; }
+        if (isDir(dst)) dst = (dst === '' ? '' : dst + '/') + baseName(src);
+        if (src === dst) return;
+        if (statPath(dst)) { print('mv: уже существует: /' + dst, 'err'); return; }
+        var parent = parentOf(dst);
+        if (parent !== '' && !isDir(parent)) { print('mv: нет каталога: /' + parent, 'err'); return; }
+        var now = ufsNow(), pre = src + '/', moves = [[src, dst]];
+        Object.keys(ufs.nodes).forEach(function (p) { if (p.indexOf(pre) === 0) moves.push([p, dst + p.slice(src.length)]); });
+        moves.forEach(function (m) { var node = ufs.nodes[m[0]]; node.mtime = now; ufs.nodes[m[1]] = node; });
+        moves.forEach(function (m) { if (m[0] !== m[1]) delete ufs.nodes[m[0]]; });
+        ufsSave();
+      },
+      cp: function (a) {
+        var rec = /-[a-zA-Z]*[rR]/.test(' ' + (a || []).join(' '));
+        var args = (a || []).filter(function (x) { return x && x.charAt(0) !== '-'; });
+        if (args.length < 2) { print('cp [-r] <откуда> <куда>', 'dim'); return; }
+        var src = normPath(args[0]), dst = normPath(args[1]), author = ufsUser(), now = ufsNow();
+        function destFor(s, dd) { return isDir(dd) ? ((dd === '' ? '' : dd + '/') + baseName(s)) : dd; }
+        var u = ufs.nodes[src];
+        if (u) {
+          var target = destFor(src, dst);
+          if (statPath(target)) { print('cp: уже существует: /' + target, 'err'); return; }
+          if (u.type === 'dir' && !rec) { print('cp: /' + src + ' – каталог (cp -r)', 'err'); return; }
+          var copies = [[src, target]], pre = src + '/';
+          if (rec) Object.keys(ufs.nodes).forEach(function (p) { if (p.indexOf(pre) === 0) copies.push([p, target + p.slice(src.length)]); });
+          copies.forEach(function (m) { var o = ufs.nodes[m[0]]; ufs.nodes[m[1]] = { type: o.type, content: o.content, ctime: now, mtime: now, author: author }; });
+          ufsSave(); return;
+        }
+        var b = bakedAt(src);
+        if (b && b.type === 'file' && b.item) {
+          var target2 = destFor(src, dst);
+          if (statPath(target2)) { print('cp: уже существует: /' + target2, 'err'); return; }
+          var parent2 = parentOf(target2);
+          if (parent2 !== '' && !isDir(parent2)) { print('cp: нет каталога: /' + parent2, 'err'); return; }
+          fetchPageText(b.item, function (txt) {
+            ufs.nodes[target2] = { type: 'file', content: txt, ctime: now, mtime: now, author: author };
+            ufsSave(); print('скопировано → /' + target2 + ' (' + txt.length + ' Б)', 'ok');
+          });
+          return;
+        }
+        print('cp: нет: /' + src, 'err');
+      },
+      nano: function (a) {
+        var arg = (a || []).filter(function (x) { return x && x.charAt(0) !== '-'; })[0];
+        if (!arg) { print('nano <файл> – создать или редактировать файл. Напр.: nano notes.md', 'dim'); return; }
+        var path = normPath(arg);
+        if (path === '') { print('nano: неверный путь', 'err'); return; }
+        var b = bakedAt(path);
+        if (b && b.type === 'file' && !ufs.nodes[path]) { print('nano: /' + path + ' – материал сайта (только чтение). cp ' + arg + ' <имя> сделает редактируемую копию.', 'err'); return; }
+        nanoStart(path);
       },
       '42': function () { print('Ответ на главный вопрос жизни, вселенной и всего такого – 42.', 'accent'); print('Но запрошенной страницы среди ответов нет.', 'dim'); },
       home: function () { go('/'); },
@@ -1534,6 +1872,8 @@
       ['gl', 'pwd'], ['get-location', 'pwd'],
       ['cls', 'clear'], ['clear-host', 'clear'],
       ['del', 'rm'], ['ri', 'rm'], ['remove-item', 'rm'],
+      ['edit', 'nano'], ['ne', 'nano'], ['md', 'mkdir'], ['ni', 'touch'], ['new-item', 'touch'],
+      ['move', 'mv'], ['move-item', 'mv'], ['copy', 'cp'], ['copy-item', 'cp'], ['rd', 'rmdir'],
       ['sls', 'grep'], ['select-string', 'grep'],
       ['write-output', 'echo'], ['write-host', 'echo'],
       ['ghy', 'history'], ['get-history', 'history'],
@@ -1645,12 +1985,12 @@
         }
         pool = COMPANIES.map(function (c) { return c.slug; });
       } else if (frag.indexOf('/') !== -1) {
-        // "section/partial" → complete page names within that section
-        var s = frag.split('/')[0];
-        pool = (sections[s] || []).map(function (it) { return s + '/' + it.n; });
+        // "<dir>/partial" → complete entries within that dir (baked + user FS, union)
+        var slash = frag.lastIndexOf('/'), pref = frag.slice(0, slash + 1);
+        pool = listDir(normPath(frag.slice(0, slash))).map(function (e) { return pref + e.name + (e.type === 'dir' ? '/' : ''); });
       } else {
-        pool = sectionNames.concat(linkNames);
-        if (cwd && sections[cwd]) pool = pool.concat(sections[cwd].map(function (it) { return it.n; }));
+        // entries in the current directory (baked sections/links + user nodes)
+        pool = listDir(cwd).map(function (e) { return e.name + (e.type === 'dir' ? '/' : ''); });
       }
       if (!frag) { if (pool.length) { echoLine(); print(pool.slice(0, 40).join('   '), 'dim'); } comp.full = null; return; }
       var hits = pool.filter(function (c) { return c.indexOf(frag) === 0; });
@@ -1663,7 +2003,7 @@
     }
 
     input.addEventListener('keydown', function (e) {
-      if (simSt) return;  // simulator panel owns the keyboard while active
+      if (simSt || editorSt) return;  // sim / nano panels own the keyboard while active
       if (e.key === 'Enter') { run(input.value); input.value = ''; }
       else if (e.key === 'Tab') { e.preventDefault(); complete(); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); histPrev(); }
@@ -1699,6 +2039,31 @@
       else if (k === 'down') histNext();
       else if (k === 'run') { run(input.value); input.value = ''; }
       else if (k === 'clear') commands.clear();
+    });
+
+    // nano editor: ^O save, ^X save+exit, Esc discard+exit, Tab inserts spaces.
+    if (edArea) {
+      edArea.addEventListener('input', function () { if (editorSt) { editorSt.dirty = true; nanoMeta(); } });
+      edArea.addEventListener('keydown', function (e) {
+        if (!editorSt) return;
+        var k = (e.key || '').toLowerCase();
+        if ((e.ctrlKey || e.metaKey) && k === 'o') { e.preventDefault(); nanoSave(); print('nano: сохранено /' + editorSt.path, 'ok'); return; }
+        if ((e.ctrlKey || e.metaKey) && k === 'x') { e.preventDefault(); if (editorSt.dirty) nanoSave(); nanoExit(); return; }
+        if (k === 'escape') { e.preventDefault(); nanoExit(); return; }
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          var s = edArea.selectionStart, en = edArea.selectionEnd;
+          edArea.value = edArea.value.slice(0, s) + '  ' + edArea.value.slice(en);
+          edArea.selectionStart = edArea.selectionEnd = s + 2;
+          editorSt.dirty = true; nanoMeta();
+        }
+      });
+    }
+    if (edPanel) edPanel.addEventListener('click', function (e) {
+      var k = e.target && e.target.getAttribute ? e.target.getAttribute('data-ek') : null;
+      if (!k || !editorSt) return;
+      if (k === 'save') { nanoSave(); print('nano: сохранено /' + editorSt.path, 'ok'); try { edArea.focus(); } catch (_) {} }
+      else if (k === 'exit') { if (editorSt.dirty) nanoSave(); nanoExit(); }
     });
 
     // A shareable deep-link can carry a command: /shell/#cat events/meetup-2026-06-24
