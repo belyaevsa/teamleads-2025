@@ -19,6 +19,9 @@
     grid-template-columns: minmax(0, 1fr) var(--dock-w);
     column-gap: var(--dock-gut);
     align-items: start;
+    /* free space on the right so the shell isn't flush to the viewport edge,
+       mirroring the content column's left padding */
+    padding-right: clamp(24px, 5vw, 80px);
     margin-bottom: var(--space-4xl);   /* breathing room before the footer */
   }
   body.dock-open .dock-wrap {
