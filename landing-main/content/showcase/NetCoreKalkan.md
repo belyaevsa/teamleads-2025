@@ -4,7 +4,7 @@
 # Отправьте Pull Request в репозиторий.
 
 title: "NetCoreKalkan"
-description: "Библиотека для работы с криптопровайдером АО \"НУЦ\" NetCoreKalkan" Ну или нейрослоп
+description: "Библиотека для работы с криптопровайдером АО \"НУЦ\" NetCoreKalkan"
 projectUrl: "https://github.com/greident/NetCoreKalkan"
 author: "Рамазанов Адильбек"
 date: 2026-06-25
