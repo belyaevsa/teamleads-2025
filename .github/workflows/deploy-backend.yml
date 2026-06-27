@@ -1,0 +1,77 @@
+name: Deploy backend → teamleads.kz/api
+
+# ⚠️ AUTO-DEPLOY DISABLED (for now). The backend isn't live yet – host Docker,
+# the GitHub secrets, and the remote pgsql are still pending. The `push` trigger
+# is commented out so commits don't deploy; only manual runs are possible.
+# To re-enable continuous deploy, uncomment the `push:` block below.
+on:
+  # push:
+  #   branches: [master]
+  #   paths:
+  #     - 'backend/**'
+  #     - '.github/workflows/deploy-backend.yml'
+
+  workflow_dispatch:   # manual trigger only (Actions tab → Run workflow)
+
+# Don't let two backend deploys race on the same container/env file.
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted          # runner is ON the host → build + docker run locally, no registry/SSH
+    env:
+      IMAGE: teamleads-backend
+      CONTAINER: teamleads-backend
+      HOST_BIND: 127.0.0.1:5080
+      ENV_DIR: /opt/teamleads-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          docker build -t "${IMAGE}:${SHORT_SHA}" -t "${IMAGE}:latest" backend
+
+      - name: Write env file from secrets
+        env:
+          CONN: ${{ secrets.BACKEND_CONNECTION_STRING }}
+          ADMIN_KEY: ${{ secrets.BACKEND_ADMIN_API_KEY }}
+          IP_SALT: ${{ secrets.BACKEND_IP_HASH_SALT }}
+        run: |
+          install -d -m 700 "$ENV_DIR"
+          umask 077
+          {
+            printf 'ASPNETCORE_ENVIRONMENT=Production\n'
+            printf 'ConnectionStrings__Default=%s\n' "$CONN"
+            printf 'ADMIN_API_KEY=%s\n' "$ADMIN_KEY"
+            printf 'IP_HASH_SALT=%s\n' "$IP_SALT"
+          } > "$ENV_DIR/backend.env"
+
+      - name: Swap container
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+          docker run -d --name "$CONTAINER" \
+            --restart unless-stopped \
+            -p "${HOST_BIND}:8080" \
+            --env-file "$ENV_DIR/backend.env" \
+            "${IMAGE}:${SHORT_SHA}"
+
+      - name: Health gate
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "http://${HOST_BIND}/api/health" >/dev/null; then
+              echo "Backend healthy."; exit 0
+            fi
+            sleep 2
+          done
+          echo "Health check failed; recent logs:" >&2
+          docker logs --tail 80 "$CONTAINER" >&2 || true
+          exit 1
+
+      - name: Prune dangling images
+        if: always()
+        run: docker image prune -f >/dev/null
