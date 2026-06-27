@@ -104,4 +104,5 @@
     <button type="button" data-k="clear">clear</button>
   </div>
 </div>
-<script src="{{ "js/shell.js" | relURL }}" defer></script>
+{{- $shell := resources.Get "js/shell/main.js" | js.Build (dict "minify" hugo.IsProduction "target" "es2017" "format" "iife") | fingerprint -}}
+<script src="{{ $shell.RelPermalink }}" defer></script>
