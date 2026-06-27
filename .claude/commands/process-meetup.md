@@ -57,6 +57,7 @@ Create `landing-main/content/events/meetup-YYYY-MM-DD.md`. The file is **frontma
 title: "Встреча сообщества – DD месяц YYYY"
 description: "Short SEO description with key topics, comma-separated"
 date: YYYY-MM-DD
+audio: "https://storage.yandexcloud.net/<bucket>/meetup-YYYY-MM-DD.opus"  # optional – only if a recording is published (see Step 4b)
 mainTopic: "Full sentence describing the main topic."
 cardTitle: "Short homepage card title"
 cardDesc: "Homepage card description, comma-separated topics"
@@ -71,8 +72,10 @@ nextQuestions:
 # --- structured body content (rendered by the layout) ---
 topics:                     # «Подтемы и их суть» – numbered automatically (1., 2., ...)
   - title: "Subtopic title"
+    start: 0                 # optional – seconds into the recording; renders a chapter + "jump to audio" (see Step 4b)
     body: "One factual paragraph describing the subtopic."
   - title: "Second subtopic"
+    start: 624
     body: "..."
 opinions:                   # «Различные мнения» – the "Вопрос" column is implicit
   columns: ["Андрей", "Василий", "Уалихан"]   # 3–5 participant names
@@ -94,6 +97,42 @@ Rules for the structured fields:
 - Set `wide: true` on at most one takeaway (typically the last) for the full-width card
 - Use « » (guillemets) for quotes and – (en-dash) in all strings, same as elsewhere
 - After creating the file, run `hugo --quiet` in `landing-main/` to confirm it builds cleanly
+
+## Step 4b: Audio player + timestamped transcript (when a recording exists)
+
+If the meeting has a published recording, wire up the listen-along player. Skip this
+step entirely if there's no audio to publish – the layout degrades gracefully (no
+`audio:` → no player).
+
+1. **Get a timestamped transcript.** Run `/transcribe-video` with the Yandex provider
+   on the compressed audio (see that skill's "Timestamped transcript" section):
+   ```
+   scribe transcribe '<stem>.opus' --provider yandex --language ru \
+     -o '<stem>.transcript.json'
+   ```
+   This uploads the audio to Object Storage **and** returns the normalized JSON
+   `{ audio, duration, segments:[{t,end,text}], text }`.
+
+2. **Place the transcript** where the layout fetches it (path is by convention –
+   `/audio/<page-base-name>.transcript.json`):
+   ```
+   cp '<stem>.transcript.json' landing-main/static/audio/meetup-YYYY-MM-DD.transcript.json
+   ```
+   Keep only `{duration, segments}` (the `audio`/`text` keys are harmless but unused by
+   the player). Do **not** commit large media – only this JSON lives in the repo; the
+   `.opus` stays in Object Storage.
+
+3. **Set `audio:`** in the content page's frontmatter to the storage URL returned in the
+   JSON's `audio` field (the same object the player streams).
+
+4. **Add `start:` to each `topics` entry** – the second-offset where that subtopic
+   begins, so it becomes a clickable chapter + a "▶ jump" link on the topic block.
+   Derive each `start` by finding the first transcript segment whose `text` matches the
+   topic's opening idea, and use that segment's `t` (rounded to a whole second). Topics
+   are in the same order as the discussion, so starts must increase monotonically.
+
+5. Run `hugo --quiet` and confirm the rendered page contains `data-audio-player` and one
+   `ap-chapter` per topic with a `start`.
 
 ## Step 5: Homepage and OG image (auto-generated)
 
@@ -143,6 +182,7 @@ Be conservative: only mark a question as answered if the meeting genuinely addre
 After creating both files and updating questions, present a summary:
 - Event date and main topic
 - Number of subtopics covered
+- Audio player: whether a recording + timestamped transcript was published, and how many topics got `start:` chapters (or "no recording")
 - Number of participants identified
 - Simulator scenarios added to the deck (ids + one-line each), or "none – no genuine dilemma"
 - Questions answered from previous meetings (if any)

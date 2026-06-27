@@ -32,6 +32,10 @@ provided, ask for it.
 - `--rich` – [gemini only] structured JSON with summary, timestamped
   segments, translation, emotion.
 - `--jobs N` – [openai] parallel chunk uploads for long files (default 4).
+- `--provider yandex` – [yandex] Russian-native SpeechKit, async long-audio
+  recognition (up to 4h / 1 GB in one shot). Always emits **timestamped JSON**
+  `{ "duration", "segments": [{ "t", "end", "text" }], "text", "audio" }` – the
+  format the event-page audio player consumes. See below.
 
 Keys for both providers are already stored (`scribe config show`).
 
@@ -72,6 +76,39 @@ Add `--rich` for the structured JSON (summary, timestamps, translation,
 emotion). If the `.ogg` still exceeds the limit, lower the bitrate
 (`-b:a 12k`) or split the audio. Put the temp `.ogg` in the scratchpad dir,
 not next to the source.
+
+### Timestamped transcript for the audio player (Yandex SpeechKit)
+
+When the recording is going to be published with the **listen-along player** on its
+event page, you need timecodes. Use the Yandex provider – it's Russian-native and its
+async path handles a full meetup in one shot (unlike Gemini `--rich`, which drops the
+second half of long audio):
+
+```
+scribe transcribe '<stem>.opus' --provider yandex --language ru \
+  -o '<stem>.transcript.json'
+```
+
+It uploads the audio to Yandex Object Storage (which doubles as the public audio URL
+the player streams), runs async recognition, and writes the normalized JSON:
+
+```json
+{ "audio": "https://storage.yandexcloud.net/<bucket>/<file>.opus",
+  "duration": 5400,
+  "segments": [ { "t": 0.0, "end": 4.2, "text": "…" }, … ],
+  "text": "full plain transcript" }
+```
+
+Prerequisites (one-time):
+- `scribe config set-key --provider yandex` (a SpeechKit **API key**), and Object
+  Storage settings via env (`YANDEX_BUCKET`, `YANDEX_S3_KEY_ID`, `YANDEX_S3_SECRET`)
+  or the matching `yandex_*` keys in `scribe config path`.
+- `pip install boto3` into scribe's venv (S3 upload; `requests` already ships with it).
+- Feed Yandex a compressed **mono-16k Opus** (`.opus`/`.ogg`), MP3, or WAV – extract
+  with the same ffmpeg step as the Gemini path. Don't hand it a raw `.mp4`.
+
+The resulting `*.transcript.json` is what `/process-meetup` drops into
+`landing-main/static/audio/<slug>.transcript.json`.
 
 ## Steps
 
