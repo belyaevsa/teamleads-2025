@@ -14,7 +14,11 @@
  */
 export function makeTama(S) {
   var w = S.w, el = S.el, print = S.print, printNode = S.printNode, link = S.link, copyText = S.copyText, hud = S.hud, run = S.run;
+  // user-FS helpers – журнал ведётся как обычный файл (team/log.md), читаемый cat/tail/ls;
+  // pool – материалы сайта (для контент-связок после инцидентов/стиля).
+  var ufs = S.ufs, ufsSave = S.ufsSave, ufsNow = S.ufsNow, ufsUser = S.ufsUser, ensureDir = S.ensureDir, pool = S.pool || [];
   var KEY = 'tnk_shell_tama';
+  var LOG_PATH = 'team/log.md';
   var GOAL_SHIP = 5;           // релизов для победы
   var WIN_STAGE = 4;           // индекс стадии «тимлид»
 
@@ -26,6 +30,8 @@ export function makeTama(S) {
   };
   var STAGES = ['стажёр', 'джуниор', 'миддл', 'сеньор', 'тимлид', 'CTO'];
   var STAGE_XP = [0, 30, 90, 200, 380, 650];
+  // «Шляпа» напарника растёт со стадией (ASCII-safe, 3 символа – ровно над глазами).
+  var STAGE_HAT = ['___', '___', '_-_', '_~_', 'vvv', 'WWW'];
   var EYES = {
     happy:    ['^_^', '-_-'],
     neutral:  ['o_o', '-_-'],
@@ -166,7 +172,8 @@ export function makeTama(S) {
     return {
       arch: arch, ts: Date.now(), day: 1, xp: 0, stage: 0, shipped: 0,
       metrics: { trust: 50, expertise: 35, conflict: 20, morale: 60 },
-      team: [], style: {}, pending: null, hire: null, asleep: false, over: false, overWhy: '', won: false
+      team: [], style: {}, pending: null, hire: null, history: [], prevMetrics: null,
+      asleep: false, over: false, overWhy: '', overLogged: false, won: false
     };
   }
   function load() {
@@ -249,18 +256,21 @@ export function makeTama(S) {
     if (ns > st.stage && st.metrics.trust > 35) {
       st.stage = ns; apply({ morale: 6 });
       print('  ⬆ повышение: ' + ARCHES[st.arch].label + ' дорос до уровня «' + STAGES[ns] + '»!', 'ok');
+      chron('⬆ повышение до «' + STAGES[ns] + '»');
     } else if (ns > st.stage) {
       print('  …до «' + STAGES[ns] + '» уже хватает опыта, но без доверия команды не растут. Подними trust.', 'dim');
     }
     if (!st.won && st.stage >= WIN_STAGE && st.shipped >= GOAL_SHIP) {
       st.won = true;
       print('  🏆 Победа! Ты вырастил тимлида и команду, которая стабильно поставляет. Можно играть дальше.', 'ok');
+      chron('🏆 ПОБЕДА: тимлид + ' + GOAL_SHIP + ' релизов');
       revealStyle();
       print('  поделись результатом: team share', 'hint');
     }
   }
   function reportOver() {
     if (!st.over) return false;
+    if (!st.overLogged) { st.overLogged = true; chron('💀 ' + st.overWhy); }
     print('  💀 Game over: ' + st.overWhy + '. team reset – начать заново.', 'err');
     revealStyle();
     print('  поделись результатом: team share', 'hint');
@@ -279,11 +289,13 @@ export function makeTama(S) {
     if (st.over) { reportOver(); return false; }
     if (st.pending || st.hire) { remindBusy(); return false; }
     st.asleep = false;
+    snapPrev();
     apply(d);
     tallyStyle(style);
     st.day += 1;
     drift(0.6);                 // время идёт – лёгкий дневной дрейф
     print(msg + '  (' + deltaStr(d) + ')', 'accent');
+    chron(msg);
     maybeIncident();
     promote();
     st.ts = Date.now();
@@ -303,7 +315,7 @@ export function makeTama(S) {
   }
   function faceLines() {
     var mood = moodOf(), eyes = (EYES[mood] || EYES.neutral)[frame ? 1 : 0], a = ARCHES[st.arch] || ARCHES.coder;
-    return ['  ___', ' [' + eyes + ']', a.body, '  | |'];
+    return ['  ' + (STAGE_HAT[st.stage] || '___'), ' [' + eyes + ']', a.body, '  | |'];
   }
   function paintFace() {
     if (!faceEl || !st) return;
@@ -314,13 +326,25 @@ export function makeTama(S) {
     var n = Math.max(0, Math.min(10, Math.round(v / 10)));
     return new Array(n + 1).join('█') + new Array(10 - n + 1).join('░');
   }
-  function metricRow(label, val, invert) {
+  function trendArrow(cur, prev) {
+    if (prev == null) return '';
+    var d = Math.round(cur) - Math.round(prev);
+    return d >= 1 ? '↑' : d <= -1 ? '↓' : '';
+  }
+  function metricRow(label, key, invert) {
+    var val = st.metrics[key], prev = st.prevMetrics ? st.prevMetrics[key] : null;
     var good = invert ? val < 35 : val > 60, bad = invert ? val > 65 : val < 30;
     var r = el('div', 'hud-row' + (good ? ' is-good' : bad ? ' is-bad' : ''));
     r.appendChild(el('span', 'hud-label', label));
     r.appendChild(el('span', 'hud-bar', bars(val)));
     r.appendChild(el('span', 'hud-num', String(Math.round(val))));
+    var tr = trendArrow(val, prev); if (tr) r.appendChild(el('span', 'hud-trend ' + (tr === '↑' ? 'up' : 'down'), tr));
     return r;
+  }
+  function xpPct() {
+    var c = STAGE_XP[st.stage], n = STAGE_XP[st.stage + 1];
+    if (n == null) return 100;
+    return Math.max(0, Math.min(100, (st.xp - c) / (n - c) * 100));
   }
   function paint() {
     if (!hud) return;
@@ -330,14 +354,19 @@ export function makeTama(S) {
     faceEl = el('pre', 'hud-face mood-' + moodOf()); faceEl.textContent = faceLines().join('\n');
     wrap.appendChild(faceEl);
     var stats = el('div', 'hud-stats');
-    var a = ARCHES[st.arch] || ARCHES.coder;
-    stats.appendChild(el('div', 'hud-head', 'team@' + a.label + ' · ' + STAGES[st.stage] + ' · день ' + st.day +
-      ' · релизы ' + st.shipped + '/' + GOAL_SHIP + ' · 👥 ' + st.team.length));
-    var m = st.metrics;
-    stats.appendChild(metricRow('доверие  ', m.trust, false));
-    stats.appendChild(metricRow('экспертиза', m.expertise, false));
-    stats.appendChild(metricRow('настрой  ', m.morale, false));
-    stats.appendChild(metricRow('конфликт ', m.conflict, true));
+    var a = ARCHES[st.arch] || ARCHES.coder, sprint = Math.ceil(st.day / 5);
+    stats.appendChild(el('div', 'hud-head', 'team@' + a.label + ' · ' + STAGES[st.stage] + ' · спринт ' + sprint +
+      ' · день ' + st.day + ' · релизы ' + st.shipped + '/' + GOAL_SHIP + ' · 👥 ' + st.team.length));
+    stats.appendChild(metricRow('доверие  ', 'trust', false));
+    stats.appendChild(metricRow('экспертиза', 'expertise', false));
+    stats.appendChild(metricRow('настрой  ', 'morale', false));
+    stats.appendChild(metricRow('конфликт ', 'conflict', true));
+    // XP-полоса до следующей стадии
+    var xr = el('div', 'hud-row');
+    xr.appendChild(el('span', 'hud-label', 'опыт→' + (STAGES[st.stage + 1] || 'max')));
+    xr.appendChild(el('span', 'hud-bar xp', bars(xpPct())));
+    xr.appendChild(el('span', 'hud-num', Math.round(xpPct()) + '%'));
+    stats.appendChild(xr);
     wrap.appendChild(stats);
     hud.appendChild(wrap);
   }
@@ -384,8 +413,9 @@ export function makeTama(S) {
     if (!ensure()) return;
     if (st.over) { reportOver(); return; }
     if (st.pending || st.hire) { remindBusy(); return; }
-    st.asleep = false; st.day += 1; drift(1);
+    st.asleep = false; snapPrev(); st.day += 1; drift(1);
     print('🗓 стендап: новый день, команда синкнулась.', 'accent');
+    chron('🗓 стендап');
     maybeIncident(); promote(); st.ts = Date.now(); save();
     if (!reportOver()) paint();
   }
@@ -410,15 +440,17 @@ export function makeTama(S) {
     var m = st.metrics;
     if (m.morale < 15) { print('🚀 ship: команда на грани выгорания (настрой ' + Math.round(m.morale) + '). Сначала retro/pair/1on1.', 'err'); return; }
     var y = Math.max(1, Math.round((m.expertise * 0.5 + m.morale * 0.3 + (100 - m.conflict) * 0.2) / 20));
-    st.asleep = false;
+    st.asleep = false; snapPrev();
     apply({ shipped: y, morale: -15, trust: 4, conflict: -3, xp: 20 + y * 5 });
     tallyStyle('deliver'); if (m.morale < 30) tallyStyle('fire');   // релиз через выгорание = пожарный стиль
     st.day += 1; drift(0.6);
     print('🚀 релиз выкачен: +' + y + ' (всего ' + st.shipped + '/' + GOAL_SHIP + '). Крауч стоит сил.', 'ok');
+    chron('🚀 релиз +' + y + ' (всего ' + st.shipped + '/' + GOAL_SHIP + ')');
     if (st.metrics.morale < 12 && st.team.length) {
       var lost = st.team.pop();
       apply({ conflict: 10, trust: -4 });
       print('  ⚠ выгорание после крауча: ' + lost.name + ' ушёл. Береги людей.', 'err');
+      chron('⚠ выгорание после крауча: ' + lost.name + ' ушёл');
     }
     maybeIncident(); promote(); st.ts = Date.now(); save();
     if (!reportOver()) paint();
@@ -440,7 +472,9 @@ export function makeTama(S) {
     print('  ' + a.desc, null);
     print('  решения: люди ' + (s.people || 0) + ' · продукт ' + (s.deliver || 0) + ' · мир ' + (s.harmony || 0) +
       ' · экспертиза ' + (s.expertise || 0) + ' · пожары ' + (s.fire || 0), 'dim');
-    print('  глубже про тимлидство: principles · discuss · team share – похвастаться стилем', 'hint');
+    var row = el('span'); row.appendChild(el('span', 'dim', 'разобрать стиль: '));
+    row.appendChild(claudeLink('как развиваться лидеру в стиле «' + a.name + '»')); printNode(row);
+    print('  доктрина сообщества: principles · обсудить: discuss · похвастаться: team share', 'hint');
   }
 
   // ── реплики людей из сообщества (data/voices.yaml) ──
@@ -484,8 +518,10 @@ export function makeTama(S) {
     var op = inc.o[idx];
     if (!op) { print('Нет такого варианта. team a · team b · team c', 'err'); return; }
     var name = st.pending.name, harsh = (op.e.conflict || 0) > 6 || (op.e.morale || 0) < -4;
-    apply(op.e); tallyStyle(op.s);
+    snapPrev(); apply(op.e); tallyStyle(op.s);
     print('→ ' + op.out.replace('{name}', name) + '  (' + deltaStr(op.e) + ')', harsh ? 'err' : 'accent');
+    chron('⚡ ' + inc.t.replace('{name}', name) + ' → ' + op.l);
+    if (inc.q) contentTieIn(inc.q);
     st.pending = null; promote(); st.ts = Date.now(); save();
     if (!reportOver()) paint();
   }
@@ -646,6 +682,78 @@ export function makeTama(S) {
     print('Обгонишь? team new – начни свою игру.', 'hint');
   }
 
+  // ── снимок метрик для трендовых стрелок (↑↓ относительно прошлого хода) ──
+  function snapPrev() { if (!st) return; var m = st.metrics; st.prevMetrics = { trust: m.trust, expertise: m.expertise, morale: m.morale, conflict: m.conflict }; }
+
+  // ── журнал команды как файл в пользовательской ФС (team/log.md) ──
+  function chron(text) { if (!st) return; st.history = st.history || []; st.history.push({ d: st.day, t: text }); if (st.history.length > 300) st.history.shift(); writeLog(); }
+  function writeLog() {
+    if (!st || !ufs) return;
+    var now = ufsNow ? ufsNow() : Date.now(), author = ufsUser ? ufsUser() : 'guest';
+    var a = ARCHES[st.arch] || ARCHES.coder, m = st.metrics, arc = archetype();
+    if (ensureDir) ensureDir('team', author, now);
+    var L = [];
+    L.push('# Журнал команды team@' + a.label);
+    L.push('');
+    L.push('Уровень: **' + STAGES[st.stage] + '** · день ' + st.day + ' · релизы ' + st.shipped + '/' + GOAL_SHIP +
+      (st.won ? ' · 🏆 победа' : '') + (st.over ? ' · 💀 ' + st.overWhy : ''));
+    L.push('');
+    L.push('Доверие ' + Math.round(m.trust) + ' · Экспертиза ' + Math.round(m.expertise) + ' · Настрой ' + Math.round(m.morale) + ' · Конфликт ' + Math.round(m.conflict));
+    L.push('');
+    L.push('Стиль лидерства: ' + arc.icon + ' ' + arc.name);
+    L.push('');
+    L.push('Команда (' + st.team.length + '): ' + (st.team.map(function (t) { return t.name + ' (' + t.trait + ')'; }).join(', ') || '–'));
+    L.push('');
+    L.push('## Хроника');
+    var h = st.history || [];
+    if (!h.length) L.push('- пока пусто');
+    else h.forEach(function (e) { L.push('- день ' + e.d + ' · ' + e.t); });
+    var content = L.join('\n') + '\n';
+    var ex = ufs.nodes[LOG_PATH];
+    ufs.nodes[LOG_PATH] = { type: 'file', content: content, ctime: (ex && ex.ctime) || now, mtime: now, author: author };
+    if (ufsSave) ufsSave();
+  }
+  function showLog() {
+    if (!ensure()) return;
+    writeLog();
+    var h = st.history || [];
+    if (!h.length) { print('Журнал пуст – сыграй пару ходов.', 'dim'); }
+    else {
+      print('📓 Журнал команды (последние ' + Math.min(15, h.length) + ' из ' + h.length + '):', 'accent');
+      h.slice(-15).forEach(function (e) { print('  день ' + e.d + ' · ' + e.t, null); });
+    }
+    print('  весь журнал – файл в твоей ФС: cat ' + LOG_PATH + ' · хвост: tail ' + LOG_PATH, 'hint');
+  }
+
+  // ── контент-связки: воронка из игры в материалы сайта и ассистента ──
+  var TOPIC_KW = {
+    'Рост': ['рост', 'карьер', 'сеньор', 'грейд', 'эксперт'], 'Процессы': ['процесс', 'ревью', 'инцидент', 'архитектур', 'докум', 'код'],
+    'Мотивация': ['мотивац', 'выгор', 'настро', 'деньги'], 'AI': ['ai', 'llm', 'клод', 'codex', 'нейро'], 'Карьера': ['карьер', 'собес', 'найм', 'оффер', 'зарплат']
+  };
+  var TOPIC_Q = {
+    'Рост': 'как удержать сильного разработчика', 'Процессы': 'как чинить процессы в команде',
+    'Мотивация': 'как бороться с выгоранием в команде', 'AI': 'как ревьюить код от LLM', 'Карьера': 'как нанимать в команду'
+  };
+  function relatedPage(topic) {
+    var kw = TOPIC_KW[topic] || [];
+    for (var i = 0; i < pool.length; i++) {
+      var t = ((pool[i].t || '') + ' ' + (pool[i].n || '')).toLowerCase();
+      for (var j = 0; j < kw.length; j++) if (t.indexOf(kw[j]) >= 0) return pool[i];
+    }
+    return null;
+  }
+  function claudeLink(q) {
+    var a = el('a', null, 'claude «' + q + '»'); a.href = 'javascript:void(0)';
+    a.addEventListener('click', function (e) { e.preventDefault(); run('claude ' + q); });
+    return a;
+  }
+  function contentTieIn(topic) {
+    var hit = relatedPage(topic), q = TOPIC_Q[topic] || 'тимлидство';
+    print('  ── разобрать глубже ──', 'dim');
+    if (hit) { var n = el('span'); n.appendChild(el('span', 'dim', 'материал: ')); n.appendChild(link(hit.u, hit.t || hit.n)); printNode(n); }
+    var row = el('span'); row.appendChild(el('span', 'dim', 'спросить ассистента: ')); row.appendChild(claudeLink(q)); printNode(row);
+  }
+
   // ── team: дашборд + управление игрой ──
   function dashboard() {
     var a = ARCHES[st.arch] || ARCHES.coder, m = st.metrics;
@@ -665,7 +773,7 @@ export function makeTama(S) {
     }
     if (st.over) print('  💀 ' + st.overWhy + '. team reset – заново.', 'err');
     print('  действия (через team): team 1on1 · team mentor · team cr · team pair · team delegate · team retro · team hire · team fire <имя> · team ship · team standup', 'hint');
-    print('  стиль и шеринг: team style · team share', 'hint');
+    print('  стиль · журнал · шеринг: team style · team log · team share', 'hint');
   }
   function teamHelp() {
     print('Тимагочи «Тимлид» – вырасти разработчика и команду в консоли.', 'accent');
@@ -681,6 +789,7 @@ export function makeTama(S) {
     print('  ship         выкатить релиз (цель)    standup      прожить день', null);
     print('Найм:    team hire – интервью: позови (team hire 1), спроси (team a/b/c), реши (team yes/no).', null);
     print('Жизнь:   команда подкидывает инциденты – решай team a/b/c. Стиль решений → team style.', null);
+    print('Журнал:  team log – хроника решений; это файл: cat ' + LOG_PATH + ' · tail ' + LOG_PATH + '.', null);
     print('Поделиться: team share – ссылка-результат + карточка для чата (обгонят?).', null);
     print('Управление: team (дашборд) · team new <архетип> · team reset', 'hint');
   }
@@ -690,11 +799,13 @@ export function makeTama(S) {
     st = defaults(arch);
     // стартовый напарник в команде – чтобы мир сразу был живым (cold open)
     st.team.push({ name: pick(NAMES), trait: pick(['надёжный', 'тихий', 'звезда']) });
-    save(); paint(); startTick();
+    save(); startTick();
     print('Создан напарник: ' + ARCHES[arch].label + ' (стажёр). Бонус архетипа: +' + LABELS[ARCHES[arch].boost] + '.', 'ok');
     print('В команде уже есть ' + st.team[0].name + ' (' + st.team[0].trait + ').', 'dim');
     // стартовый бонус архетипа
-    var b = {}; b[ARCHES[arch].boost] = 12; apply(b); save(); paint();
+    var b = {}; b[ARCHES[arch].boost] = 12; apply(b);
+    snapPrev(); chron('🎬 Новая игра: ' + ARCHES[arch].label + ', напарник ' + st.team[0].name);
+    save(); paint();
     teamHelp();
     // cold open: сразу первый инцидент – учим петлю через действие
     fireIncident(); save();
@@ -713,6 +824,7 @@ export function makeTama(S) {
     if (sub === 'share') { share(); return; }
     if (sub === 'result') { showResult(a[1]); return; }
     if (sub === 'style' || sub === 'стиль') { revealStyle(); return; }
+    if (sub === 'log' || sub === 'журнал') { showLog(); return; }
     if (sub === 'new' || sub === 'start') { startGame(a[1]); return; }
     if (sub === 'reset' || sub === 'delete') {
       st = null; stopTick(); try { if (w.localStorage) w.localStorage.removeItem(KEY); } catch (e) {}
@@ -750,7 +862,8 @@ export function makeTama(S) {
   function resume() {
     var saved = load();
     if (!saved) return;
-    st = saved; decay(); save(); paint(); startTick();
+    st = saved; decay(); snapPrev(); save(); paint(); startTick();
+    writeLog();   // привести файл-журнал в соответствие с восстановленным состоянием
   }
 
   return {

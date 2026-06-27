@@ -1,0 +1,67 @@
+{{- /*
+  Audio player + chapters + synced transcript for an event page.
+  Renders only when .Params.audio is set. Chapters come from `topics` entries
+  that carry a `start` (seconds or "MM:SS"); the transcript is lazy-fetched from
+  /audio/<base>.transcript.json (override with `transcript:` frontmatter).
+  Behaviour lives in static/js/audio-player.js, keyed off [data-audio-player].
+*/ -}}
+{{- $base := .File.ContentBaseName -}}
+{{- $transcript := .Params.transcript | default (printf "/audio/%s.transcript.json" $base) -}}
+{{- $chapters := where (.Params.topics | default slice) "start" "!=" nil -}}
+<section class="report-audio" id="listen" data-audio-player
+         data-transcript-src="{{ $transcript | relURL }}">
+    <div class="container">
+        <div class="audio-shell">
+            <div class="audio-head">
+                <span class="audio-eyebrow">{{ partial "icons/calendar.html" }} Слушать встречу</span>
+                <p class="audio-note">Аудиозапись и транскрипт с таймкодами – кликните по реплике или подтеме, чтобы перемотать.</p>
+            </div>
+
+            <div class="audio-player" data-ap-root>
+                <audio preload="metadata" data-ap-audio>
+                    <source src="{{ .Params.audio }}">
+                    Ваш браузер не поддерживает аудио.
+                </audio>
+                <button type="button" class="ap-play" data-ap-play aria-label="Слушать">
+                    <svg class="ap-ic-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                    <svg class="ap-ic-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" hidden><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+                </button>
+                <div class="ap-bar" data-ap-bar role="slider" tabindex="0"
+                     aria-label="Перемотка" aria-valuemin="0" aria-valuenow="0">
+                    <div class="ap-bar-fill" data-ap-fill></div>
+                    <div class="ap-bar-buffer" data-ap-buffer></div>
+                </div>
+                <span class="ap-time"><span data-ap-cur>0:00</span> / <span data-ap-dur>–:––</span></span>
+                <button type="button" class="ap-rate" data-ap-rate aria-label="Скорость воспроизведения">1×</button>
+            </div>
+
+            {{- with $chapters }}
+            <div class="audio-chapters" data-ap-chapters>
+                <p class="audio-sub">Подтемы</p>
+                <ol>
+                    {{- range $t := . }}
+                    <li>
+                        <button type="button" class="ap-chapter" data-ap-seek="{{ $t.start }}">
+                            <span class="ap-chapter-time" data-ap-fmt="{{ $t.start }}">{{ $t.start }}</span>
+                            <span class="ap-chapter-title">{{ $t.title }}</span>
+                        </button>
+                    </li>
+                    {{- end }}
+                </ol>
+            </div>
+            {{- end }}
+
+            <div class="audio-transcript" data-ap-transcript hidden>
+                <div class="audio-transcript-head">
+                    <p class="audio-sub">Транскрипт</p>
+                    <label class="ap-search">
+                        {{ partial "icons/search.html" }}
+                        <input type="search" placeholder="Поиск по транскрипту…" data-ap-search aria-label="Поиск по транскрипту">
+                    </label>
+                </div>
+                <ol class="ap-lines" data-ap-lines aria-live="off"></ol>
+                <p class="ap-transcript-empty" data-ap-empty hidden>Ничего не найдено.</p>
+            </div>
+        </div>
+    </div>
+</section>

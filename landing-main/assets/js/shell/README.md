@@ -294,6 +294,14 @@ Details that matter:
   mount via `_tama.resume()` (full mode only) when a save exists. Real-time decay
   is computed from `Date.now() - state.ts` on load (18h ≈ one drift "day", capped
   at 7), so leaving the tab erodes trust/morale and grows conflict.
+- **`team log` writes a real user-FS file.** The chronicle is rendered into
+  `ufs.nodes['team/log.md']` (via `ensureDir`/`ufsSave`), so it's readable with the
+  normal `cat team/log.md` / `tail` / `ls team` commands – the game state is the
+  source of truth (`st.history`), the file is regenerated on every chronicled beat
+  and on `resume()`. The HUD also shows trend arrows (↑↓ vs `st.prevMetrics`), an
+  XP bar, a sprint counter, and a stage-evolving buddy hat (`STAGE_HAT`). Incidents
+  and `team style` print a content tie-in (a matching `S.pool` article + a clickable
+  `claude` question) – the funnel from game into site content + the offline assistant.
 - **Тимагочи sharing is URL-encoded (the result lives in the link).** `team share`
   packs the run into a compact code `tl1-<stage>-<shipped>-<day>-<trust>-<exp>-<morale>-<conflict>-<team>-<flag>-<arch>`
   and builds `/s/<milestone>/?cmd=<code>` where `<milestone>` is one of three

@@ -1,0 +1,7 @@
+# Build output (also covered by the root .gitignore)
+bin/
+obj/
+
+# Local secrets – never commit. The template backend.env.example is tracked.
+*.env
+!*.env.example

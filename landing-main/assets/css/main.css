@@ -3360,6 +3360,10 @@ button.term-dot:focus-visible{outline:2px solid #39c5cf;outline-offset:2px}
 .hud-num{flex:0 0 auto;width:26px;text-align:right;color:#c9d1d9}
 .hud-row.is-good .hud-bar{color:#3fb950}
 .hud-row.is-bad .hud-bar{color:#f85149}
+.hud-bar.xp{color:#FEC50C}
+.hud-trend{flex:0 0 auto;width:12px;text-align:center;font-size:11px}
+.hud-trend.up{color:#3fb950}
+.hud-trend.down{color:#f85149}
 .term--ps .term-hud{background:#011f49;border-bottom-color:#0a3a73}
 
 @media (max-width:480px){
@@ -3815,3 +3819,115 @@ body.cx-lock{overflow:hidden}
   .sal-cmd { flex-wrap: wrap; }
   .sal-cmd-go { border-left: none; padding-left: 0; }
 }
+
+/* ===========================================
+   EVENT AUDIO PLAYER + SYNCED TRANSCRIPT
+   =========================================== */
+.report-audio { margin: var(--space-xl) 0; }
+.audio-shell {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+.audio-head { padding: var(--space-lg) var(--space-lg) 0; }
+.audio-eyebrow {
+    display: inline-flex; align-items: center; gap: var(--space-xs);
+    font-weight: 600; color: var(--primary-dark); font-size: 0.95rem;
+}
+.audio-eyebrow svg { width: 18px; height: 18px; }
+.audio-note { margin: var(--space-xs) 0 0; color: var(--gray-500); font-size: 0.9rem; }
+
+/* --- transport bar --- */
+.audio-player {
+    display: flex; align-items: center; gap: var(--space-md);
+    padding: var(--space-lg);
+}
+.ap-play {
+    flex: none; width: 48px; height: 48px; border: none; cursor: pointer;
+    border-radius: var(--radius-full); background: var(--primary); color: var(--white);
+    display: grid; place-items: center; transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.ap-play:hover { background: var(--primary-dark); }
+.ap-play:active { transform: scale(0.94); }
+.ap-bar {
+    position: relative; flex: 1 1 auto; height: 8px; cursor: pointer;
+    background: var(--gray-200); border-radius: var(--radius-full); touch-action: none;
+}
+.ap-bar:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.ap-bar-buffer, .ap-bar-fill {
+    position: absolute; inset: 0 auto 0 0; height: 100%; border-radius: var(--radius-full);
+}
+.ap-bar-buffer { background: var(--gray-300); width: 0; }
+.ap-bar-fill { background: var(--primary); width: 0; z-index: 1; }
+.ap-bar-fill::after {
+    content: ''; position: absolute; right: -6px; top: 50%; transform: translateY(-50%);
+    width: 14px; height: 14px; border-radius: var(--radius-full);
+    background: var(--white); border: 2px solid var(--primary); box-shadow: var(--shadow-sm);
+}
+.ap-time { flex: none; font-family: var(--font-mono); font-size: 0.85rem; color: var(--gray-600); white-space: nowrap; }
+.ap-rate {
+    flex: none; min-width: 42px; padding: 4px 8px; cursor: pointer;
+    font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600;
+    color: var(--gray-700); background: var(--gray-100);
+    border: 1px solid var(--gray-200); border-radius: var(--radius-md);
+    transition: background var(--transition-fast);
+}
+.ap-rate:hover { background: var(--gray-200); }
+
+/* --- chapters --- */
+.audio-sub {
+    margin: 0 0 var(--space-sm); font-size: 0.78rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--gray-400);
+}
+.audio-chapters { padding: 0 var(--space-lg) var(--space-lg); border-top: 1px solid var(--gray-100); padding-top: var(--space-lg); }
+.audio-chapters ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ap-chapter {
+    width: 100%; display: flex; align-items: baseline; gap: var(--space-md);
+    padding: 8px 10px; text-align: left; cursor: pointer;
+    background: none; border: none; border-radius: var(--radius-md);
+    color: var(--gray-700); transition: background var(--transition-fast), color var(--transition-fast);
+}
+.ap-chapter:hover { background: var(--primary-light); color: var(--primary-dark); }
+.ap-chapter-time { flex: none; font-family: var(--font-mono); font-size: 0.8rem; color: var(--primary); font-weight: 600; min-width: 3.2em; }
+.ap-chapter-title { font-size: 0.95rem; }
+
+/* --- transcript --- */
+.audio-transcript { padding: var(--space-lg); border-top: 1px solid var(--gray-100); }
+.audio-transcript-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); margin-bottom: var(--space-sm); }
+.audio-transcript-head .audio-sub { margin: 0; }
+.ap-search { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-full); }
+.ap-search svg { width: 15px; height: 15px; color: var(--gray-400); }
+.ap-search input { border: none; background: none; outline: none; font-size: 0.85rem; width: 180px; max-width: 40vw; color: var(--gray-800); }
+.ap-lines { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; scroll-behavior: smooth; }
+.ap-line { display: flex; gap: var(--space-md); padding: 6px 8px; border-radius: var(--radius-md); transition: background var(--transition-fast); }
+.ap-line-time {
+    flex: none; align-self: flex-start; font-family: var(--font-mono); font-size: 0.75rem;
+    color: var(--gray-400); font-weight: 600; cursor: pointer; background: none; border: none;
+    padding: 2px 0; min-width: 3.4em; text-align: right; transition: color var(--transition-fast);
+}
+.ap-line-time:hover { color: var(--primary); }
+.ap-line-text { font-size: 0.95rem; line-height: 1.6; color: var(--gray-700); }
+.ap-line.is-active { background: var(--kz-gold-light); }
+.ap-line.is-active .ap-line-time { color: var(--accent); }
+.ap-line.is-active .ap-line-text { color: var(--gray-900); }
+.ap-transcript-empty { color: var(--gray-400); font-size: 0.9rem; padding: var(--space-md) 8px; }
+
+@media (max-width: 640px) {
+    .audio-player { flex-wrap: wrap; gap: var(--space-sm); }
+    .ap-bar { order: 3; flex-basis: 100%; }
+    .ap-search input { width: 120px; }
+    .ap-lines { max-height: 360px; }
+}
+
+/* per-topic "jump to audio" link (events with a recording) */
+.topic-jump {
+    display: inline-flex; align-items: center; gap: 5px; margin: 2px 0 var(--space-sm);
+    padding: 3px 10px; cursor: pointer;
+    font-family: var(--font-mono); font-size: 0.78rem; font-weight: 600;
+    color: var(--primary-dark); background: var(--primary-light);
+    border: none; border-radius: var(--radius-full);
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+.topic-jump:hover { background: var(--primary); color: var(--white); }

@@ -1,0 +1,9 @@
+bin/
+obj/
+*.env
+backend.env
+.vs/
+.vscode/
+*.user
+**/.DS_Store
+README.md
