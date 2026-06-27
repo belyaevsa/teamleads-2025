@@ -1469,11 +1469,6 @@ button.topic-node {
     cursor: pointer;
     transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
-button.topic-node.is-seek::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-}
 button.topic-node:hover {
     transform: scale(1.08);
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--topic-c, var(--primary)) 22%, transparent);
