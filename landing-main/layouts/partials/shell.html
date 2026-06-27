@@ -32,10 +32,11 @@
 {{- range site.Data.shell_commands.commands -}}
   {{- $toks := split .run " " -}}
   {{- $verb := index $toks 0 -}}
-  {{- /* `git` is a multiplexer: key its share cards by the two-word `git <sub>` so each
-         subcommand gets its own /s/<id>/ card (syncUrl matches the same two-word verb). */ -}}
-  {{- if and (eq $verb "git") (gt (len $toks) 1) -}}
-    {{- $verb = printf "git %s" (index $toks 1) -}}
+  {{- /* `git` and `team` are multiplexers: key their share cards by the two-word
+         `<verb> <sub>` so each subcommand gets its own /s/<id>/ card (syncUrl matches
+         the same two-word verb). */ -}}
+  {{- if and (or (eq $verb "git") (eq $verb "team")) (gt (len $toks) 1) -}}
+    {{- $verb = printf "%s %s" $verb (index $toks 1) -}}
   {{- end -}}
   {{- $share = merge $share (dict $verb .id) -}}
 {{- end -}}

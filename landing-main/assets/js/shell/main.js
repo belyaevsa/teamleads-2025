@@ -293,7 +293,7 @@ import { makeMetaCommands } from './commands-meta.js';
         git: _git.git,
         nano: _editor.nano
       },
-      _tama.commands        // team 1on1 mentor cr pair delegate retro hire fire ship standup
+      _tama.commands        // { team } – тимагочи; действия только через team <действие>, не как отдельные команды
     );
     S.commands = commands;   // wire cross-command calls (git show→cat, checkout→cd, …)
     // Aliases go through alias(name, target): it records the mapping (powering `which`
@@ -304,8 +304,7 @@ import { makeMetaCommands } from './commands-meta.js';
       ['ai', 'claude'], ['ask', 'claude'], ['gpt', 'codex'], ['openai', 'codex'],
       ['github', 'contribute'], ['gh', 'contribute'], ['pr', 'contribute'],
       ['simulator', 'sim'], ['game', 'games'], ['play', 'games'], ['arcade', 'games'],
-      ['tamagotchi', 'team'], ['тимагочи', 'team'], ['pet', 'team'], ['daily', 'standup'],
-      ['codereview', 'cr'], ['standup-meeting', 'standup'],
+      ['tamagotchi', 'team'], ['тимагочи', 'team'], ['pet', 'team'],
       ['topic', 'discuss'], ['обсудить', 'discuss'], ['тема', 'discuss'],
       ['chat', 'voices'], ['голоса', 'voices'], ['quotes', 'voices'],
       ['reviews', 'company'], ['review', 'company'], ['addreviews', 'addreview'],
@@ -349,10 +348,10 @@ import { makeMetaCommands } from './commands-meta.js';
         if (!URLSYNC) return;   // embedded terminals (homepage, 404) leave the address bar alone
         if (!(w.history && w.history.replaceState)) return;
         var parts = cmd.split(/\s+/), verb = (parts[0] || '').toLowerCase(), rest = parts.slice(1);
-        // `git <sub>` shares as its own two-word card when one exists; the subcommand is
-        // consumed from the args so only the remainder rides along as ?cmd= (git log events).
+        // `git <sub>` / `team <sub>` share as their own two-word card when one exists; the
+        // subcommand is consumed from the args so only the remainder rides along as ?cmd=.
         var id;
-        if (verb === 'git' && rest.length) { id = SHARE['git ' + rest[0].toLowerCase()]; if (id) rest = rest.slice(1); }
+        if ((verb === 'git' || verb === 'team') && rest.length) { id = SHARE[verb + ' ' + rest[0].toLowerCase()]; if (id) rest = rest.slice(1); }
         if (!id) id = SHARE[verb];
         var args = rest.join(' '), url;
         if (id) {
@@ -425,6 +424,9 @@ import { makeMetaCommands } from './commands-meta.js';
       } else if (verb0 === 'git' && parts.length <= 2 && frag.indexOf('/') === -1) {
         // `git <Tab>` → suggest subcommands (and their short aliases)
         pool = gitNames;
+      } else if ((verb0 === 'team' || verb0 === 'tamagotchi' || verb0 === 'pet') && parts.length <= 2 && frag.indexOf('/') === -1) {
+        // `team <Tab>` → suggest тимагочи actions + management subcommands
+        pool = ['new', '1on1', 'mentor', 'cr', 'pair', 'delegate', 'retro', 'hire', 'fire', 'ship', 'standup', 'share', 'reset', 'help'];
       } else if (/^(company|reviews|review|addreview|addreviews)$/.test(verb0)) {
         // `company <Tab>` → complete company slugs from the baked list
         if (!frag) {

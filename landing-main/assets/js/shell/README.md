@@ -29,8 +29,9 @@ assets/js/shell/
   tama.js              тимагочи: grow-a-developer game. Animated HUD buddy +
                        team metrics (trust/expertise/conflict/morale), persisted
                        in localStorage with real-time decay. Command-driven (NOT
-                       a modal): team · 1on1 · mentor · cr · pair · delegate ·
-                       retro · hire · fire · ship · standup
+                       a modal). Registers only `team`; actions are subcommands
+                       routed inside it (team ship / team 1on1 / team hire / …) so
+                       verbs like cr/ship/fire never collide with other commands.
   man.js               MANPAGES data block + manSummary
   salary.js            live/offline salary data + the `salary` command
   commands-fs.js       ls cd open cat pwd tree find grep latest random
@@ -281,6 +282,15 @@ Details that matter:
   mount via `_tama.resume()` (full mode only) when a save exists. Real-time decay
   is computed from `Date.now() - state.ts` on load (18h ≈ one drift "day", capped
   at 7), so leaving the tab erodes trust/morale and grows conflict.
+- **Тимагочи sharing is URL-encoded (the result lives in the link).** `team share`
+  packs the run into a compact code `tl1-<stage>-<shipped>-<day>-<trust>-<exp>-<morale>-<conflict>-<team>-<flag>-<arch>`
+  and builds `/s/<milestone>/?cmd=<code>` where `<milestone>` is one of three
+  static OG cards picked by outcome (`team-win` / `team-burnout` / `team-result`).
+  The `/s/` redirect composes `verb + ?cmd` → `team <code>`, and `team()` routes any
+  arg matching `/^tl\d/` to `showResult()` (a read-only card of *someone else's* run
+  + a "team new" CTA). To add a milestone OG card: add a `[[commands]]` block whose
+  `run` is `team <word>` (two-word share key, no collision) and craft its `out`
+  lines; `team` is a share multiplexer in `shell.html`/`syncUrl` just like `git`.
 - **The user filesystem is a full overlay:** user nodes can shadow baked content
   at the same path, and `rm` on a baked page writes a tombstone (whiteout) that
   hides it locally without touching the source. See `fs.js` for the model.

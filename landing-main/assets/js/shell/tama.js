@@ -7,13 +7,13 @@
  * В отличие от sim.js это НЕ модальная панель: игра управляется обычными командами в
  * приглашении, поэтому клавиатуру не перехватывает. Новое здесь – живое состояние с
  * сохранением в localStorage (tnk_shell_tama) и распад во времени между сессиями
- * (Date.now() при загрузке): без ухода доверие падает, конфликт зреет, настрой тает.
+ * (Date.now() при загрузке): если забросить, доверие падает, конфликт зреет, настрой тает.
  * Анимация – тик setInterval, моргающий ASCII-кадр (моргание/смена выражения).
  *
  * Состояние – локальное в замыкании (per-mount), как требует принцип изоляции.
  */
 export function makeTama(S) {
-  var w = S.w, el = S.el, print = S.print, printNode = S.printNode, hud = S.hud, run = S.run;
+  var w = S.w, el = S.el, print = S.print, printNode = S.printNode, link = S.link, copyText = S.copyText, hud = S.hud, run = S.run;
   var KEY = 'tnk_shell_tama';
   var GOAL_SHIP = 5;           // релизов для победы
   var WIN_STAGE = 4;           // индекс стадии «тимлид»
@@ -78,7 +78,7 @@ export function makeTama(S) {
     });
     return acc;
   }
-  // Дрейф за n «дней»: без ухода всё проседает, конфликт зреет; трейты команды подкручивают.
+  // Дрейф за n «дней»: если не заниматься командой, всё проседает, конфликт зреет; трейты подкручивают.
   function drift(n) {
     var m = st.metrics, td = teamDrift();
     m.trust = clamp(m.trust + (-1.2 + td.trust) * n);
@@ -319,6 +319,71 @@ export function makeTama(S) {
     if (!reportOver()) paint();
   }
 
+  // ── шеринг результата: код снимка → ссылка-реплей + соц-шаринг ──
+  // Состояние локально (localStorage), поэтому результат кодируется прямо в URL: открыв
+  // ссылку, получатель видит ЧУЖОЙ итог (team result <code>) и зовётся сыграть сам.
+  // Формат кода: tl1-<стадия>-<релизы>-<день>-<доверие>-<экспертиза>-<настрой>-<конфликт>-<команда>-<флаг>-<арх>
+  function archCode(a) { return a === 'frontender' ? 'f' : a === 'teamlead' ? 't' : 'c'; }
+  function archFromCode(c) { return c === 'f' ? 'frontender' : c === 't' ? 'teamlead' : 'coder'; }
+  function flagOf(s) { return s.over ? 'x' : s.won ? 'w' : 'p'; }
+  function encode() {
+    var m = st.metrics;
+    return ['tl1', st.stage, st.shipped, st.day, Math.round(m.trust), Math.round(m.expertise),
+      Math.round(m.morale), Math.round(m.conflict), st.team.length, flagOf(st), archCode(st.arch)].join('-');
+  }
+  function decode(code) {
+    var p = String(code || '').toLowerCase().split('-');
+    if (p[0] !== 'tl1' || p.length < 11) return null;
+    var n = function (i) { var v = parseInt(p[i], 10); return isNaN(v) ? 0 : Math.max(0, Math.min(999, v)); };
+    return { stage: Math.min(5, n(1)), shipped: n(2), day: n(3), trust: Math.min(100, n(4)),
+      expertise: Math.min(100, n(5)), morale: Math.min(100, n(6)), conflict: Math.min(100, n(7)),
+      team: Math.min(20, n(8)), flag: (p[9] || 'p'), arch: archFromCode(p[10]) };
+  }
+  function isWin(s) { return s.flag === 'w' || s.stage >= 5 || (s.stage >= WIN_STAGE && s.shipped >= GOAL_SHIP); }
+  function resultTitle(s) {
+    if (s.flag === 'x') return '💀 команда развалилась';
+    if (s.stage >= 5) return '🚀 дорос до CTO';
+    if (isWin(s)) return '🏆 вырастил тимлида и команду';
+    return 'в процессе: уровень «' + STAGES[s.stage] + '»';
+  }
+  // Выбор готовой OG-карточки по исходу (статичные milestone-картинки, Tier A).
+  function milestoneId(s) { return s.flag === 'x' ? 'team-burnout' : isWin(s) ? 'team-win' : 'team-result'; }
+  function origin() { try { return (w.location && w.location.origin) || ''; } catch (e) { return ''; } }
+  function shareUrl(s, code) { return (origin() || 'https://teamleads.kz') + '/s/' + milestoneId(s) + '/?cmd=' + encodeURIComponent(code); }
+  function shareText(s, url) {
+    return '🎮 Тимагочи «Тимлид»: ' + resultTitle(s) + '. Уровень «' + STAGES[s.stage] + '», релизы ' +
+      s.shipped + '/' + GOAL_SHIP + ', день ' + s.day + '. Доверие ' + s.trust + ', конфликт ' + s.conflict +
+      '. Обгонишь? ' + url;
+  }
+  function share() {
+    if (!ensure()) return;
+    var code = encode(), s = decode(code), url = shareUrl(s, code), txt = shareText(s, url);
+    // адресная строка = ссылка-результат (как и остальной шеринг сайта)
+    try { if (w.history && w.history.replaceState) w.history.replaceState(null, '', url); } catch (e) {}
+    print('🔗 Результат готов к шарингу:', 'accent');
+    print('  ' + resultTitle(s) + ' · «' + STAGES[s.stage] + '» · релизы ' + s.shipped + '/' + GOAL_SHIP + ' · день ' + s.day, null);
+    var shared = false;
+    try { if (w.navigator && w.navigator.share) { w.navigator.share({ title: 'Тимагочи «Тимлид»', text: txt, url: url }); shared = true; } } catch (e) {}
+    if (!shared && copyText) copyText(txt).then(function () { print('  скопировано в буфер – вставь в чат.', 'ok'); }, function () { print('  ссылка: ' + url, 'dim'); });
+    else if (!shared) print('  ссылка: ' + url, 'dim');
+    var tg = 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(txt);
+    printNode(link(tg, '📨 поделиться в Telegram', true));
+    printNode(link(url, url, true));
+  }
+  function showResult(code) {
+    var s = decode(code);
+    if (!s) { print('team result: не разобрать код результата. Это ссылка-результат из team share.', 'err'); return; }
+    var label = (ARCHES[s.arch] || ARCHES.coder).label;
+    print('🎮 Тимагочи «Тимлид» – чужой результат', 'accent');
+    print('team@' + label + ' · уровень «' + STAGES[s.stage] + '» · день ' + s.day + ' · релизы ' + s.shipped + '/' + GOAL_SHIP, null);
+    print('  ' + resultTitle(s), s.flag === 'x' ? 'err' : 'ok');
+    print('  доверие ' + bars(s.trust) + ' ' + s.trust + '   экспертиза ' + bars(s.expertise) + ' ' + s.expertise, null);
+    print('  настрой ' + bars(s.morale) + ' ' + s.morale + '   конфликт  ' + bars(s.conflict) + ' ' + s.conflict, null);
+    print('  команда: ' + s.team + ' чел.', 'dim');
+    print('────────────────────────────', 'dim');
+    print('Обгонишь? team new – начни свою игру.', 'hint');
+  }
+
   // ── team: дашборд + управление игрой ──
   function dashboard() {
     var a = ARCHES[st.arch] || ARCHES.coder, m = st.metrics;
@@ -337,20 +402,22 @@ export function makeTama(S) {
       print('  команда пуста – hire наймёт первого человека.', 'dim');
     }
     if (st.over) print('  💀 ' + st.overWhy + '. team reset – заново.', 'err');
-    print('  действия: 1on1 · mentor · cr · pair · delegate · retro · hire · fire <имя> · ship · standup', 'hint');
+    print('  действия (через team): team 1on1 · team mentor · team cr · team pair · team delegate · team retro · team hire · team fire <имя> · team ship · team standup', 'hint');
+    print('  поделиться результатом: team share', 'hint');
   }
   function teamHelp() {
     print('Тимагочи «Тимлид» – вырасти разработчика и команду в консоли.', 'accent');
     print('Старт:   team new [coder|frontender|teamlead]', null);
     print('Метрики: доверие · экспертиза · настрой растим, конфликт держим низким.', null);
-    print('Цель:    дорасти до уровня «тимлид» и выкатить ' + GOAL_SHIP + ' релизов (ship).', null);
-    print('Уход:    без действий метрики проседают со временем – заглядывай (standup).', 'dim');
-    print('Команды действий:', 'dim');
+    print('Цель:    дорасти до уровня «тимлид» и выкатить ' + GOAL_SHIP + ' релизов (team ship).', null);
+    print('Забота:  без регулярных действий метрики со временем проседают – заглядывай (team standup).', 'dim');
+    print('Действия – через team <действие> (напр. team ship, team 1on1 Маша):', 'dim');
     print('  1on1 [имя]   +доверие, -конфликт      mentor [имя] +экспертиза, +опыт', null);
     print('  cr           код-ревью: +экспертиза   pair         +экспертиза, +настрой', null);
     print('  delegate     +настрой, +доверие       retro        -конфликт', null);
     print('  hire         нанять человека          fire <имя>   уволить', null);
     print('  ship         выкатить релиз (цель)    standup      прожить день', null);
+    print('Поделиться: team share – ссылка-результат + карточка для чата (обгонят?).', null);
     print('Управление: team (дашборд) · team new <архетип> · team reset', 'hint');
   }
   function startGame(arch) {
@@ -362,8 +429,19 @@ export function makeTama(S) {
     var b = {}; b[ARCHES[arch].boost] = 12; apply(b); save(); paint();
     teamHelp();
   }
+  // Действия можно вызывать и напрямую (ship), и через team <действие> (team ship) –
+  // так интуитивнее. Один источник правды для обоих путей.
+  var ACTIONS = {
+    '1on1': oneonone, mentor: mentor, cr: codereview, codereview: codereview, pair: pair,
+    delegate: delegate, retro: retro, hire: hire, fire: fire, ship: ship,
+    standup: standup, daily: standup
+  };
   function team(a) {
     var sub = (a[0] || '').toLowerCase();
+    if (/^tl\d/.test(sub)) { showResult(a[0]); return; }          // ссылка-результат: team <code>
+    if (sub === 'share') { share(); return; }
+    if (sub === 'result') { showResult(a[1]); return; }
+    if (ACTIONS[sub]) { ACTIONS[sub](a.slice(1)); return; }
     if (sub === 'new' || sub === 'start') { startGame(a[1]); return; }
     if (sub === 'reset' || sub === 'delete') {
       st = null; stopTick(); try { if (w.localStorage) w.localStorage.removeItem(KEY); } catch (e) {}
@@ -386,10 +464,8 @@ export function makeTama(S) {
   return {
     resume: resume,
     isActive: function () { return !!st; },
-    commands: {
-      team: team, mentor: mentor, cr: codereview, pair: pair, delegate: delegate,
-      retro: retro, hire: hire, fire: fire, ship: ship, standup: standup,
-      '1on1': oneonone
-    }
+    // Действия НЕ регистрируются как самостоятельные команды – только через team <действие>
+    // (см. ACTIONS в team()), чтобы не пересекаться с остальными командами шелла (cr, ship, fire …).
+    commands: { team: team }
   };
 }
