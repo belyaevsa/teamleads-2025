@@ -3998,3 +3998,17 @@ body.cx-lock{overflow:hidden}
 /* chapter list accent matches each topic's timeline colour */
 .ap-chapter { border-left: 3px solid var(--ap-c, transparent); }
 .ap-chapter-time { color: var(--ap-c, var(--primary)); }
+
+/* topic-name tooltip that follows the cursor along the coloured timeline */
+.ap-bar-tip {
+    position: absolute; bottom: calc(100% + 9px); left: 0; transform: translateX(-50%);
+    max-width: 240px; padding: 5px 9px; pointer-events: none; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; z-index: 5;
+    font-size: 0.78rem; font-weight: 600; line-height: 1.2; color: var(--white);
+    background: var(--gray-900); border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+    border-left: 3px solid var(--ap-c, var(--primary));
+}
+.ap-bar-tip::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: var(--gray-900);
+}

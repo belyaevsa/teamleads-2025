@@ -182,6 +182,8 @@
   // Paint one coloured zone per topic on the scrubber, spanning [start, nextStart]
   // in TIME order (chapters may be non-chronological). Built once we know duration.
   var timelineBuilt = false;
+  var timelineZones = [];        // [{ start, end, title, color }] for the hover tooltip
+  var tip = null;
   function buildTimeline(duration) {
     if (timelineBuilt || !duration || !isFinite(duration) || chapters.length < 2 || !els.bar) return;
     timelineBuilt = true;
@@ -191,6 +193,7 @@
     zones.setAttribute('aria-hidden', 'true');   // decorative; the bar handles seeking
     ordered.forEach(function (ch, i) {
       var end = (i + 1 < ordered.length) ? ordered[i + 1].start : duration;
+      timelineZones.push({ start: ch.start, end: end, title: ch.title, color: ch.color });
       var seg = document.createElement('div');
       seg.className = 'ap-zone';
       seg.style.left = (ch.start / duration * 100) + '%';
@@ -199,8 +202,38 @@
       zones.appendChild(seg);
     });
     els.bar.insertBefore(zones, els.bar.firstChild);
+
+    // Tooltip naming the topic under the cursor (works while scrubbing too).
+    tip = document.createElement('div');
+    tip.className = 'ap-bar-tip';
+    tip.hidden = true;
+    els.bar.appendChild(tip);
   }
   if (audio.readyState >= 1 && audio.duration) buildTimeline(audio.duration);
+
+  function zoneAt(t) {
+    for (var i = 0; i < timelineZones.length; i++) {
+      if (t >= timelineZones[i].start && t < timelineZones[i].end) return timelineZones[i];
+    }
+    return null;
+  }
+  function showTip(clientX) {
+    if (!tip || !audio.duration) return;
+    var rect = els.bar.getBoundingClientRect();
+    var ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    var z = zoneAt(ratio * audio.duration);
+    if (!z) { tip.hidden = true; return; }
+    tip.textContent = z.title;
+    tip.style.setProperty('--ap-c', z.color);
+    tip.style.left = (ratio * 100) + '%';
+    // Flip alignment near the ends so the label isn't clipped by the shell.
+    tip.style.transform = ratio < 0.15 ? 'translateX(-14px)'
+                        : ratio > 0.85 ? 'translateX(calc(-100% + 14px))'
+                        : 'translateX(-50%)';
+    tip.hidden = false;
+  }
+  els.bar.addEventListener('pointermove', function (e) { showTip(e.clientX); });
+  els.bar.addEventListener('pointerleave', function () { if (tip) tip.hidden = true; });
 
   /* ---- transcript ------------------------------------------------------- */
 
