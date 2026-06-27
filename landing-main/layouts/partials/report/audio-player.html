@@ -13,7 +13,6 @@
 {{- $chapters := where (.Params.topics | default slice) "start" "!=" nil -}}
 <section class="report-audio" id="listen" data-audio-player data-ap-level="0"
          data-transcript-src="{{ $transcript | relURL }}">
-    <div class="container">
         <div class="audio-shell">
             <div class="audio-head">
                 <span class="audio-eyebrow">{{ partial "icons/calendar.html" }} Слушать встречу</span>
@@ -73,5 +72,4 @@
                 <p class="ap-transcript-empty" data-ap-empty hidden>Ничего не найдено.</p>
             </div>
         </div>
-    </div>
 </section>

@@ -33,10 +33,6 @@
     </div>
 </section>
 
-{{- with .Params.audio }}
-{{ partial "report/audio-player.html" $ }}
-{{- end }}
-
 {{ partial "next-meetup.html" . }}
 
 <section class="report-content">
@@ -48,8 +44,8 @@
             <aside class="report-toc" aria-label="Содержание встречи" data-report-toc>
                 <p class="report-toc-title">Содержание</p>
                 <ol>
-                    {{- with .Params.audio }}<li><a href="#listen">Слушать запись</a></li>{{- end }}
                     {{- with .Params.participants }}<li><a href="#participants">Участники</a></li>{{- end }}
+                    {{- with .Params.audio }}<li><a href="#listen">Слушать запись</a></li>{{- end }}
                     {{- with .Params.topics }}<li><a href="#topics">Подтемы</a></li>{{- end }}
                     {{- with .Params.opinions }}<li><a href="#opinions">Различные мнения</a></li>{{- end }}
                     {{- with .Params.takeaways }}<li><a href="#takeaways">Основные выводы</a></li>{{- end }}
@@ -80,6 +76,10 @@
                     </div>
                 </div>
                 {{ end }}
+
+                {{- with .Params.audio }}
+                {{ partial "report/audio-player.html" $ }}
+                {{- end }}
 
                 {{ with .Params.topics }}
                 <div class="report-topics" id="topics">
