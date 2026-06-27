@@ -192,6 +192,7 @@ export function makeSim(S) {
   function games(a) {
     var GAMES = [
       ['sim', 'тимлид-симулятор: развилки и решения', 'в терминале'],
+      ['team', 'тимагочи: вырасти разработчика и команду', 'в терминале'],
       ['sudoku', 'классическое судоку 9×9', 'в окне']
     ];
     var pick = (a[0] || '').toLowerCase();
@@ -207,6 +208,7 @@ export function makeSim(S) {
       return;
     }
     if (pick === 'sim' || pick === 'simulator') { simStart(); return; }
+    if (pick === 'team' || pick === 'tamagotchi') { run('team'); return; }
     if (pick === 'sudoku') {
       try { if (w.ym) w.ym(106055675, 'reachGoal', 'game_open', { source: 'shell', game: 'sudoku' }); } catch (e) {}
       var url = (w.location.origin || '') + '/games/sudoku.html';

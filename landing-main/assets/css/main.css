@@ -3332,6 +3332,26 @@ body > .nav {
 .sim-toast{min-height:18px;margin-top:10px;color:#3fb950;font-size:13px;opacity:0;transition:opacity .2s ease}
 .sim-toast.show{opacity:1}
 
+/* Тимагочи HUD – фиксированная полоса с анимированным напарником над выводом (tama.js) */
+.term-hud{flex:0 0 auto;padding:10px 14px;background:#11161d;border-bottom:1px solid #232b36;font-variant-numeric:tabular-nums}
+.term-hud[hidden]{display:none}
+.hud-wrap{display:flex;align-items:center;gap:16px}
+.hud-face{flex:0 0 auto;margin:0;font-family:inherit;font-size:13px;line-height:1.15;white-space:pre;color:#8b949e;transition:color .3s ease}
+.hud-face.mood-happy{color:#3fb950}
+.hud-face.mood-neutral{color:#39c5cf}
+.hud-face.mood-stressed{color:#f85149}
+.hud-face.mood-sleep{color:#6e7681}
+.hud-face.mood-dead{color:#8b949e;opacity:.7}
+.hud-stats{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px}
+.hud-head{color:#FEC50C;font-size:12px;font-weight:600;letter-spacing:.02em;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-row{display:flex;align-items:center;gap:10px;font-size:12px;color:#8b949e}
+.hud-label{flex:0 0 auto;width:74px}
+.hud-bar{flex:0 0 auto;letter-spacing:1px;color:#39c5cf}
+.hud-num{flex:0 0 auto;width:26px;text-align:right;color:#c9d1d9}
+.hud-row.is-good .hud-bar{color:#3fb950}
+.hud-row.is-bad .hud-bar{color:#f85149}
+.term--ps .term-hud{background:#011f49;border-bottom-color:#0a3a73}
+
 @media (max-width:480px){
   .term{height:78vh}
   .shell-wrap .term{height:80vh}
@@ -3339,6 +3359,10 @@ body > .nav {
   .term-title{display:none}
   .term-sim{padding:16px}
   .sim-prompt p{font-size:15px}
+  .hud-wrap{gap:10px}
+  .hud-face{font-size:11px}
+  .hud-label{width:62px}
+  .hud-bar{letter-spacing:0}
 }
 
 /* ============================================================

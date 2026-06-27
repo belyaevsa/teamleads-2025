@@ -17,6 +17,7 @@ import { makeFs } from './fs.js';
 import { makeGit } from './git.js';
 import { makeEditor } from './editor.js';
 import { makeSim } from './sim.js';
+import { makeTama } from './tama.js';
 import { makeMan } from './man.js';
 import { makeSalary } from './salary.js';
 import { makeFsCommands } from './commands-fs.js';
@@ -37,6 +38,7 @@ import { makeMetaCommands } from './commands-meta.js';
     var promptEl = root.querySelector('[data-term-prompt]');
     var titleEl = root.querySelector('[data-term-title]');
     var simPanel = root.querySelector('[data-term-sim]');
+    var hud = root.querySelector('[data-term-hud]');
     var edPanel = root.querySelector('[data-term-editor]');
     var edArea = root.querySelector('[data-term-editor-area]');
     var edName = root.querySelector('[data-term-editor-name]');
@@ -242,7 +244,7 @@ import { makeMetaCommands } from './commands-meta.js';
     // ════════════════════════════════════════════════════════════════════════
     var S = {
       w: w, d: d, root: root, out: out, body: body, input: input, line: line,
-      promptEl: promptEl, titleEl: titleEl, simPanel: simPanel, edPanel: edPanel, edArea: edArea, edName: edName, edMeta: edMeta,
+      promptEl: promptEl, titleEl: titleEl, simPanel: simPanel, hud: hud, edPanel: edPanel, edArea: edArea, edName: edName, edMeta: edMeta,
       mode: mode, URLSYNC: URLSYNC, reduced: reduced, TG: TG,
       FS: FS, SAL: SAL, FRIENDS: FRIENDS, SCEN: SCEN, QUIZZES: QUIZZES, SHARE: SHARE, QUESTIONS: QUESTIONS, VOICES: VOICES, COMPANIES: COMPANIES,
       sections: sections, links: links, sectionNames: sectionNames, linkNames: linkNames, pool: pool,
@@ -274,6 +276,7 @@ import { makeMetaCommands } from './commands-meta.js';
     var _git = makeGit(S), gitNames = _git.gitNames;
     var _editor = makeEditor(S);   // nano modal (owns editorSt, installs its own keyboard)
     var _sim = makeSim(S);         // simulator/quiz/arcade (owns simSt, installs its own keyboard)
+    var _tama = makeTama(S);       // тимагочи: команды-действия + анимированный HUD-напарник
     var _salary = makeSalary(S);   // salary subsystem (live data + offline fallback)
     S.submitSalary = _salary.submitSalary;
 
@@ -289,7 +292,8 @@ import { makeMetaCommands } from './commands-meta.js';
         sim: _sim.sim, quiz: _sim.quiz, games: _sim.games, sudoku: _sim.sudoku,
         git: _git.git,
         nano: _editor.nano
-      }
+      },
+      _tama.commands        // team 1on1 mentor cr pair delegate retro hire fire ship standup
     );
     S.commands = commands;   // wire cross-command calls (git show→cat, checkout→cd, …)
     // Aliases go through alias(name, target): it records the mapping (powering `which`
@@ -300,6 +304,8 @@ import { makeMetaCommands } from './commands-meta.js';
       ['ai', 'claude'], ['ask', 'claude'], ['gpt', 'codex'], ['openai', 'codex'],
       ['github', 'contribute'], ['gh', 'contribute'], ['pr', 'contribute'],
       ['simulator', 'sim'], ['game', 'games'], ['play', 'games'], ['arcade', 'games'],
+      ['tamagotchi', 'team'], ['тимагочи', 'team'], ['pet', 'team'], ['daily', 'standup'],
+      ['codereview', 'cr'], ['standup-meeting', 'standup'],
       ['topic', 'discuss'], ['обсудить', 'discuss'], ['тема', 'discuss'],
       ['chat', 'voices'], ['голоса', 'voices'], ['quotes', 'voices'],
       ['reviews', 'company'], ['review', 'company'], ['addreviews', 'addreview'],
@@ -484,6 +490,7 @@ import { makeMetaCommands } from './commands-meta.js';
     }
     function ready() {
       if (line) line.hidden = false; input.focus();
+      if (mode === 'full') _tama.resume();   // тихо поднять HUD-напарника, если есть сохранение
       var urlcmd = urlCommand();
       if (urlcmd) {
         // Assistant share links (claude/codex …) land in the terminal with the command

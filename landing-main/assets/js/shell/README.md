@@ -26,6 +26,11 @@ assets/js/shell/
   git.js               `git` subcommands (log/status/diff/blame/…) + easter eggs
   editor.js            `nano` modal editor (owns editorSt, installs its keyboard)
   sim.js               simulator + quiz + mini-arcade (owns simSt, its keyboard)
+  tama.js              тимагочи: grow-a-developer game. Animated HUD buddy +
+                       team metrics (trust/expertise/conflict/morale), persisted
+                       in localStorage with real-time decay. Command-driven (NOT
+                       a modal): team · 1on1 · mentor · cr · pair · delegate ·
+                       retro · hire · fire · ship · standup
   man.js               MANPAGES data block + manSummary
   salary.js            live/offline salary data + the `salary` command
   commands-fs.js       ls cd open cat pwd tree find grep latest random
@@ -238,7 +243,15 @@ For something bigger (a new panel, a stateful tool):
   comment, or doc – including this codebase's content and code.
 - **localStorage keys:** `tnk_shell_fs` (user filesystem), `tnk_shell_history`
   (command history), `tnk_shell_theme` (bash/powershell skin), `tnk_shell_user`
-  (author name for file metadata).
+  (author name for file metadata), `tnk_shell_tama` (тимагочи save: metrics, team,
+  `ts` timestamp for decay).
+- **The тимагочи (`tama.js`) is command-driven, not a modal.** Unlike `sim.js`/
+  `editor.js` it does NOT grab the keyboard, so it is absent from the prompt
+  keydown gate. Its only non-command surface is the `[data-term-hud]` strip and a
+  `setInterval` blink loop (paused when `document.hidden`). It auto-resumes on
+  mount via `_tama.resume()` (full mode only) when a save exists. Real-time decay
+  is computed from `Date.now() - state.ts` on load (18h ≈ one drift "day", capped
+  at 7), so leaving the tab erodes trust/morale and grows conflict.
 - **The user filesystem is a full overlay:** user nodes can shadow baked content
   at the same path, and `rm` on a baked page writes a tombstone (whiteout) that
   hides it locally without touching the source. See `fs.js` for the model.
