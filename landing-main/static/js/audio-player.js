@@ -91,15 +91,25 @@
 
   var slug = (location.pathname.split('/').filter(Boolean).pop()) || 'event';
   var playedOnce = false;
+
+  // ±10s skip buttons – seek without changing play/pause state.
+  root.querySelectorAll('[data-ap-skip]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var d = parseFloat(btn.getAttribute('data-ap-skip')) || 0;
+      seekTo(audio.currentTime + d, false);
+      btn.classList.remove('is-bumped');
+      void btn.offsetWidth;                  // restart the bump animation
+      btn.classList.add('is-bumped');
+      track('audio_skip', { event: slug, dir: d < 0 ? 'back' : 'fwd' });
+    });
+  });
   audio.addEventListener('play', function () {
-    els.icPlay.hidden = true;
-    els.icPause.hidden = false;
+    els.play.classList.add('is-playing');   // CSS morphs play → pause
     els.play.setAttribute('aria-label', 'Пауза');
     if (!playedOnce) { playedOnce = true; track('audio_play', { event: slug }); }
   });
   audio.addEventListener('pause', function () {
-    els.icPlay.hidden = false;
-    els.icPause.hidden = true;
+    els.play.classList.remove('is-playing');
     els.play.setAttribute('aria-label', 'Слушать');
   });
 

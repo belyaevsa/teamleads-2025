@@ -23,10 +23,26 @@
                     <source src="{{ .Params.audio }}">
                     Ваш браузер не поддерживает аудио.
                 </audio>
-                <button type="button" class="ap-play" data-ap-play aria-label="Слушать">
-                    <svg class="ap-ic-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-                    <svg class="ap-ic-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" hidden><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
-                </button>
+                <div class="ap-transport">
+                    <button type="button" class="ap-skip" data-ap-skip="-10" aria-label="Назад 10 секунд" title="Назад 10 секунд">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="1 4 1 10 7 10"></polyline>
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                            <text x="12.5" y="15.5" font-size="8" stroke="none" fill="currentColor" text-anchor="middle" font-weight="700">10</text>
+                        </svg>
+                    </button>
+                    <button type="button" class="ap-play" data-ap-play aria-label="Слушать">
+                        <svg class="ap-ic-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                        <svg class="ap-ic-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+                    </button>
+                    <button type="button" class="ap-skip" data-ap-skip="10" aria-label="Вперёд 10 секунд" title="Вперёд 10 секунд">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                            <text x="11.5" y="15.5" font-size="8" stroke="none" fill="currentColor" text-anchor="middle" font-weight="700">10</text>
+                        </svg>
+                    </button>
+                </div>
                 <div class="ap-bar" data-ap-bar role="slider" tabindex="0"
                      aria-label="Перемотка" aria-valuemin="0" aria-valuenow="0">
                     <div class="ap-bar-fill" data-ap-fill></div>

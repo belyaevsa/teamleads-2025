@@ -4012,3 +4012,34 @@ body.cx-lock{overflow:hidden}
     content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
     border: 5px solid transparent; border-top-color: var(--gray-900);
 }
+
+/* --- transport: ±10s skip buttons + animated play/pause morph --- */
+.ap-transport { flex: none; display: inline-flex; align-items: center; gap: 2px; }
+
+.ap-skip {
+    flex: none; width: 38px; height: 38px; display: grid; place-items: center;
+    padding: 0; border: none; cursor: pointer; color: var(--gray-500);
+    background: none; border-radius: var(--radius-full);
+    transition: color var(--transition-fast), background var(--transition-fast);
+}
+.ap-skip:hover { color: var(--primary-dark); background: var(--gray-100); }
+.ap-skip:active { transform: scale(0.9); }
+.ap-skip svg { width: 22px; height: 22px; overflow: visible; }
+.ap-skip[data-ap-skip^="-"].is-bumped svg { animation: ap-bump-back 0.45s ease; }
+.ap-skip:not([data-ap-skip^="-"]).is-bumped svg { animation: ap-bump-fwd 0.45s ease; }
+@keyframes ap-bump-back { 40% { transform: rotate(-40deg) scale(1.12); } }
+@keyframes ap-bump-fwd  { 40% { transform: rotate(40deg) scale(1.12); } }
+
+/* play ⇄ pause: two icons stacked in one grid cell, cross-fade + scale/rotate */
+.ap-play > svg {
+    grid-area: 1 / 1;
+    transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ap-ic-pause { opacity: 0; transform: scale(0.4) rotate(-90deg); }
+.ap-play.is-playing .ap-ic-play { opacity: 0; transform: scale(0.4) rotate(90deg); }
+.ap-play.is-playing .ap-ic-pause { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ap-play > svg { transition: opacity 0.15s linear; transform: none !important; }
+    .ap-skip.is-bumped svg { animation: none; }
+}
