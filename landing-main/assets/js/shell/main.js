@@ -477,6 +477,37 @@ import { makeMetaCommands } from './commands-meta.js';
       else if (k === 'clear') commands.clear();
     });
 
+    // Title-bar window controls (the macOS-style dots). green = expand, yellow = roll up.
+    var bar = root.querySelector('.term-bar');
+    // The command to carry when expanding: whatever is typed now, else the last one run.
+    function currentCmd() {
+      var v = (input.value || '').trim();
+      return v || (hist.length ? hist[hist.length - 1] : '');
+    }
+    if (bar) bar.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('[data-term-btn]') : null;
+      // Clicking anywhere on the bar while rolled up restores the window.
+      if (!btn) { if (root.classList.contains('term--rolled')) { root.classList.remove('term--rolled'); input.focus(); } return; }
+      var act = btn.getAttribute('data-term-btn');
+      if (act === 'min') {
+        // Roll the window up to a compact size (like the homepage embed); click again to restore.
+        root.classList.remove('term--max');
+        root.classList.toggle('term--rolled');
+        if (!root.classList.contains('term--rolled')) input.focus();
+      } else if (act === 'max') {
+        root.classList.remove('term--rolled');
+        if (URLSYNC) {
+          // Already on /shell/ – no bigger page to open, so toggle true fullscreen.
+          root.classList.toggle('term--max');
+          input.focus();
+        } else {
+          // Homepage / 404 embed – open the dedicated /shell/ page with the current command.
+          var cmd = currentCmd();
+          w.location.href = '/shell/' + (cmd ? '#' + encodeURIComponent(cmd) : '');
+        }
+      }
+    });
+
     // A shareable deep-link can carry a command: /shell/#cat events/meetup-2026-06-24
     // or /shell/?cmd=cat%20articles/... – it runs once the shell is ready.
     function urlCommand() {

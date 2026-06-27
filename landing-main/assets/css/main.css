@@ -3178,6 +3178,16 @@ body > .nav {
 .term-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#161b22;border-bottom:1px solid #232b36}
 .term-dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto}
 .term-dot.red{background:#ff5f56}.term-dot.yellow{background:#ffbd2e}.term-dot.green{background:#27c93f}
+/* yellow/green dots are real buttons (expand / roll up) – strip the button chrome */
+button.term-dot{padding:0;border:0;cursor:pointer;-webkit-appearance:none;appearance:none}
+button.term-dot:hover{filter:brightness(1.18)}
+button.term-dot:focus-visible{outline:2px solid #39c5cf;outline-offset:2px}
+/* yellow: rolled-up window – a compact box (like the homepage embed), beats the
+   per-context height rules below via the doubled .term.term--rolled specificity */
+.term.term--rolled{flex:0 0 auto;height:340px;max-height:60vh}
+.shell-wrap .term.term--rolled{flex:0 0 auto;height:340px;max-height:60vh}
+/* green on /shell/: fullscreen (position:fixed+inset ignores the flex height rules) */
+.term.term--max{position:fixed;inset:0;max-height:none;border-radius:0;z-index:1000}
 .term-title{margin-left:8px;color:#8b949e;font-size:13px}
 .term-body{flex:1 1 auto;min-height:0;padding:16px;overflow-y:auto;font-size:14px;line-height:1.6;color:#c9d1d9;cursor:text;scrollbar-width:thin;scrollbar-color:#30363d #0d1117}
 .term-body::-webkit-scrollbar{width:9px}.term-body::-webkit-scrollbar-thumb{background:#30363d;border-radius:5px}

@@ -229,7 +229,36 @@ For something bigger (a new panel, a stateful tool):
 
 ---
 
-## 6. Gotchas
+## 6. Window controls (title-bar buttons)
+
+The three macOS-style dots in `.term-bar` are functional window controls, wired
+in `mount()` (`main.js`) via a single delegated click handler on `.term-bar`.
+The markup lives in `layouts/partials/shell.html`; the visual states are CSS
+classes toggled on the `[data-term]` root.
+
+| Dot        | `data-term-btn` | Action |
+|------------|-----------------|--------|
+| 🔴 red     | –               | decorative (`aria-hidden`); no behavior |
+| 🟡 yellow  | `min`           | **Roll up** – toggles `term--rolled`, shrinking the window to a compact box (≈340px, the homepage-embed size). Click again, or click anywhere on the bar, to restore. |
+| 🟢 green   | `max`           | **Expand** – on an embed (homepage/404) opens `/shell/` carrying the current command as `#<cmd>`; on the `/shell/` page itself (where there's no bigger page) toggles `term--max` fullscreen instead. |
+
+Details that matter:
+
+- **"Current command"** = the live input value if non-empty, else the last
+  history entry, else nothing (just open `/shell/`). It rides along as
+  `/shell/#<encoded cmd>`, the same deep-link `urlCommand()` already replays on
+  boot – so assistant verbs (`claude`/`codex`) land pre-typed, everything else
+  auto-runs.
+- **Context switch is by `URLSYNC`** (the `data-urlsync="1"` only the standalone
+  `/shell/` page sets): green navigates from embeds, fullscreens on `/shell/`.
+- **CSS specificity:** `term--rolled`/`term--max` are written as
+  `.term.term--rolled` (doubled class) so they beat the per-context height rules
+  (`.shell-wrap .term`, the media queries) without `!important`.
+- The two states are mutually exclusive – toggling one clears the other.
+
+---
+
+## 7. Gotchas
 
 - **esbuild won't catch missing deps.** If you use `print` in a module but
   forget to destructure it from `S`, the build passes and the command throws a

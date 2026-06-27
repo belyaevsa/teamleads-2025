@@ -77,7 +77,11 @@
 
 <div class="term" data-term data-mode="{{ $mode }}"{{ if .urlsync }} data-urlsync="1"{{ end }} data-tg="{{ site.Params.telegram }}" data-fs='{{ $fs | jsonify }}' data-salary='{{ site.Data.salaries | jsonify }}' data-friends='{{ $friends | jsonify }}' data-scenarios='{{ site.Data.scenarios | jsonify }}' data-share='{{ $share | jsonify }}' data-questions='{{ $questions | jsonify }}' data-voices='{{ site.Data.voices | jsonify }}' data-companies='{{ $companies | jsonify }}'>
   <div class="term-bar">
-    <span class="term-dot red"></span><span class="term-dot yellow"></span><span class="term-dot green"></span>
+    {{- /* macOS-style window controls (wired in main.js): red is decorative;
+           yellow rolls the window up to a compact size; green expands it –
+           opening /shell/ with the current command from an embed, or going
+           fullscreen on the /shell/ page itself. */ -}}
+    <span class="term-dot red" aria-hidden="true"></span><button type="button" class="term-dot yellow" data-term-btn="min" title="Свернуть" aria-label="Свернуть терминал"></button><button type="button" class="term-dot green" data-term-btn="max" title="Развернуть" aria-label="Развернуть терминал"></button>
     <span class="term-title" data-term-title>guest@teamleads: /</span>
   </div>
   <div class="term-hud" data-term-hud aria-label="Тимагочи: статус команды" hidden></div>
