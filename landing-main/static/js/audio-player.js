@@ -211,6 +211,7 @@
     tip = document.createElement('div');
     tip.className = 'ap-bar-tip'; tip.hidden = true;
     els.bar.appendChild(tip);
+    buildMiniZones(duration);
   }
   function zoneAt(t) {
     for (var i = 0; i < zones.length; i++) if (t >= zones[i].start && t < zones[i].end) return zones[i];
@@ -479,6 +480,22 @@
       root.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
     if (!audio.paused) mini.classList.add('is-playing');
+  }
+  // Mirror the colour-coded topic zones onto the mini progress bar.
+  function buildMiniZones(duration) {
+    if (!mini || !zones.length || !duration) return;
+    var bar = mini.querySelector('.ap-mini-bar');
+    if (!bar || bar.querySelector('.ap-mini-zone')) return;
+    var frag = document.createDocumentFragment();
+    zones.forEach(function (z) {
+      var seg = document.createElement('span');
+      seg.className = 'ap-mini-zone';
+      seg.style.left = (z.start / duration * 100) + '%';
+      seg.style.width = ((z.end - z.start) / duration * 100) + '%';
+      seg.style.setProperty('--ap-c', z.color);
+      frag.appendChild(seg);
+    });
+    bar.insertBefore(frag, bar.firstChild);
   }
   function updateMini() {
     if (!mini || !mini.classList.contains('is-visible')) return;

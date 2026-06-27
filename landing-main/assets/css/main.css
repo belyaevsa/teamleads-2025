@@ -4035,7 +4035,7 @@ body.cx-lock{overflow:hidden}
     grid-area: 1 / 1;
     transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.ap-ic-pause { opacity: 0; transform: scale(0.4) rotate(-90deg); }
+.ap-play .ap-ic-pause { opacity: 0; transform: scale(0.4) rotate(-90deg); }
 .ap-play.is-playing .ap-ic-play { opacity: 0; transform: scale(0.4) rotate(90deg); }
 .ap-play.is-playing .ap-ic-pause { opacity: 1; transform: none; }
 
@@ -4146,8 +4146,10 @@ body.cx-lock{overflow:hidden}
     font-size: 0.85rem; font-weight: 600; color: var(--gray-800);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.ap-mini-bar { height: 4px; background: var(--gray-200); border-radius: var(--radius-full); overflow: hidden; }
-.ap-mini-fill { display: block; height: 100%; width: 0; background: var(--primary); border-radius: inherit; }
+.ap-mini-bar { position: relative; height: 6px; background: var(--gray-200); border-radius: var(--radius-full); overflow: hidden; }
+.ap-mini-zone { position: absolute; top: 0; bottom: 0; background: var(--ap-c, var(--gray-300)); opacity: 0.5; }
+/* played portion = a translucent dark scrim over the colours, like the main bar */
+.ap-mini-fill { position: absolute; top: 0; bottom: 0; left: 0; width: 0; z-index: 1; background: rgba(17, 24, 39, 0.32); }
 .ap-mini-info:hover .ap-mini-now { color: var(--primary-dark); }
 
 @media (prefers-reduced-motion: reduce) {

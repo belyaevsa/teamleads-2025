@@ -14,11 +14,6 @@
         <div class="article-meta">
             {{ partial "icons/calendar.html" }}
             <span class="article-date">{{ .Date.Day }} {{ index $months (printf "%d" .Date.Month) }} {{ .Date.Year }}</span>
-            {{- if not (.Date.Before (now.AddDate 0 0 -1)) }}
-            <a class="report-cal" href="{{ .Site.Params.meetup.ics }}" download data-cal="event">
-                · Добавить в календарь
-            </a>
-            {{- end }}
         </div>
         {{- with .Params.tags }}
         <div class="article-tags">
@@ -33,28 +28,57 @@
     </div>
 </section>
 
-{{ partial "next-meetup.html" . }}
-
 <section class="report-content">
     <div class="container">
         <div class="report-layout">
 
             {{- $showToc := or .Params.participants .Params.topics .Params.opinions .Params.takeaways .Params.nextQuestions -}}
             {{- if $showToc }}
-            <aside class="report-toc" aria-label="Содержание встречи" data-report-toc>
-                <p class="report-toc-title">Содержание</p>
+            <details class="report-toc" data-report-toc open>
+                <summary class="report-toc-title">Содержание</summary>
                 <ol>
-                    {{- with .Params.participants }}<li><a href="#participants">Участники</a></li>{{- end }}
                     {{- with .Params.audio }}<li><a href="#listen">Слушать запись</a></li>{{- end }}
                     {{- with .Params.topics }}<li><a href="#topics">Подтемы</a></li>{{- end }}
+                    {{- with .Params.participants }}<li><a href="#participants">Участники</a></li>{{- end }}
                     {{- with .Params.opinions }}<li><a href="#opinions">Различные мнения</a></li>{{- end }}
                     {{- with .Params.takeaways }}<li><a href="#takeaways">Основные выводы</a></li>{{- end }}
                     {{- with .Params.nextQuestions }}<li><a href="#next">Что обсудим дальше</a></li>{{- end }}
                 </ol>
-            </aside>
+            </details>
             {{- end }}
 
             <div class="report-container">
+
+                {{- with .Params.audio }}
+                {{ partial "report/audio-player.html" $ }}
+                {{- end }}
+
+                {{ with .Params.topics }}
+                <div class="report-topics" id="topics">
+                    <h2>Подтемы и их суть</h2>
+                    <ol class="topics-timeline{{ if $.Params.audio }} has-audio{{ end }}">
+                        {{ range $i, $t := . }}
+                        {{- $tc := index $accentPalette (mod $i (len $accentPalette)) -}}
+                        {{- $seek := and $.Params.audio (ne $t.start nil) -}}
+                        <li class="topic-block" id="topic-{{ add $i 1 }}" style="--topic-c: {{ $tc }}">
+                            <div class="topic-rail">
+                                {{- if $seek }}
+                                <button type="button" class="topic-node is-seek" data-ap-seek="{{ $t.start }}"
+                                        aria-label="Слушать тему «{{ $t.title }}» с отметки {{ $t.start }}" title="Слушать с этого момента">{{ add $i 1 }}</button>
+                                <span class="topic-time" aria-hidden="true">▶&nbsp;<span data-ap-fmt="{{ $t.start }}">{{ $t.start }}</span></span>
+                                {{- else }}
+                                <span class="topic-node" aria-hidden="true">{{ add $i 1 }}</span>
+                                {{- end }}
+                            </div>
+                            <div class="topic-body">
+                                <h3>{{ $t.title }}</h3>
+                                <p>{{ $t.body }}</p>
+                            </div>
+                        </li>
+                        {{ end }}
+                    </ol>
+                </div>
+                {{ end }}
 
                 {{ with .Params.participants }}
                 <div class="report-participants" id="participants">
@@ -74,27 +98,6 @@
                         </div>
                         {{ end }}
                     </div>
-                </div>
-                {{ end }}
-
-                {{- with .Params.audio }}
-                {{ partial "report/audio-player.html" $ }}
-                {{- end }}
-
-                {{ with .Params.topics }}
-                <div class="report-topics" id="topics">
-                    <h2>Подтемы и их суть</h2>
-                    {{ range $i, $t := . }}
-                    <div class="topic-block" id="topic-{{ add $i 1 }}">
-                        <h3><span class="topic-num">{{ add $i 1 }}.</span> {{ $t.title }}</h3>
-                        {{- if and $.Params.audio (ne $t.start nil) }}
-                        <button type="button" class="topic-jump" data-ap-seek="{{ $t.start }}" aria-label="Слушать с этого момента">
-                            ▶ <span data-ap-fmt="{{ $t.start }}">{{ $t.start }}</span>
-                        </button>
-                        {{- end }}
-                        <p>{{ $t.body }}</p>
-                    </div>
-                    {{ end }}
                 </div>
                 {{ end }}
 
@@ -169,6 +172,8 @@
         </div>
     </div>
 </section>
+
+{{ partial "next-meetup.html" . }}
 
 {{ partial "footer.html" . }}
 {{ end }}
