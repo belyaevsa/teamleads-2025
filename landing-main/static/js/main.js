@@ -238,6 +238,16 @@
         onScroll();
     })();
 
+    // --- Report TOC: collapse on mobile, force open on the desktop rail -------
+    (function reportTocCollapse() {
+        const toc = document.querySelector('details.report-toc');
+        if (!toc) return;
+        const mq = window.matchMedia('(min-width: 1080px)');
+        const sync = () => { toc.open = mq.matches; };
+        sync();
+        (mq.addEventListener ? mq.addEventListener('change', sync) : mq.addListener(sync));
+    })();
+
     // --- Reading progress bar ----------------------------------------------
     (function readingProgress() {
         const bar = document.querySelector('[data-reading-progress] span');
