@@ -194,6 +194,12 @@
 
     {{ partial "bottom-nav.html" . }}
 
+    {{- /* Ambient terminal dock on content pages – skip where a shell is already embedded
+           (home hero, the /shell/ page, the 404 page). */ -}}
+    {{- if and (not .IsHome) (ne .RelPermalink "/shell/") (ne .Kind "404") }}
+    {{ partial "shell-dock.html" . }}
+    {{- end }}
+
     {{ block "scripts" . }}{{ end }}
     {{- with site.Params.salaryApi }}<script>window.TEAMLEADS_SALARY_API = "{{ . }}";</script>{{ end }}
     <script src="{{ "js/retrieval.js" | relURL }}" defer></script>

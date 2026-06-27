@@ -1,0 +1,52 @@
+# Lazy-loaded shell command chunks.
+#
+# Each module here is built as its own fingerprinted ESM file by
+# layouts/partials/shell.html and dynamic-imported by the shell core
+# (assets/js/shell/main.js → loadChunk) the first time one of its `commands`
+# is invoked. The core stays small; these load on demand.
+#
+# Fields:
+#   name      – chunk id (also the loadChunk key)
+#   entry     – source module under assets/
+#   factory   – the exported factory function: makeX(S) → command map (or {commands:{…}})
+#   commands  – command names this chunk provides (drives the lazy registry + completion)
+#   deps      – (optional) other chunk names to load first
+#
+# Cross-chunk command calls go through S.invoke / run() which lazy-load the
+# target automatically, so explicit deps are rarely needed.
+
+[[modules]]
+name = "git"
+entry = "js/shell/git.js"
+factory = "makeGit"
+commands = ["git"]
+
+[[modules]]
+name = "sim"
+entry = "js/shell/sim.js"
+factory = "makeSim"
+commands = ["sim", "quiz", "games", "sudoku"]
+
+[[modules]]
+name = "tama"
+entry = "js/shell/tama.js"
+factory = "makeTama"
+commands = ["team"]
+
+[[modules]]
+name = "salary"
+entry = "js/shell/salary.js"
+factory = "makeSalary"
+commands = ["salary"]
+
+[[modules]]
+name = "editor"
+entry = "js/shell/editor.js"
+factory = "makeEditor"
+commands = ["nano"]
+
+[[modules]]
+name = "content"
+entry = "js/shell/commands-content.js"
+factory = "makeContentCommands"
+commands = ["discuss", "toolkit", "voices", "companies", "company", "addreview", "tools", "friends", "claude", "codex", "join", "telegram", "contribute", "submit", "showcase", "whoami", "principles", "fun"]

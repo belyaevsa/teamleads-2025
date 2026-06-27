@@ -11,18 +11,17 @@
  * js.Build (esbuild) into a single fingerprinted IIFE. Each module is a factory
  * that receives the shell's helpers/state so per-mount instances stay isolated.
  */
+// Core (always loaded): scaffolding, FS engine, markdown, man data, FS-nav +
+// meta (help/man/fortune/utilities) commands.
 import { makeDom } from './dom.js';
 import { makeMarkdown } from './markdown.js';
 import { makeFs } from './fs.js';
-import { makeGit } from './git.js';
-import { makeEditor } from './editor.js';
-import { makeSim } from './sim.js';
-import { makeTama } from './tama.js';
 import { makeMan } from './man.js';
-import { makeSalary } from './salary.js';
 import { makeFsCommands } from './commands-fs.js';
-import { makeContentCommands } from './commands-content.js';
 import { makeMetaCommands } from './commands-meta.js';
+// Heavy subsystems (git, sim, tama, salary, editor, content commands) are NOT
+// imported here – they are built as separate fingerprinted chunks and pulled in
+// on first use by loadChunk() via a runtime dynamic import (see data-manifest).
 
 (function (w, d) {
   'use strict';
@@ -96,6 +95,9 @@ import { makeMetaCommands } from './commands-meta.js';
 
     var reduced = w.matchMedia && w.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var cwd = '';            // '' = root; otherwise a path with no leading slash (events, projects/sub)
+    // The ambient dock opens "in" the current page's folder: data-cwd="events" etc.
+    var _initCwd = (root.getAttribute('data-cwd') || '').replace(/^\/+|\/+$/g, '');
+    if (_initCwd && sections[_initCwd]) cwd = _initCwd;
     var prevCwd = '';        // last directory, for `cd -`
     var vimMode = false;
     var hist = [], hpos = -1;
@@ -234,7 +236,10 @@ import { makeMetaCommands } from './commands-meta.js';
         try { if (w.console) w.console.warn('shell: alias "' + name + '" перекрывает команду'); } catch (e) {}
         return;
       }
-      commands[name] = commands[target]; ALIASES[name] = target;
+      ALIASES[name] = target;
+      // Bind directly only if the target is already loaded (core); aliases to lazy
+      // commands resolve at dispatch time via canonName → loadChunk.
+      if (typeof commands[target] === 'function') commands[name] = commands[target];
     }
     function canonName(name) { var seen = {}; while (ALIASES[name] && !seen[name]) { seen[name] = 1; name = ALIASES[name]; } return name; }
 
@@ -274,30 +279,59 @@ import { makeMetaCommands } from './commands-meta.js';
       submitSalary: null,   // wired from salary.js below
       commands: null        // wired after the registry is built
     };
-    // git subsystem → git.js
-    var _git = makeGit(S), gitNames = _git.gitNames;
-    var _editor = makeEditor(S);   // nano modal (owns editorSt, installs its own keyboard)
-    var _sim = makeSim(S);         // simulator/quiz/arcade (owns simSt, installs its own keyboard)
-    var _tama = makeTama(S);       // тимагочи: команды-действия + анимированный HUD-напарник
-    var _salary = makeSalary(S);   // salary subsystem (live data + offline fallback)
-    S.submitSalary = _salary.submitSalary;
+    // ── lazy chunk loader ────────────────────────────────────────────────────
+    // Heavy subsystems are separate fingerprinted ES modules. data-manifest maps
+    // chunk name → { url, factory, commands:[…], deps:[…] }. A chunk is fetched
+    // (dynamic import) the first time one of its commands is invoked, then its
+    // command map is merged into the live registry and cached.
+    var CHUNKS = {}, LAZY = {}, loaded = {}, loadingP = {};
+    try {
+      var _mEl = root.querySelector('[data-term-manifest]');
+      var _man0 = JSON.parse((_mEl && _mEl.textContent) || '{}') || {};
+      Object.keys(_man0).forEach(function (name) {
+        CHUNKS[name] = _man0[name];
+        (_man0[name].commands || []).forEach(function (c) { LAZY[c] = name; });
+      });
+    } catch (e) {}
+    function loadChunk(name) {
+      if (loaded[name]) return Promise.resolve(loaded[name]);
+      if (loadingP[name]) return loadingP[name];
+      var c = CHUNKS[name];
+      if (!c || !c.url) return Promise.reject(new Error('нет модуля ' + name));
+      loadingP[name] = Promise.all((c.deps || []).map(loadChunk))
+        .then(function () { return import(c.url); })
+        .then(function (mod) {
+          var factory = (c.factory && mod[c.factory]) || mod.default;
+          var ret = factory ? factory(S) : {};
+          var map = ret.commands || ret;   // tama returns {commands:{…}}; others return the map directly
+          (c.commands || []).forEach(function (cmd) { if (typeof map[cmd] === 'function') commands[cmd] = map[cmd]; });
+          loaded[name] = ret;
+          if (ret.submitSalary) S.submitSalary = ret.submitSalary;
+          return ret;
+        });
+      return loadingP[name];
+    }
+    S.loadChunk = loadChunk;
+    S.getLoaded = function (name) { return loaded[name]; };
+    // Cross-command invocation that lazy-loads the target's chunk if needed. Use this
+    // (not S.commands.x) when one command calls a command from a DIFFERENT chunk.
+    S.invoke = function (name, args) { dispatch(String(name).toLowerCase(), args || []); };
 
-    // ── command registry: assembled from grouped factory modules + the already-
-    //    extracted subsystem commands (salary, sim, git, nano). See README.md.
+    // ── command registry: core (always) = FS-nav + meta (help/man/fortune/…).
+    //    Lazy commands live in LAZY and are resolved through loadChunk on demand.
     var commands = Object.assign(
       {},
       makeFsCommands(S),       // ls cd open cat pwd tree find grep latest random head tail wc stat mkdir touch rm rmdir mv cp
-      makeContentCommands(S),  // discuss toolkit voices companies company addreview tools friends claude codex join telegram contribute submit showcase whoami principles fun
-      makeMetaCommands(S),     // help man whatis apropos which alias theme share feedback neofetch date echo history clear fortune vim top sudo coffee 42 home exit
-      {
-        salary: _salary.salary,
-        sim: _sim.sim, quiz: _sim.quiz, games: _sim.games, sudoku: _sim.sudoku,
-        git: _git.git,
-        nano: _editor.nano
-      },
-      _tama.commands        // { team } – тимагочи; действия только через team <действие>, не как отдельные команды
+      makeMetaCommands(S)      // help man whatis apropos which alias theme share feedback neofetch date echo history clear fortune vim top sudo coffee 42 home exit
     );
-    S.commands = commands;   // wire cross-command calls (git show→cat, checkout→cd, …)
+    S.commands = commands;     // wire cross-command calls (git show→cat, checkout→cd, …)
+    // Every command name known up-front (loaded + lazy + aliases) – powers help/completion.
+    function knownNames() {
+      var seen = {}, out = [];
+      Object.keys(commands).concat(Object.keys(LAZY)).concat(Object.keys(ALIASES)).forEach(function (n) { if (!seen[n]) { seen[n] = 1; out.push(n); } });
+      return out;
+    }
+    S.knownNames = knownNames;
     // Aliases go through alias(name, target): it records the mapping (powering `which`
     // and `alias`) and refuses to overwrite a real command, so a future duplicate like
     // the old `submit`→`addreview` clash is caught at load instead of silently breaking.
@@ -338,7 +372,7 @@ import { makeMetaCommands } from './commands-meta.js';
       try {
         var name = (str.split(/\s+/)[0] || '').toLowerCase();
         if (!name) return;
-        var known = commands.hasOwnProperty(name);
+        var known = commands.hasOwnProperty(name) || LAZY.hasOwnProperty(name) || ALIASES.hasOwnProperty(name);
         if (w.ym) w.ym(106055675, 'reachGoal', 'shell_command', { command: name, known: known ? 'yes' : 'no' });
       } catch (e) {}
     }
@@ -381,9 +415,35 @@ import { makeMetaCommands } from './commands-meta.js';
       if (!noTrack) { hist.push(str); track(str); saveHist(); syncUrl(str); }
       hpos = hist.length;
       var parts = str.split(/\s+/), cmd = parts[0].toLowerCase(), args = parts.slice(1);
-      if (commands.hasOwnProperty(cmd)) { try { commands[cmd](args); } catch (e) { print('ошибка: ' + e.message, 'err'); } }
-      else print(cmd + ': команда не найдена. help – список команд.', 'err');
+      dispatch(cmd, args);
       body.scrollTop = body.scrollHeight;
+    }
+
+    // Resolve a command (following aliases), loading its chunk first if it's lazy.
+    function dispatch(cmd, args) {
+      var name = canonName(cmd);
+      if (typeof commands[name] === 'function') { runCmd(name, args); return; }
+      if (typeof commands[cmd] === 'function') { runCmd(cmd, args); return; }
+      if (LAZY[name] || LAZY[cmd]) {
+        var chunk = LAZY[name] || LAZY[cmd];
+        var loadingLine = print('загрузка модуля ' + chunk + '…', 'dim');
+        loadChunk(chunk).then(function () {
+          if (loadingLine && loadingLine.parentNode) loadingLine.parentNode.removeChild(loadingLine);
+          var resolved = typeof commands[name] === 'function' ? name : cmd;
+          if (typeof commands[resolved] === 'function') runCmd(resolved, args);
+          else print(cmd + ': команда не найдена. help – список команд.', 'err');
+          body.scrollTop = body.scrollHeight;
+        }).catch(function (e) {
+          if (loadingLine && loadingLine.parentNode) loadingLine.parentNode.removeChild(loadingLine);
+          print('не удалось загрузить модуль «' + chunk + '»: ' + e.message, 'err');
+          body.scrollTop = body.scrollHeight;
+        });
+        return;
+      }
+      print(cmd + ': команда не найдена. help – список команд.', 'err');
+    }
+    function runCmd(name, args) {
+      try { commands[name](args); } catch (e) { print('ошибка: ' + e.message, 'err'); }
     }
 
     // Echo the current prompt + typed text into the output, like run() does on Enter,
@@ -405,7 +465,7 @@ import { makeMetaCommands } from './commands-meta.js';
       var parts = v.split(/\s+/), frag = parts[parts.length - 1], pool;
       var verb0 = (parts[0] || '').toLowerCase();
       if (parts.length <= 1) {
-        pool = Object.keys(commands);
+        pool = knownNames();
       } else if (verb0 === 'salary' && frag.indexOf('/') === -1) {
         // `salary <Tab>` → suggest grades, roles, cities, skills. On empty fragment
         // show a grouped cheatsheet so it's clear what each argument means.
@@ -424,8 +484,9 @@ import { makeMetaCommands } from './commands-meta.js';
           comp.full = null; return;
         }
       } else if (verb0 === 'git' && parts.length <= 2 && frag.indexOf('/') === -1) {
-        // `git <Tab>` → suggest subcommands (and their short aliases)
-        pool = gitNames;
+        // `git <Tab>` → suggest subcommands (live list once git is loaded, else a static fallback)
+        pool = (loaded.git && loaded.git.gitNames) ||
+          ['log', 'status', 'diff', 'show', 'blame', 'shortlog', 'branch', 'checkout', 'commit', 'add', 'push', 'pull', 'stash', 'remote', 'tag', 'help'];
       } else if ((verb0 === 'team' || verb0 === 'tamagotchi' || verb0 === 'pet') && parts.length <= 2 && frag.indexOf('/') === -1) {
         // `team <Tab>` → suggest тимагочи actions + management subcommands
         pool = ['new', '1on1', 'mentor', 'cr', 'pair', 'delegate', 'retro', 'hire', 'fire', 'ship', 'standup', 'share', 'style', 'log', 'yes', 'no', 'cancel', 'reset', 'help'];
@@ -456,8 +517,14 @@ import { makeMetaCommands } from './commands-meta.js';
       if (hits.length > 1) { echoLine(); print(hits.slice(0, 40).join('   '), 'dim'); }  // …and show the rest (Tab cycles them)
     }
 
+    // A modal subsystem (sim / nano) owns the keyboard while active – but only once
+    // its chunk has loaded, so guard on the loaded instance.
+    function modalActive() {
+      return (loaded.sim && loaded.sim.isActive && loaded.sim.isActive()) ||
+             (loaded.editor && loaded.editor.isActive && loaded.editor.isActive());
+    }
     input.addEventListener('keydown', function (e) {
-      if (_sim.isActive() || _editor.isActive()) return;  // sim / nano panels own the keyboard while active
+      if (modalActive()) return;  // sim / nano panels own the keyboard while active
       if (e.key === 'Enter') { run(input.value); input.value = ''; }
       else if (e.key === 'Tab') { e.preventDefault(); complete(); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); histPrev(); }
@@ -525,7 +592,12 @@ import { makeMetaCommands } from './commands-meta.js';
     }
     function ready() {
       if (line) line.hidden = false; input.focus();
-      if (mode === 'full') _tama.resume();   // тихо поднять HUD-напарника, если есть сохранение
+      // Quietly raise the тимагочи HUD if a save exists – lazy-load tama only then.
+      if (mode === 'full') {
+        var hasTama = false;
+        try { hasTama = !!(w.localStorage && w.localStorage.getItem('tnk_shell_tama')); } catch (e) {}
+        if (hasTama && CHUNKS.tama) loadChunk('tama').then(function (t) { if (t && t.resume) t.resume(); }).catch(function () {});
+      }
       var urlcmd = urlCommand();
       if (urlcmd) {
         // Assistant share links (claude/codex …) land in the terminal with the command
@@ -553,7 +625,13 @@ import { makeMetaCommands } from './commands-meta.js';
     setPrompt(); bootSeq(0);
 
     // Let other UI (the Claude/Codex assistants) run a command in this live terminal.
-    if (mode === 'full') { w.TeamleadsShell = w.TeamleadsShell || {}; w.TeamleadsShell.run = function (c) { if (_sim.isActive()) _sim.exit(); input.value = ''; run(String(c || '')); }; }
+    if (mode === 'full') {
+      w.TeamleadsShell = w.TeamleadsShell || {};
+      w.TeamleadsShell.run = function (c) {
+        if (loaded.sim && loaded.sim.isActive && loaded.sim.isActive() && loaded.sim.exit) loaded.sim.exit();
+        input.value = ''; run(String(c || ''));
+      };
+    }
   }
 
   function autoMount() { var ns = d.querySelectorAll('[data-term]'); for (var i = 0; i < ns.length; i++) mount(ns[i]); }

@@ -172,7 +172,7 @@ export function makeContentCommands(S) {
     // covers salary, company review and showcase project (no name collisions).
     submit: function (a) {
       var what = (a[0] || '').toLowerCase();
-      if (/^(salary|зарплат|вилк)/.test(what)) { S.submitSalary(); return; }
+      if (/^(salary|зарплат|вилк)/.test(what)) { if (S.submitSalary) S.submitSalary(); else S.invoke('salary', ['submit']); return; }
       if (/^(review|отзыв)/.test(what)) { S.commands.addreview(a.slice(1)); return; }
       if (/^(project|projects|showcase|проект|витрин)/.test(what)) { S.commands.showcase(['submit']); return; }
       print('Что отправить сообществу?', 'accent');

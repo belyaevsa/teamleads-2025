@@ -4314,3 +4314,44 @@ button.topic-node:focus-visible,
     outline: 2px solid #39c5cf;
     outline-offset: 2px;
 }
+
+/* ===========================================
+   AMBIENT TERMINAL DOCK (corner handle ⇄ drawer)
+   =========================================== */
+.term-dock { position: fixed; right: 16px; bottom: 16px; z-index: 60; }
+.term-dock[hidden] { display: none; }
+
+.term-dock-handle {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; cursor: pointer;
+    font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600; color: var(--white);
+    background: #161b22; border: 1px solid #232b36; border-radius: var(--radius-full);
+    box-shadow: var(--shadow-lg); transition: transform var(--transition-fast), background var(--transition-fast);
+}
+.term-dock-handle:hover { transform: translateY(-2px); background: #1c232d; }
+.term-dock-glyph { color: var(--kz-sky); }
+.term-dock.is-open .term-dock-handle { display: none; }
+
+.term-dock-panel {
+    display: flex; flex-direction: column; position: fixed; right: 16px; bottom: 16px;
+    width: min(720px, 94vw); height: var(--dock-h, 62vh); max-height: calc(100vh - 32px);
+    border-radius: var(--radius-xl); overflow: hidden; box-shadow: 0 20px 50px rgb(0 0 0 / 0.35);
+    visibility: hidden; opacity: 0; transform: translateY(14px); pointer-events: none;
+    transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s;
+}
+.term-dock.is-open .term-dock-panel { visibility: visible; opacity: 1; transform: none; pointer-events: auto; }
+.term-dock-grip { flex: none; height: 9px; cursor: ns-resize; background: #0d1117; }
+.term-dock-grip::before { content: ''; display: block; width: 42px; height: 3px; margin: 3px auto; border-radius: 2px; background: #30363d; }
+.term-dock-close {
+    position: absolute; top: 11px; right: 13px; z-index: 3; width: 26px; height: 26px;
+    display: grid; place-items: center; cursor: pointer; color: #8b949e; font-size: 13px;
+    background: rgb(255 255 255 / 0.06); border: none; border-radius: 50%;
+}
+.term-dock-close:hover { color: var(--white); background: rgb(255 255 255 / 0.14); }
+.term-dock-panel .term { flex: 1 1 auto; height: 100%; min-height: 0; max-height: none; margin: 0; border-radius: 0; }
+
+@media (max-width: 640px) {
+    .term-dock, .term-dock-panel { right: 8px; bottom: 8px; }
+    .term-dock-panel { width: calc(100vw - 16px); height: 72vh; }
+    .term-dock-handle-label { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .term-dock-panel { transition: visibility 0.22s; } }

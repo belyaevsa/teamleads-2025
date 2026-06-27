@@ -76,7 +76,16 @@
   {{- end -}}
 {{- end -}}
 
-<div class="term" data-term data-mode="{{ $mode }}"{{ if .urlsync }} data-urlsync="1"{{ end }} data-tg="{{ site.Params.telegram }}" data-fs='{{ $fs | jsonify }}' data-salary='{{ site.Data.salaries | jsonify }}' data-friends='{{ $friends | jsonify }}' data-scenarios='{{ site.Data.scenarios | jsonify }}' data-incidents='{{ (site.Data.tama_incidents).incidents | jsonify }}' data-share='{{ $share | jsonify }}' data-questions='{{ $questions | jsonify }}' data-voices='{{ site.Data.voices | jsonify }}' data-companies='{{ $companies | jsonify }}'>
+{{- /* Build each lazy command chunk as its own fingerprinted ESM module and assemble
+       the manifest the core loader reads (chunk → url/factory/commands). The chunks
+       are dynamic-imported on first use; the core bundle (main.js, below) stays small. */ -}}
+{{- $manifest := dict -}}
+{{- range site.Data.shell_modules.modules -}}
+  {{- $built := resources.Get .entry | js.Build (dict "minify" hugo.IsProduction "format" "esm" "target" "es2017") | fingerprint -}}
+  {{- $manifest = merge $manifest (dict .name (dict "url" $built.RelPermalink "factory" .factory "commands" .commands "deps" (.deps | default slice))) -}}
+{{- end -}}
+<div class="term" data-term data-mode="{{ $mode }}"{{ with .cwd }} data-cwd="{{ . }}"{{ end }}{{ if .urlsync }} data-urlsync="1"{{ end }} data-tg="{{ site.Params.telegram }}" data-fs='{{ $fs | jsonify }}' data-salary='{{ site.Data.salaries | jsonify }}' data-friends='{{ $friends | jsonify }}' data-scenarios='{{ site.Data.scenarios | jsonify }}' data-incidents='{{ (site.Data.tama_incidents).incidents | jsonify }}' data-share='{{ $share | jsonify }}' data-questions='{{ $questions | jsonify }}' data-voices='{{ site.Data.voices | jsonify }}' data-companies='{{ $companies | jsonify }}'>
+  <script type="application/json" data-term-manifest>{{ $manifest | jsonify | safeJS }}</script>
   <div class="term-bar">
     {{- /* macOS-style window controls (wired in main.js): red is decorative;
            yellow rolls the window up to a compact size; green expands it –

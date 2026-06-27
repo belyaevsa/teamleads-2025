@@ -1,0 +1,21 @@
+{{- /*
+  Ambient terminal dock – present on content pages (not home / /shell/ / 404,
+  which embed their own shell). A corner handle expands a fixed drawer holding the
+  full terminal, opened in the current page's folder (data-cwd = section).
+
+  Open/closed state + height persist in localStorage; default-open on first visit.
+  Toggle by the handle, the drawer's ✕, or the backtick (`) hotkey. Behaviour in
+  static/js/term-dock.js; the terminal itself auto-mounts via the shell core.
+*/ -}}
+<div class="term-dock" data-term-dock hidden>
+  <button type="button" class="term-dock-handle" data-term-dock-toggle aria-expanded="false" aria-label="Открыть терминал">
+    <span class="term-dock-glyph">$_</span>
+    <span class="term-dock-handle-label">терминал</span>
+  </button>
+  <div class="term-dock-panel" data-term-dock-panel>
+    <div class="term-dock-grip" data-term-dock-grip aria-hidden="true"></div>
+    <button type="button" class="term-dock-close" data-term-dock-toggle aria-label="Свернуть терминал">✕</button>
+    {{ partial "shell.html" (dict "mode" "full" "cwd" .Section) }}
+  </div>
+</div>
+<script src="{{ "js/term-dock.js" | relURL }}" defer></script>

@@ -170,7 +170,7 @@ export function makeGit(S) {
       S.commands.latest([]);
     },
     grep: function (rest) { S.commands.grep(rest || []); },
-    clone: function () { print("Cloning into 'teamleads-2025'…", 'dim'); S.commands.contribute([]); },
+    clone: function () { print("Cloning into 'teamleads-2025'…", 'dim'); S.invoke('contribute', []); },
     blame: function (rest) {
       var arg = (rest || [])[0];
       if (!arg) { print('fatal: винить некого – 404 это не баг, а фича вашего URL.', 'dim'); print('git blame <страница> – кто за материалом. git log – список.', 'hint'); return; }
