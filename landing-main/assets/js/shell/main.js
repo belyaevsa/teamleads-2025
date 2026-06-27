@@ -426,7 +426,7 @@ import { makeMetaCommands } from './commands-meta.js';
         pool = gitNames;
       } else if ((verb0 === 'team' || verb0 === 'tamagotchi' || verb0 === 'pet') && parts.length <= 2 && frag.indexOf('/') === -1) {
         // `team <Tab>` → suggest тимагочи actions + management subcommands
-        pool = ['new', '1on1', 'mentor', 'cr', 'pair', 'delegate', 'retro', 'hire', 'fire', 'ship', 'standup', 'share', 'reset', 'help'];
+        pool = ['new', '1on1', 'mentor', 'cr', 'pair', 'delegate', 'retro', 'hire', 'fire', 'ship', 'standup', 'share', 'style', 'yes', 'no', 'cancel', 'reset', 'help'];
       } else if (/^(company|reviews|review|addreview|addreviews)$/.test(verb0)) {
         // `company <Tab>` → complete company slugs from the baked list
         if (!frag) {

@@ -32,6 +32,11 @@ assets/js/shell/
                        a modal). Registers only `team`; actions are subcommands
                        routed inside it (team ship / team 1on1 / team hire / …) so
                        verbs like cr/ship/fire never collide with other commands.
+                       Branching incidents (block until resolved with team a/b/c,
+                       seeded with real data/voices.yaml quotes), a hire-interview
+                       scenario (team hire → pick → ask → yes/no), and a leadership
+                       archetype (team style) computed from how you play and folded
+                       into the share code + result card.
   man.js               MANPAGES data block + manSummary
   salary.js            live/offline salary data + the `salary` command
   commands-fs.js       ls cd open cat pwd tree find grep latest random
@@ -264,6 +269,13 @@ Details that matter:
 - **esbuild won't catch missing deps.** If you use `print` in a module but
   forget to destructure it from `S`, the build passes and the command throws a
   `ReferenceError` only when run. Test commands you touch (the jsdom oracle).
+- **Grepping the built bundle for Cyrillic finds nothing.** esbuild's default
+  `charset: ascii` escapes non-ASCII to `\uXXXX`, so `grep "Садовник" public/js/…`
+  returns 0 even though the string is there. Grep ASCII identifiers (function
+  names, `tl2`, …) or the escaped form (`Сад…`), or build with
+  `hugo --environment development` (unminified) to read it. Also: if a
+  `hugo server` is running it holds `public/` and serves its own bundle, which
+  can look "stale" next to a `hugo` CLI build – kill it before verifying.
 - **`*/` inside a block comment closes it early.** Avoid sequences like
   `**bold**/*em*/` in `/* … */` comments – they terminate the comment and break
   the parse. (Bit us once during the split.)
