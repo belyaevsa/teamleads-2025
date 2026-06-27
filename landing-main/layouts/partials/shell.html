@@ -76,7 +76,7 @@
   {{- end -}}
 {{- end -}}
 
-<div class="term" data-term data-mode="{{ $mode }}"{{ if .urlsync }} data-urlsync="1"{{ end }} data-tg="{{ site.Params.telegram }}" data-fs='{{ $fs | jsonify }}' data-salary='{{ site.Data.salaries | jsonify }}' data-friends='{{ $friends | jsonify }}' data-scenarios='{{ site.Data.scenarios | jsonify }}' data-share='{{ $share | jsonify }}' data-questions='{{ $questions | jsonify }}' data-voices='{{ site.Data.voices | jsonify }}' data-companies='{{ $companies | jsonify }}'>
+<div class="term" data-term data-mode="{{ $mode }}"{{ if .urlsync }} data-urlsync="1"{{ end }} data-tg="{{ site.Params.telegram }}" data-fs='{{ $fs | jsonify }}' data-salary='{{ site.Data.salaries | jsonify }}' data-friends='{{ $friends | jsonify }}' data-scenarios='{{ site.Data.scenarios | jsonify }}' data-incidents='{{ (site.Data.tama_incidents).incidents | jsonify }}' data-share='{{ $share | jsonify }}' data-questions='{{ $questions | jsonify }}' data-voices='{{ site.Data.voices | jsonify }}' data-companies='{{ $companies | jsonify }}'>
   <div class="term-bar">
     {{- /* macOS-style window controls (wired in main.js): red is decorative;
            yellow rolls the window up to a compact size; green expands it –

@@ -32,11 +32,13 @@ assets/js/shell/
                        a modal). Registers only `team`; actions are subcommands
                        routed inside it (team ship / team 1on1 / team hire / …) so
                        verbs like cr/ship/fire never collide with other commands.
-                       Branching incidents (block until resolved with team a/b/c,
-                       seeded with real data/voices.yaml quotes), a hire-interview
-                       scenario (team hire → pick → ask → yes/no), and a leadership
-                       archetype (team style) computed from how you play and folded
-                       into the share code + result card.
+                       Branching incidents (block until resolved with team a/b/c)
+                       loaded from data/tama_incidents.yaml (community-editable) and
+                       auto-seeded from the live /questions backlog (S.QUESTIONS);
+                       voiced with real data/voices.yaml quotes. Plus a hire-interview
+                       scenario (team hire → pick → ask → yes/no), a leadership
+                       archetype (team style) folded into the share code, and a
+                       FS-backed chronicle (team log → team/log.md).
   man.js               MANPAGES data block + manSummary
   salary.js            live/offline salary data + the `salary` command
   commands-fs.js       ls cd open cat pwd tree find grep latest random
@@ -294,6 +296,15 @@ Details that matter:
   mount via `_tama.resume()` (full mode only) when a save exists. Real-time decay
   is computed from `Date.now() - state.ts` on load (18h ≈ one drift "day", capped
   at 7), so leaving the tab erodes trust/morale and grows conflict.
+- **Incidents are data-driven – add one without touching JS.** The deck lives in
+  `data/tama_incidents.yaml` (passed via `shell.html`'s `data-incidents` → `S.INCIDENTS`,
+  same pattern as `scenarios`/`voices`). Append an entry (the file header documents the
+  schema: `id` · optional `need: team` · `q` topic · `t` text with `{name}` · `o[]` of
+  `{l, s, e, out}`) and it shows up – no code change, esbuild rebuild not required for
+  data. The deck is also auto-extended at runtime by `questionIncidents()`, which turns
+  the live `/questions` backlog (`S.QUESTIONS`) into dilemmas that link back to the
+  source meetup. Incident outcomes call `tieIn()` (a matching `S.pool` article or the
+  source page + a clickable `claude` question).
 - **`team log` writes a real user-FS file.** The chronicle is rendered into
   `ufs.nodes['team/log.md']` (via `ensureDir`/`ufsSave`), so it's readable with the
   normal `cat team/log.md` / `tail` / `ls team` commands – the game state is the

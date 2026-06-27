@@ -74,6 +74,8 @@ import { makeMetaCommands } from './commands-meta.js';
     try { FRIENDS = JSON.parse(root.getAttribute('data-friends') || '[]') || []; } catch (e) { FRIENDS = []; }
     var SCEN = {};
     try { SCEN = JSON.parse(root.getAttribute('data-scenarios') || '{}') || {}; } catch (e) { SCEN = {}; }
+    var INCIDENTS = [];  // тимагочи: ветвящиеся дилеммы (data/tama_incidents.yaml) → `team`
+    try { INCIDENTS = JSON.parse(root.getAttribute('data-incidents') || '[]') || []; } catch (e) { INCIDENTS = []; }
     var QUIZZES = {};
     try { QUIZZES = JSON.parse(root.getAttribute('data-quizzes') || '{}') || {}; } catch (e) { QUIZZES = {}; }
     var SHARE = {};  // verb → /s/<id>/ card id (from data/shell_commands.toml)
@@ -246,7 +248,7 @@ import { makeMetaCommands } from './commands-meta.js';
       w: w, d: d, root: root, out: out, body: body, input: input, line: line,
       promptEl: promptEl, titleEl: titleEl, simPanel: simPanel, hud: hud, edPanel: edPanel, edArea: edArea, edName: edName, edMeta: edMeta,
       mode: mode, URLSYNC: URLSYNC, reduced: reduced, TG: TG,
-      FS: FS, SAL: SAL, FRIENDS: FRIENDS, SCEN: SCEN, QUIZZES: QUIZZES, SHARE: SHARE, QUESTIONS: QUESTIONS, VOICES: VOICES, COMPANIES: COMPANIES,
+      FS: FS, SAL: SAL, FRIENDS: FRIENDS, SCEN: SCEN, INCIDENTS: INCIDENTS, QUIZZES: QUIZZES, SHARE: SHARE, QUESTIONS: QUESTIONS, VOICES: VOICES, COMPANIES: COMPANIES,
       sections: sections, links: links, sectionNames: sectionNames, linkNames: linkNames, pool: pool,
       // dom + formatting
       el: el, print: print, printNode: printNode, link: link, pad: pad, linkpad: linkpad, paginate: paginate, pageNav: pageNav,

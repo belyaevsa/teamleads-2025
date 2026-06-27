@@ -3,6 +3,7 @@
 /resources/_gen/
 .hugo_build.lock
 .DS_Store
+.antigravitycli
 node_modules
 /2025/hugo-claude/public/
 /2025/hugo-claude/resources/
@@ -12,3 +13,5 @@ landing-main/public/
 .claude/commands/extract-insights.md
 landing-main/hugo_stats.json
 .env
+/backend/bin
+/backend/obj

@@ -52,96 +52,13 @@ export function makeTama(S) {
   var TRAIT_KEYS = Object.keys(TRAITS);
   var LABELS = { trust: 'доверие', expertise: 'экспертиза', conflict: 'конфликт', morale: 'настрой', xp: 'опыт', shipped: 'релиз' };
 
-  // ── инциденты: ветвящиеся дилеммы тимлида (заменяют плоские события) ──
-  // Каждый вариант (o[]) несёт стиль (s: people|deliver|harmony|expertise|fire) для
-  // вычисления архетипа лидерства, эффекты (e) и исход (out). {name} подставляет
-  // случайного человека из команды; q привязывает реплику из voices.yaml по теме.
-  var INCIDENTS = [
-    { id: 'star-offer', need: 'team', q: 'Рост',
-      t: '{name} принесла оффер от другой компании, +40%. Сидит, мнётся.',
-      o: [
-        { l: 'Контроффер деньгами', s: 'deliver', e: { trust: 3, morale: 4, conflict: 7 }, out: 'Деньги нашли. Остальные узнали – и обиделись.' },
-        { l: 'Честный 1-on-1', s: 'people', e: { trust: 9, morale: 5, xp: 4 }, out: 'Дело не в деньгах, а в скуке. Дал челлендж – осталась.' },
-        { l: 'Отпустить красиво', s: 'harmony', e: { morale: -6, trust: 5, conflict: -3 }, out: 'Ушла тепло, обещала рекомендовать вас. Но дырка в команде.' }
-      ] },
-    { id: 'prod-down', q: 'Процессы',
-      t: 'Прод упал в пятницу 18:00. Телефон разрывается.',
-      o: [
-        { l: 'Чиню сам до ночи', s: 'fire', e: { expertise: 3, morale: -10, trust: 2 }, out: 'Поднял к полуночи. Герой. Завтра никакой.' },
-        { l: 'Поднимаю дежурного', s: 'people', e: { trust: 4, expertise: 5, conflict: 3 }, out: 'Дежурный справился сам – вырос. Немного поворчал.' },
-        { l: 'Откат и разбор в понедельник', s: 'harmony', e: { morale: 4, conflict: 5 }, out: 'Команда выдохнула. Продакт – нет.' }
-      ] },
-    { id: 'arch-feud', need: 'team', q: 'Процессы',
-      t: 'Два инженера неделю спорят: монолит против микросервисов.',
-      o: [
-        { l: 'Решаю сам, быстро', s: 'deliver', e: { conflict: -8, trust: -4, morale: -2 }, out: 'Спор закрыт. Автономия тоже.' },
-        { l: 'ADR + день на прототип', s: 'expertise', e: { expertise: 8, conflict: -6, morale: 3, xp: 4 }, out: 'Решение на данных. Медленно, но по-взрослому.' },
-        { l: 'Пусть договорятся сами', s: 'people', e: { trust: 5, conflict: 4 }, out: 'Договорились. Заняло ещё три дня.' }
-      ] },
-    { id: 'junior-ci', need: 'team', q: 'Процессы',
-      t: '{name} третий раз за неделю уронил CI на мейне.',
-      o: [
-        { l: 'Публично разобрать', s: 'fire', e: { conflict: 8, morale: -6, expertise: 2 }, out: 'CI больше не падает. И {name} теперь боится коммитить.' },
-        { l: '1-on-1 + менторство', s: 'people', e: { expertise: 6, trust: 6, morale: 3, xp: 4 }, out: 'Оказалось, не знал про pre-commit. Научил – расцвёл.' },
-        { l: 'Поставить branch protection', s: 'expertise', e: { expertise: 5, conflict: -2 }, out: 'Процесс вместо нотаций. Мейн в безопасности.' }
-      ] },
-    { id: 'deadline-cut', q: 'Мотивация',
-      t: 'Продакт срезал срок вдвое: «бизнес просит».',
-      o: [
-        { l: 'Защитить команду', s: 'harmony', e: { trust: 8, morale: 6, conflict: 4 }, out: 'Отстоял реальные сроки. Продакт надулся, команда зауважала.' },
-        { l: 'Согласиться и крауч', s: 'deliver', e: { shipped: 1, morale: -12, conflict: 6 }, out: 'Успели. Цена – выгорание на горизонте.' },
-        { l: 'Срезать скоуп', s: 'expertise', e: { trust: 4, morale: 3, expertise: 2 }, out: 'Договорились о MVP. Все живы.' }
-      ] },
-    { id: 'burnout-sign', need: 'team', q: 'Мотивация',
-      t: '{name} тихо перегружен: PR-ы в 2 ночи, шутки про увольнение.',
-      o: [
-        { l: 'Отправить в отпуск', s: 'people', e: { morale: 8, trust: 6, shipped: 0 }, out: 'Вернулся с горящими глазами. Стоило недели простоя.' },
-        { l: 'Снять часть задач', s: 'harmony', e: { morale: 5, trust: 4, conflict: -2 }, out: 'Разгрузил. Выдохнул.' },
-        { l: 'Сделать вид, что не заметил', s: 'fire', e: { morale: -8, conflict: 6, trust: -5 }, out: 'Через неделю {name} принёс заявление.' }
-      ] },
-    { id: 'toxic-star', need: 'team', q: 'Рост',
-      t: '{name} – сильный инженер, но топит митинги в сарказме. Джуны молчат.',
-      o: [
-        { l: 'Жёсткий разговор', s: 'fire', e: { conflict: -10, morale: 4, trust: 3 }, out: 'Поведение поправилось. Осадок остался.' },
-        { l: 'Дать роль ментора', s: 'people', e: { expertise: 6, conflict: -6, trust: 5, xp: 3 }, out: 'Ответственность развернула энергию в плюс.' },
-        { l: 'Терпеть ради скилла', s: 'deliver', e: { expertise: 4, conflict: 9, morale: -5 }, out: 'Код едет, атмосфера – нет.' }
-      ] },
-    { id: 'hire-choice', q: 'Карьера',
-      t: 'Два финалиста: ровный мидл и яркий, но рисковый сеньор.',
-      o: [
-        { l: 'Надёжный мидл', s: 'harmony', e: { trust: 4, conflict: -3, expertise: 3 }, out: 'Предсказуемо и спокойно. Без фейерверков.' },
-        { l: 'Рисковый сеньор', s: 'deliver', e: { expertise: 8, conflict: 5, morale: 2 }, out: 'Мощно и непредсказуемо. Посмотрим.' },
-        { l: 'Никого, поднять текущих', s: 'people', e: { trust: 6, morale: 5, xp: 4 }, out: 'Вложился в своих. Найм подождёт.' }
-      ] },
-    { id: 'remote-trust', need: 'team', q: 'Процессы',
-      t: '{name} на удалёнке: камера выключена, отвечает к вечеру. Команда шепчется.',
-      o: [
-        { l: 'Ввести жёсткий контроль', s: 'fire', e: { trust: -8, conflict: 6, morale: -4 }, out: 'Микроменеджмент. Доверие просело у всех.' },
-        { l: 'Договориться об overlap-часах', s: 'expertise', e: { trust: 4, conflict: -4, expertise: 2 }, out: 'Async по-взрослому: договорённости вместо слежки.' },
-        { l: '1-on-1: всё ли ок?', s: 'people', e: { trust: 8, morale: 4 }, out: 'У человека был тяжёлый период. Поддержал.' }
-      ] },
-    { id: 'ai-trap', q: 'AI',
-      t: 'Команда залила в прод фичу, которую «дописал» LLM. Никто не вычитал.',
-      o: [
-        { l: 'Ввести обязательное ревью AI-кода', s: 'expertise', e: { expertise: 7, conflict: 2, trust: 3 }, out: 'Скорость чуть упала, доверие к коду выросло.' },
-        { l: 'Откатить и отчитать', s: 'fire', e: { conflict: 7, morale: -5, expertise: 2 }, out: 'Урок усвоен через стресс.' },
-        { l: 'Разобрать на ретро без виноватых', s: 'harmony', e: { conflict: -6, trust: 6, expertise: 3, xp: 3 }, out: 'Сделали чек-лист вместо поиска виноватого.' }
-      ] },
-    { id: 'promo-politics', need: 'team', q: 'Карьера',
-      t: 'Грейд только один. {name} и ещё один сеньор оба ждут повышения.',
-      o: [
-        { l: 'Повысить по факту вклада', s: 'expertise', e: { expertise: 4, conflict: 5, trust: 2 }, out: 'По делу. Второй обиделся.' },
-        { l: 'Честно объяснить обоим план', s: 'people', e: { trust: 8, morale: 4, conflict: -3 }, out: 'Прозрачность сняла напряжение. Оба остались.' },
-        { l: 'Оттянуть решение', s: 'harmony', e: { conflict: 6, trust: -4 }, out: 'Неопределённость хуже отказа.' }
-      ] },
-    { id: 'on-call-revolt', need: 'team', q: 'Мотивация',
-      t: 'Команда бунтует против ночных дежурств: «так не нанимались».',
-      o: [
-        { l: 'Платить за on-call', s: 'deliver', e: { morale: 6, trust: 4, conflict: -4 }, out: 'Деньги решили. Бюджет напрягся.' },
-        { l: 'Сократить алерты инженерно', s: 'expertise', e: { expertise: 8, morale: 5, conflict: -5, xp: 4 }, out: 'Убрали шум – дежурить стало незазорно.' },
-        { l: 'Приказать терпеть', s: 'fire', e: { morale: -10, conflict: 8, trust: -6 }, out: 'Двое обновили резюме.' }
-      ] }
-  ];
+  // ── инциденты: ветвящиеся дилеммы тимлида ──
+  // Дека грузится из data/tama_incidents.yaml (community-editable, без правок кода)
+  // и дополняется динамическими инцидентами из живого бэклога вопросов сообщества
+  // (/questions → S.QUESTIONS), так что контент обновляется по мере роста сайта.
+  // Вариант (o[]): l (текст) · s (стиль для архетипа) · e (эффекты) · out (исход).
+  var QUESTIONS = S.QUESTIONS || [];
+  var INCIDENTS = (S.INCIDENTS || []).concat(questionIncidents());
   // Архетипы лидерства – зеркало стиля игры (главный вирусный крючок: «я оказался…»).
   var ARCHETYPES = [
     { k: 'fire', icon: '🔥', name: 'Пожарный', desc: 'тушишь пожары, но не строишь систему' },
@@ -489,6 +406,24 @@ export function makeTama(S) {
     if (st.hire) { print('⏳ Идёт найм. Заверши: team yes / team no (или team cancel).', 'err'); return; }
     if (st.pending) { print('⚡ Сначала разрули инцидент: team a · team b · team c (team – показать снова).', 'err'); }
   }
+  // Динамические инциденты из живого бэклога вопросов (/questions → S.QUESTIONS):
+  // реальный вопрос сообщества становится дилеммой, ссылка ведёт на разбор-источник.
+  function questionIncidents() {
+    var list = (typeof QUESTIONS !== 'undefined' && QUESTIONS) ? QUESTIONS : [], out = [];
+    list.slice(0, 6).forEach(function (qq, i) {
+      if (!qq || !qq.q) return;
+      out.push({
+        id: 'q-' + i, q: null, src: { u: qq.u, t: qq.ev || 'разбор сообщества' }, srcQ: qq.q,
+        t: 'С разбора «' + (qq.ev || 'встречи') + '» всплыл вопрос: «' + qq.q + '» Что решаешь?',
+        o: [
+          { l: 'Вынести на ретро, решить вместе', s: 'harmony', e: { trust: 6, conflict: -4, xp: 2 }, out: 'Команда оценила, что её слышат.' },
+          { l: 'Решить самому и двигаться', s: 'deliver', e: { conflict: 4, trust: -2, xp: 2 }, out: 'Быстро. Но не все согласны.' },
+          { l: 'Собрать мнение сильных инженеров', s: 'expertise', e: { expertise: 5, trust: 3, xp: 3 }, out: 'Собрал контекст – решили обоснованно.' }
+        ]
+      });
+    });
+    return out;
+  }
   function incById(id) { for (var i = 0; i < INCIDENTS.length; i++) if (INCIDENTS[i].id === id) return INCIDENTS[i]; return null; }
   function eligibleIncidents() { return INCIDENTS.filter(function (i) { return !(i.need === 'team' && !st.team.length); }); }
   function maybeIncident() {
@@ -521,7 +456,7 @@ export function makeTama(S) {
     snapPrev(); apply(op.e); tallyStyle(op.s);
     print('→ ' + op.out.replace('{name}', name) + '  (' + deltaStr(op.e) + ')', harsh ? 'err' : 'accent');
     chron('⚡ ' + inc.t.replace('{name}', name) + ' → ' + op.l);
-    if (inc.q) contentTieIn(inc.q);
+    tieIn({ topic: inc.q, page: inc.src, q: inc.srcQ });
     st.pending = null; promote(); st.ts = Date.now(); save();
     if (!reportOver()) paint();
   }
@@ -747,10 +682,13 @@ export function makeTama(S) {
     a.addEventListener('click', function (e) { e.preventDefault(); run('claude ' + q); });
     return a;
   }
-  function contentTieIn(topic) {
-    var hit = relatedPage(topic), q = TOPIC_Q[topic] || 'тимлидство';
+  // Воронка в материалы сайта/ассистента. opts.page – явный источник (напр. разбор,
+  // откуда взят вопрос); иначе ищем материал по теме (opts.topic) в S.pool.
+  function tieIn(opts) {
+    opts = opts || {};
+    var page = opts.page || relatedPage(opts.topic), q = opts.q || TOPIC_Q[opts.topic] || 'тимлидство';
     print('  ── разобрать глубже ──', 'dim');
-    if (hit) { var n = el('span'); n.appendChild(el('span', 'dim', 'материал: ')); n.appendChild(link(hit.u, hit.t || hit.n)); printNode(n); }
+    if (page && page.u) { var n = el('span'); n.appendChild(el('span', 'dim', 'материал: ')); n.appendChild(link(page.u, page.t || page.n)); printNode(n); }
     var row = el('span'); row.appendChild(el('span', 'dim', 'спросить ассистента: ')); row.appendChild(claudeLink(q)); printNode(row);
   }
 
