@@ -4266,6 +4266,11 @@ body.cx-lock{overflow:hidden}
     font-size: 0.85rem; font-weight: 600; color: var(--gray-800);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* time sits on the LEFT (after play) so it never hides under the bottom-right dock handle */
+.ap-mini-time {
+    flex: none; font-family: var(--font-mono); font-size: 0.78rem; color: var(--gray-600);
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+}
 .ap-mini-bar { position: relative; height: 6px; background: var(--gray-200); border-radius: var(--radius-full); overflow: hidden; }
 .ap-mini-zone { position: absolute; top: 0; bottom: 0; background: var(--ap-c, var(--gray-300)); opacity: 0.5; }
 /* played portion = a translucent dark scrim over the colours, like the main bar */

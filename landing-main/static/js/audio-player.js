@@ -470,6 +470,7 @@
         '<svg class="ap-ic-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
         '<svg class="ap-ic-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>' +
       '</button>' +
+      '<span class="ap-mini-time" data-ap-mini-time>0:00 / –:––</span>' +
       '<button type="button" class="ap-mini-info" aria-label="К плееру">' +
         '<span class="ap-mini-now">Слушать встречу</span>' +
         '<span class="ap-mini-bar"><span class="ap-mini-fill"></span></span>' +
@@ -504,6 +505,8 @@
     if (fill) fill.style.width = (dur ? (audio.currentTime / dur) * 100 : 0) + '%';
     var now = mini.querySelector('.ap-mini-now');
     if (now) now.textContent = curZone ? curZone.title : 'Слушать встречу';
+    var time = mini.querySelector('[data-ap-mini-time]');
+    if (time) time.textContent = fmt(audio.currentTime) + ' / ' + (dur ? fmt(dur) : '–:––');
   }
   if ('IntersectionObserver' in window) {
     buildMini();
