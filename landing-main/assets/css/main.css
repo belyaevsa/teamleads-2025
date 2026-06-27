@@ -1475,12 +1475,17 @@ button.topic-node:hover {
 }
 
 .topic-time {
+    position: relative;
+    z-index: 1;
     font-family: var(--font-mono);
     font-size: 0.72rem;
     font-weight: 600;
     line-height: 1;
     color: var(--topic-c, var(--primary-dark));
     white-space: nowrap;
+    /* sit on top of the connecting rail line instead of being crossed by it */
+    background: var(--white);
+    padding: 2px 3px;
 }
 
 .topic-body {
