@@ -3951,3 +3951,20 @@ body.cx-lock{overflow:hidden}
 .report-audio[data-ap-level="1"] .ap-expand-chevron,
 .report-audio[data-ap-level="2"] .ap-expand-chevron { transform: rotate(180deg); }
 .ap-transcript-loading { color: var(--gray-400); font-size: 0.9rem; padding: var(--space-sm) 8px; }
+
+/* --- colour-coded timeline: one light zone per topic on the scrubber --- */
+.ap-bar { height: 10px; }
+.ap-bar-zones { position: absolute; inset: 0; z-index: 0; border-radius: inherit; overflow: hidden; pointer-events: none; }
+.ap-zone {
+    position: absolute; top: 0; bottom: 0;
+    background: var(--ap-c, var(--gray-300)); opacity: 0.32;
+    box-shadow: inset -1.5px 0 0 var(--white);
+}
+.ap-zone:last-child { box-shadow: none; }
+/* progress + buffer become translucent so the topic colours stay visible */
+.ap-bar-buffer { display: none; }
+.ap-bar-fill { background: rgba(17, 24, 39, 0.34); z-index: 2; }
+
+/* chapter list accent matches each topic's timeline colour */
+.ap-chapter { border-left: 3px solid var(--ap-c, transparent); }
+.ap-chapter-time { color: var(--ap-c, var(--primary)); }

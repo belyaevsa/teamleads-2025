@@ -58,6 +58,15 @@
     return parts.reduce(function (acc, n) { return acc * 60 + n; }, 0);
   }
 
+  // Yandex.Metrika goal (same counter the rest of the site uses), guarded so the
+  // player still works if Metrika is blocked or absent.
+  var METRIKA_ID = 106055675;
+  function track(goal, params) {
+    try {
+      if (typeof window.ym === 'function') window.ym(METRIKA_ID, 'reachGoal', goal, params);
+    } catch (e) { /* never let analytics break playback */ }
+  }
+
   /* ---- transport -------------------------------------------------------- */
 
   // play() returns a promise that rejects with AbortError when a seek (setting
@@ -80,11 +89,13 @@
 
   els.play.addEventListener('click', togglePlay);
 
+  var slug = (location.pathname.split('/').filter(Boolean).pop()) || 'event';
+  var playedOnce = false;
   audio.addEventListener('play', function () {
     els.icPlay.hidden = true;
     els.icPause.hidden = false;
     els.play.setAttribute('aria-label', 'Пауза');
-    ensureTranscript();
+    if (!playedOnce) { playedOnce = true; track('audio_play', { event: slug }); }
   });
   audio.addEventListener('pause', function () {
     els.icPlay.hidden = false;
@@ -95,6 +106,7 @@
   audio.addEventListener('loadedmetadata', function () {
     els.dur.textContent = fmt(audio.duration);
     els.bar.setAttribute('aria-valuemax', Math.floor(audio.duration || 0));
+    buildTimeline(audio.duration);
   });
 
   audio.addEventListener('timeupdate', function () {
@@ -135,19 +147,60 @@
     els.rate.textContent = RATES[rateIdx] + '×';
   });
 
-  /* ---- chapters --------------------------------------------------------- */
+  /* ---- chapters + colour-coded timeline --------------------------------- */
+
+  // One light colour per topic, reused for the chapter list accent and the
+  // matching zone on the scrubber so the two read as the same thing.
+  var PALETTE = ['#00AFCA', '#FEC50C', '#8B5CF6', '#F59E0B', '#10B981',
+                 '#EF4444', '#EC4899', '#14B8A6'];
+
+  // Chapters in editorial (DOM) order — each keeps its colour even if the audio
+  // discusses topics out of order.
+  var chapters = Array.prototype.slice.call(root.querySelectorAll('.ap-chapter'))
+    .map(function (btn, i) {
+      var c = PALETTE[i % PALETTE.length];
+      btn.style.setProperty('--ap-c', c);
+      var titleEl = btn.querySelector('.ap-chapter-title');
+      return { start: parseTime(btn.getAttribute('data-ap-seek')), color: c,
+               title: titleEl ? titleEl.textContent : '' };
+    });
 
   // Seek triggers live both inside the player (chapters) and out in the page
   // body (per-topic "jump" links), so bind document-wide.
   document.querySelectorAll('[data-ap-seek]').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      seekTo(parseTime(btn.getAttribute('data-ap-seek')), true);
+      var t = parseTime(btn.getAttribute('data-ap-seek'));
+      seekTo(t, true);
+      track('audio_chapter', { event: slug, at: Math.round(t) });
       root.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
   document.querySelectorAll('[data-ap-fmt]').forEach(function (el) {
     el.textContent = fmt(parseTime(el.getAttribute('data-ap-fmt')));
   });
+
+  // Paint one coloured zone per topic on the scrubber, spanning [start, nextStart]
+  // in TIME order (chapters may be non-chronological). Built once we know duration.
+  var timelineBuilt = false;
+  function buildTimeline(duration) {
+    if (timelineBuilt || !duration || !isFinite(duration) || chapters.length < 2 || !els.bar) return;
+    timelineBuilt = true;
+    var ordered = chapters.slice().sort(function (a, b) { return a.start - b.start; });
+    var zones = document.createElement('div');
+    zones.className = 'ap-bar-zones';
+    zones.setAttribute('aria-hidden', 'true');   // decorative; the bar handles seeking
+    ordered.forEach(function (ch, i) {
+      var end = (i + 1 < ordered.length) ? ordered[i + 1].start : duration;
+      var seg = document.createElement('div');
+      seg.className = 'ap-zone';
+      seg.style.left = (ch.start / duration * 100) + '%';
+      seg.style.width = ((end - ch.start) / duration * 100) + '%';
+      seg.style.setProperty('--ap-c', ch.color);
+      zones.appendChild(seg);
+    });
+    els.bar.insertBefore(zones, els.bar.firstChild);
+  }
+  if (audio.readyState >= 1 && audio.duration) buildTimeline(audio.duration);
 
   /* ---- transcript ------------------------------------------------------- */
 
@@ -229,8 +282,10 @@
     }
   }
 
+  var searchTracked = false;
   function onSearch() {
     var q = els.search.value.trim().toLowerCase();
+    if (q && !searchTracked) { searchTracked = true; track('audio_search', { event: slug }); }
     var shown = 0;
     segments.forEach(function (seg) {
       var match = !q || seg.text.indexOf(q) !== -1;
@@ -265,7 +320,9 @@
 
     els.expand.addEventListener('click', function () {
       var cur = parseInt(root.getAttribute('data-ap-level'), 10) || 0;
-      setLevel(sequence[(sequence.indexOf(cur) + 1) % sequence.length]);
+      var next = sequence[(sequence.indexOf(cur) + 1) % sequence.length];
+      setLevel(next);
+      if (next > 0) track('audio_expand', { event: slug, view: next === 2 ? 'transcript' : 'topics' });
     });
   }
 })();
