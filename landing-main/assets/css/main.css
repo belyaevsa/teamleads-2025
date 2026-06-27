@@ -1407,7 +1407,7 @@ img {
     margin-bottom: var(--space-3xl);
 }
 
-/* Topics — vertical timeline (rail + colour-coded nodes that mirror the
+/* Topics – vertical timeline (rail + colour-coded nodes that mirror the
    waveform chapter colours, so a topic visibly links to its moment in the audio) */
 .report-topics {
     margin-bottom: var(--space-3xl);
@@ -1678,7 +1678,7 @@ button.topic-node:hover {
     display: block;
 }
 
-/* Table of contents — collapsible (<details>) on mobile, sticky rail on desktop */
+/* Table of contents – collapsible (<details>) on mobile, sticky rail on desktop */
 .report-toc {
     margin-bottom: var(--space-lg);
     padding: var(--space-lg);
@@ -1702,7 +1702,7 @@ button.topic-node:hover {
     list-style: none;
 }
 .report-toc-title::-webkit-details-marker { display: none; }
-/* chevron — collapse affordance (mobile only; hidden on the desktop rail) */
+/* chevron – collapse affordance (mobile only; hidden on the desktop rail) */
 .report-toc-title::after {
     content: "";
     width: 8px;
@@ -1765,7 +1765,7 @@ button.topic-node:hover {
         border: none;
     }
 
-    /* desktop rail is always expanded — drop the collapse affordance */
+    /* desktop rail is always expanded – drop the collapse affordance */
     .report-toc-title {
         cursor: default;
         margin-bottom: var(--space-md);
@@ -3014,6 +3014,10 @@ a.pagination-link:hover {
 .next-meetup {
     padding: var(--space-xl) 0 0;
 }
+/* On the event report the CTA is the last band before the footer – give it room */
+.report-content + .next-meetup {
+    padding-bottom: var(--space-3xl);
+}
 .next-meetup-card {
     position: relative;
     display: flex;
@@ -3625,7 +3629,7 @@ body.cx-lock{overflow:hidden}
 @media (prefers-reduced-motion:reduce){.cx-typing span{animation:none}}
 
 /* ===========================================
-   COOKIE CONSENT — Codex/Claude-styled terminal window
+   COOKIE CONSENT – Codex/Claude-styled terminal window
    One-way consent (accept only). See static/js/cookie-consent.js
    =========================================== */
 .cc-win{position:fixed;bottom:20px;right:20px;z-index:1200;width:min(420px,calc(100vw - 32px));background:#0d1117;border:1px solid #232b36;border-radius:12px;overflow:hidden;box-shadow:0 24px 60px -20px rgba(0,0,0,.65);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;color:#c9d1d9;animation:cc-rise .35s ease both}
@@ -4273,7 +4277,7 @@ body.cx-lock{overflow:hidden}
     .ap-mini { transition: none; }
 }
 
-/* On mobile the bottom-nav owns the bottom edge — float the mini-player above it */
+/* On mobile the bottom-nav owns the bottom edge – float the mini-player above it */
 @media (max-width: 768px) {
     .ap-mini {
         bottom: calc(64px + env(safe-area-inset-bottom));
@@ -4282,7 +4286,7 @@ body.cx-lock{overflow:hidden}
 }
 
 /* ===========================================
-   Keyboard focus audit — visible focus rings for event-report controls (#9)
+   Keyboard focus audit – visible focus rings for event-report controls (#9)
    =========================================== */
 .report-back:focus-visible,
 .event-tag:focus-visible,
@@ -4305,7 +4309,7 @@ button.topic-node:focus-visible,
     border-radius: var(--radius-sm);
 }
 
-/* dark terminal share chip — use the terminal's cyan so the ring reads on #0d1117 */
+/* dark terminal share chip – use the terminal's cyan so the ring reads on #0d1117 */
 .share-term-copy:focus-visible {
     outline: 2px solid #39c5cf;
     outline-offset: 2px;
