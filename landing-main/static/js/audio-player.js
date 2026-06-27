@@ -27,7 +27,11 @@
     transcript: root.querySelector('[data-ap-transcript]'),
     lines: root.querySelector('[data-ap-lines]'),
     search: root.querySelector('[data-ap-search]'),
-    empty: root.querySelector('[data-ap-empty]')
+    empty: root.querySelector('[data-ap-empty]'),
+    loading: root.querySelector('[data-ap-loading]'),
+    chapters: root.querySelector('[data-ap-chapters]'),
+    expand: root.querySelector('[data-ap-expand]'),
+    expandLabel: root.querySelector('[data-ap-expand-label]')
   };
 
   /* ---- helpers ---------------------------------------------------------- */
@@ -56,14 +60,22 @@
 
   /* ---- transport -------------------------------------------------------- */
 
+  // play() returns a promise that rejects with AbortError when a seek (setting
+  // currentTime) or a pause interrupts it before it resolves. That's benign here –
+  // swallow it so it doesn't surface as an "uncaught (in promise)" error.
+  function safePlay() {
+    var p = audio.play();
+    if (p && typeof p.catch === 'function') p.catch(function () {});
+  }
+
   function togglePlay() {
-    if (audio.paused) audio.play(); else audio.pause();
+    if (audio.paused) safePlay(); else audio.pause();
   }
 
   function seekTo(sec, andPlay) {
     if (isFinite(audio.duration)) sec = Math.min(sec, audio.duration - 0.05);
     audio.currentTime = Math.max(0, sec);
-    if (andPlay && audio.paused) audio.play();
+    if (andPlay && audio.paused) safePlay();
   }
 
   els.play.addEventListener('click', togglePlay);
@@ -182,7 +194,7 @@
     }).sort(function (a, b) { return a.t - b.t; });
 
     els.lines.appendChild(frag);
-    els.transcript.hidden = false;
+    if (els.loading) els.loading.hidden = true;
     if (els.search) els.search.addEventListener('input', onSearch);
     highlight(audio.currentTime);
   }
@@ -228,15 +240,32 @@
     if (els.empty) els.empty.hidden = shown !== 0;
   }
 
-  // Warm the transcript when the player scrolls into view (or on first play).
-  if ('IntersectionObserver' in window) {
-    var io = new IntersectionObserver(function (entries) {
-      if (entries.some(function (e) { return e.isIntersecting; })) {
-        ensureTranscript(); io.disconnect();
-      }
-    }, { rootMargin: '200px' });
-    io.observe(root);
-  } else {
-    ensureTranscript();
+  /* ---- progressive disclosure -----------------------------------------------
+     Levels: 0 = audio only, 1 = + topics, 2 = + transcript. The expand button
+     steps through the available tiers and wraps back to collapsed. With no
+     chapters, level 1 is skipped (audio → transcript → collapsed). */
+  if (els.expand) {
+    var hasChapters = !!els.chapters;
+    var sequence = hasChapters ? [0, 1, 2] : [0, 2];
+
+    // Label describes what the NEXT click will do (reveal topics / transcript, or collapse).
+    function labelFor(nextLevel) {
+      if (nextLevel === 0) return 'Свернуть';
+      if (nextLevel === 1) return 'Подтемы';
+      return 'Транскрипт';                          // nextLevel === 2
+    }
+
+    function setLevel(level) {
+      root.setAttribute('data-ap-level', level);
+      els.expand.setAttribute('aria-expanded', level > 0 ? 'true' : 'false');
+      var nextLevel = sequence[(sequence.indexOf(level) + 1) % sequence.length];
+      if (els.expandLabel) els.expandLabel.textContent = labelFor(nextLevel);
+      if (level >= 2) ensureTranscript();
+    }
+
+    els.expand.addEventListener('click', function () {
+      var cur = parseInt(root.getAttribute('data-ap-level'), 10) || 0;
+      setLevel(sequence[(sequence.indexOf(cur) + 1) % sequence.length]);
+    });
   }
 })();

@@ -3931,3 +3931,23 @@ body.cx-lock{overflow:hidden}
     transition: background var(--transition-fast), color var(--transition-fast);
 }
 .topic-jump:hover { background: var(--primary); color: var(--white); }
+
+/* --- audio player: progressive disclosure (audio → topics → transcript) --- */
+.report-audio .audio-chapters,
+.report-audio .audio-transcript { display: none; }
+.report-audio[data-ap-level="1"] .audio-chapters,
+.report-audio[data-ap-level="2"] .audio-chapters,
+.report-audio[data-ap-level="2"] .audio-transcript { display: block; }
+
+.ap-expand {
+    flex: none; display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 8px 5px 12px; cursor: pointer;
+    font-size: 0.8rem; font-weight: 600; color: var(--gray-700);
+    background: var(--gray-100); border: 1px solid var(--gray-200);
+    border-radius: var(--radius-full); transition: background var(--transition-fast);
+}
+.ap-expand:hover { background: var(--gray-200); }
+.ap-expand-chevron { transition: transform var(--transition-base); }
+.report-audio[data-ap-level="1"] .ap-expand-chevron,
+.report-audio[data-ap-level="2"] .ap-expand-chevron { transform: rotate(180deg); }
+.ap-transcript-loading { color: var(--gray-400); font-size: 0.9rem; padding: var(--space-sm) 8px; }

@@ -3,18 +3,20 @@
   Renders only when .Params.audio is set. Chapters come from `topics` entries
   that carry a `start` (seconds or "MM:SS"); the transcript is lazy-fetched from
   /audio/<base>.transcript.json (override with `transcript:` frontmatter).
+
+  Progressive disclosure via data-ap-level on the root (driven by the expand
+  button): 0 = audio only, 1 = + topics, 2 = + transcript. CSS reveals each tier.
   Behaviour lives in static/js/audio-player.js, keyed off [data-audio-player].
 */ -}}
 {{- $base := .File.ContentBaseName -}}
 {{- $transcript := .Params.transcript | default (printf "/audio/%s.transcript.json" $base) -}}
 {{- $chapters := where (.Params.topics | default slice) "start" "!=" nil -}}
-<section class="report-audio" id="listen" data-audio-player
+<section class="report-audio" id="listen" data-audio-player data-ap-level="0"
          data-transcript-src="{{ $transcript | relURL }}">
     <div class="container">
         <div class="audio-shell">
             <div class="audio-head">
                 <span class="audio-eyebrow">{{ partial "icons/calendar.html" }} Слушать встречу</span>
-                <p class="audio-note">Аудиозапись и транскрипт с таймкодами – кликните по реплике или подтеме, чтобы перемотать.</p>
             </div>
 
             <div class="audio-player" data-ap-root>
@@ -33,6 +35,13 @@
                 </div>
                 <span class="ap-time"><span data-ap-cur>0:00</span> / <span data-ap-dur>–:––</span></span>
                 <button type="button" class="ap-rate" data-ap-rate aria-label="Скорость воспроизведения">1×</button>
+                {{- if or $chapters true }}
+                <button type="button" class="ap-expand" data-ap-expand aria-expanded="false"
+                        aria-label="Показать подтемы и транскрипт">
+                    <span class="ap-expand-label" data-ap-expand-label>{{ with $chapters }}Подтемы{{ else }}Транскрипт{{ end }}</span>
+                    <svg class="ap-expand-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9l6 6 6-6"/></svg>
+                </button>
+                {{- end }}
             </div>
 
             {{- with $chapters }}
@@ -51,7 +60,7 @@
             </div>
             {{- end }}
 
-            <div class="audio-transcript" data-ap-transcript hidden>
+            <div class="audio-transcript" data-ap-transcript>
                 <div class="audio-transcript-head">
                     <p class="audio-sub">Транскрипт</p>
                     <label class="ap-search">
@@ -59,6 +68,7 @@
                         <input type="search" placeholder="Поиск по транскрипту…" data-ap-search aria-label="Поиск по транскрипту">
                     </label>
                 </div>
+                <p class="ap-transcript-loading" data-ap-loading>Загрузка транскрипта…</p>
                 <ol class="ap-lines" data-ap-lines aria-live="off"></ol>
                 <p class="ap-transcript-empty" data-ap-empty hidden>Ничего не найдено.</p>
             </div>
