@@ -4043,3 +4043,114 @@ body.cx-lock{overflow:hidden}
     .ap-play > svg { transition: opacity 0.15s linear; transform: none !important; }
     .ap-skip.is-bumped svg { animation: none; }
 }
+
+/* ===========================================
+   PLAYER v2: waveform, now-playing, resume,
+   buffering/error, copy-link, sticky mini-bar
+   =========================================== */
+
+/* waveform scrubber */
+.ap-bar { height: 40px; background: transparent; border-radius: var(--radius-md); }
+.ap-wave { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.ap-playhead {
+    position: absolute; top: -2px; bottom: -2px; left: 0; width: 2px; z-index: 3;
+    background: var(--gray-900); border-radius: 2px; pointer-events: none; transform: translateX(-1px);
+}
+.ap-playhead::after {
+    content: ''; position: absolute; top: 50%; left: 50%; width: 11px; height: 11px;
+    transform: translate(-50%, -50%); background: var(--white);
+    border: 2px solid var(--gray-900); border-radius: 50%; box-shadow: var(--shadow-sm);
+}
+
+/* hover tooltip now carries the time too */
+.ap-tip-time { font-family: var(--font-mono); color: var(--gray-300); }
+
+/* buffering spinner on the play button */
+.ap-spinner {
+    display: none; grid-area: 1 / 1; width: 22px; height: 22px; border-radius: 50%;
+    border: 2.5px solid rgba(255, 255, 255, 0.4); border-top-color: var(--white);
+    animation: ap-spin 0.7s linear infinite;
+}
+.ap-play.is-buffering .ap-ic-play,
+.ap-play.is-buffering .ap-ic-pause { opacity: 0; }
+.ap-play.is-buffering .ap-spinner { display: block; }
+@keyframes ap-spin { to { transform: rotate(360deg); } }
+
+/* current-chapter readout in the header */
+.audio-now {
+    display: block; margin-top: 3px; font-size: 0.85rem; color: var(--gray-500);
+}
+.audio-now::before {
+    content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px;
+    border-radius: 50%; background: var(--primary); vertical-align: middle;
+    animation: ap-pulse 1.8s ease-in-out infinite;
+}
+@keyframes ap-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* an explicit `display` defeats the UA [hidden] rule – restore it for these two */
+.audio-now[hidden], .audio-resume[hidden] { display: none; }
+
+/* resume + error banners */
+.audio-resume, .audio-error { margin: var(--space-sm) var(--space-lg) 0; border-radius: var(--radius-md); }
+.audio-resume {
+    display: block; padding: 9px 12px; text-align: left; cursor: pointer;
+    font-size: 0.88rem; font-weight: 600; color: var(--primary-dark);
+    background: var(--primary-light); border: none; transition: background var(--transition-fast);
+}
+.audio-resume:hover { background: #d3f1f6; }
+.audio-error {
+    padding: 9px 12px; font-size: 0.85rem; color: #b91c1c;
+    background: #fef2f2; border: 1px solid #fecaca;
+}
+
+/* current chapter highlight in the list */
+.ap-chapter.is-current { background: var(--gray-50); }
+.ap-chapter.is-current .ap-chapter-title { font-weight: 600; color: var(--gray-900); }
+
+/* copy-link button per transcript line */
+.ap-line-text { flex: 1; }
+.ap-line-link {
+    flex: none; align-self: flex-start; opacity: 0; padding: 3px; cursor: pointer;
+    color: var(--gray-400); background: none; border: none; border-radius: var(--radius-sm);
+    transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+.ap-line:hover .ap-line-link, .ap-line-link:focus-visible { opacity: 1; }
+.ap-line-link:hover { color: var(--primary); }
+.ap-line-link.is-copied { opacity: 1; color: var(--term-green); }
+
+/* sticky mini-player */
+.ap-mini {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    display: flex; align-items: center; gap: 12px; padding: 9px 16px;
+    background: rgba(255, 255, 255, 0.96); backdrop-filter: saturate(1.4) blur(8px);
+    border-top: 1px solid var(--gray-200); box-shadow: 0 -4px 16px rgb(0 0 0 / 0.08);
+    transform: translateY(110%); visibility: hidden;
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.28s;
+}
+.ap-mini.is-visible { transform: none; visibility: visible; }
+.ap-mini-play {
+    flex: none; width: 42px; height: 42px; display: grid; place-items: center;
+    border: none; cursor: pointer; border-radius: 50%; background: var(--primary); color: var(--white);
+    transition: background var(--transition-fast);
+}
+.ap-mini-play:hover { background: var(--primary-dark); }
+.ap-mini-play > svg { grid-area: 1 / 1; }
+.ap-mini .ap-ic-pause { display: none; }
+.ap-mini.is-playing .ap-ic-play { display: none; }
+.ap-mini.is-playing .ap-ic-pause { display: block; }
+.ap-mini-info {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px;
+    padding: 0; background: none; border: none; cursor: pointer; text-align: left;
+}
+.ap-mini-now {
+    font-size: 0.85rem; font-weight: 600; color: var(--gray-800);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ap-mini-bar { height: 4px; background: var(--gray-200); border-radius: var(--radius-full); overflow: hidden; }
+.ap-mini-fill { display: block; height: 100%; width: 0; background: var(--primary); border-radius: inherit; }
+.ap-mini-info:hover .ap-mini-now { color: var(--primary-dark); }
+
+@media (prefers-reduced-motion: reduce) {
+    .audio-now::before { animation: none; }
+    .ap-mini { transition: none; }
+}

@@ -2,7 +2,8 @@
   Audio player + chapters + synced transcript for an event page.
   Renders only when .Params.audio is set. Chapters come from `topics` entries
   that carry a `start` (seconds or "MM:SS"); the transcript is lazy-fetched from
-  /audio/<base>.transcript.json (override with `transcript:` frontmatter).
+  /audio/<base>.transcript.json and the waveform peaks from /audio/<base>.peaks.json
+  (override transcript path with `transcript:` frontmatter).
 
   Progressive disclosure via data-ap-level on the root (driven by the expand
   button): 0 = audio only, 1 = + topics, 2 = + transcript. CSS reveals each tier.
@@ -12,11 +13,16 @@
 {{- $transcript := .Params.transcript | default (printf "/audio/%s.transcript.json" $base) -}}
 {{- $chapters := where (.Params.topics | default slice) "start" "!=" nil -}}
 <section class="report-audio" id="listen" data-audio-player data-ap-level="0"
-         data-transcript-src="{{ $transcript | relURL }}">
+         data-transcript-src="{{ $transcript | relURL }}"
+         data-peaks-src="{{ printf "/audio/%s.peaks.json" $base | relURL }}">
         <div class="audio-shell">
             <div class="audio-head">
                 <span class="audio-eyebrow">{{ partial "icons/calendar.html" }} Слушать встречу</span>
+                <span class="audio-now" data-ap-now hidden></span>
             </div>
+
+            <p class="audio-error" data-ap-error role="alert" hidden></p>
+            <button type="button" class="audio-resume" data-ap-resume hidden></button>
 
             <div class="audio-player" data-ap-root>
                 <audio preload="metadata" data-ap-audio>
@@ -34,6 +40,7 @@
                     <button type="button" class="ap-play" data-ap-play aria-label="Слушать">
                         <svg class="ap-ic-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
                         <svg class="ap-ic-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+                        <span class="ap-spinner" aria-hidden="true"></span>
                     </button>
                     <button type="button" class="ap-skip" data-ap-skip="10" aria-label="Вперёд 10 секунд" title="Вперёд 10 секунд">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -45,8 +52,8 @@
                 </div>
                 <div class="ap-bar" data-ap-bar role="slider" tabindex="0"
                      aria-label="Перемотка" aria-valuemin="0" aria-valuenow="0">
-                    <div class="ap-bar-fill" data-ap-fill></div>
-                    <div class="ap-bar-buffer" data-ap-buffer></div>
+                    <canvas class="ap-wave" data-ap-wave aria-hidden="true"></canvas>
+                    <div class="ap-playhead" data-ap-playhead></div>
                 </div>
                 <span class="ap-time"><span data-ap-cur>0:00</span> / <span data-ap-dur>–:––</span></span>
                 <button type="button" class="ap-rate" data-ap-rate aria-label="Скорость воспроизведения">1×</button>
