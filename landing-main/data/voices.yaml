@@ -1,6 +1,15 @@
 # Curated member quotes surfaced on the homepage ("Голоса сообщества").
 # Pulled from real chat discussions (see content/insights/*). Keep them short,
 # self-contained and attributed. Edit freely – order here is the display order.
+- text: "Одна и та же модель в руках разных людей может сделать x100 инженера и -x100 инженера."
+  author: "Никита"
+  topic: "AI"
+- text: "Важно не то, где человек работал, а как работал."
+  author: "Андрей Звёздочка"
+  topic: "Карьера"
+- text: "Код удобно делегировать ЛЛМ, а принятие решения остаётся на человеке."
+  author: "LSTR"
+  topic: "Процессы"
 - text: "Всегда ходи на собесы. Рынок тебя всегда оценит."
   author: "Андрей Звёздочка"
   topic: "Карьера"

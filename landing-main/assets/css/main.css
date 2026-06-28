@@ -3183,6 +3183,12 @@ body > .nav {
 .back-to-top svg { transform: rotate(180deg); }
 .back-to-top.is-visible { opacity: 1; visibility: visible; transform: translateY(0); }
 .back-to-top:hover { background: var(--kz-sky-dark); }
+/* On content pages the ambient terminal pill sits in the same bottom-right corner –
+   stack the back-to-top above it so the two don't overlap (desktop only; on mobile
+   the pill and arrow are already separated by the bottom-nav offset above). */
+@media (min-width: 769px) {
+    body:has(.term-dock:not([hidden])) .back-to-top { bottom: calc(var(--space-lg) + 56px); }
+}
 
 /* --- Bottom navigation (mobile only) --- */
 .bottom-nav { display: none; }
