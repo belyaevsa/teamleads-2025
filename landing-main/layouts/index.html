@@ -237,21 +237,25 @@
   if (!dock || !fab) return;
 
   var KEY = 'tnk_dock_open';
-  function setOpen(open) {
+  // persist=true only for an explicit user action, so the stored value always means
+  // "the user chose this" – the device default below is never written to storage.
+  function setOpen(open, persist) {
     body.classList.toggle('dock-open', open);
     dock.hidden = !open;
     fab.hidden = open;
-    try { localStorage.setItem(KEY, open ? '1' : '0'); } catch (e) {}
+    if (persist) { try { localStorage.setItem(KEY, open ? '1' : '0'); } catch (e) {} }
   }
 
-  // Default: open on wide screens, closed on phones – unless the user chose before.
+  // Default: open on wide screens, hidden on phones – unless the user chose before.
+  // The default is applied but not persisted, so a desktop visit never makes the
+  // terminal appear by default on a later mobile visit (and vice versa).
   var saved = null;
   try { saved = localStorage.getItem(KEY); } catch (e) {}
   var wide = window.matchMedia('(min-width: 1024px)').matches;
-  setOpen(saved === null ? wide : saved === '1');
+  setOpen(saved === null ? wide : saved === '1', false);
 
-  closeBtn && closeBtn.addEventListener('click', function () { setOpen(false); });
-  fab.addEventListener('click', function () { setOpen(true); });
+  closeBtn && closeBtn.addEventListener('click', function () { setOpen(false, true); });
+  fab.addEventListener('click', function () { setOpen(true, true); });
 
   // Content chips → run the command in the live docked terminal.
   function runInShell(cmd) {
@@ -267,7 +271,7 @@
   Array.prototype.forEach.call(document.querySelectorAll('[data-run]'), function (b) {
     b.addEventListener('click', function () {
       var cmd = b.getAttribute('data-run');
-      if (!body.classList.contains('dock-open')) setOpen(true);
+      if (!body.classList.contains('dock-open')) setOpen(true, true);
       runInShell(cmd);
     });
   });
