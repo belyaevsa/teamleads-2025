@@ -284,6 +284,21 @@ export function makeTama(S) {
     xr.appendChild(el('span', 'hud-bar xp', bars(xpPct())));
     xr.appendChild(el('span', 'hud-num', Math.round(xpPct()) + '%'));
     stats.appendChild(xr);
+    // Состав команды поимённо – не просто счётчик, а кто именно в команде (трейт-намёк в title).
+    var tr = el('div', 'hud-row hud-team');
+    tr.appendChild(el('span', 'hud-label', 'команда  '));
+    var names = el('span', 'hud-team-names');
+    if (st.team.length) {
+      st.team.forEach(function (t, i) {
+        var chip = el('span', 'hud-team-name trait-' + (t.trait || ''), t.name + (i < st.team.length - 1 ? ',' : ''));
+        try { chip.title = t.trait || ''; } catch (e) {}
+        names.appendChild(chip);
+      });
+    } else {
+      names.appendChild(el('span', 'hud-team-empty', 'пока никого – hire'));
+    }
+    tr.appendChild(names);
+    stats.appendChild(tr);
     wrap.appendChild(stats);
     hud.appendChild(wrap);
   }
@@ -356,13 +371,15 @@ export function makeTama(S) {
     if (st.pending || st.hire) { remindBusy(); return; }
     var m = st.metrics;
     if (m.morale < 15) { print('🚀 ship: команда на грани выгорания (настрой ' + Math.round(m.morale) + '). Сначала retro/pair/1on1.', 'err'); return; }
-    var y = Math.max(1, Math.round((m.expertise * 0.5 + m.morale * 0.3 + (100 - m.conflict) * 0.2) / 20));
+    // Один ship = один релиз (счётчик растёт ровно на 1). Качество команды влияет
+    // не на число релизов, а на «вес» релиза – сколько опыта он приносит.
+    var q = Math.max(1, Math.round((m.expertise * 0.5 + m.morale * 0.3 + (100 - m.conflict) * 0.2) / 20));
     st.asleep = false; snapPrev();
-    apply({ shipped: y, morale: -15, trust: 4, conflict: -3, xp: 20 + y * 5 });
+    apply({ shipped: 1, morale: -15, trust: 4, conflict: -3, xp: 20 + q * 5 });
     tallyStyle('deliver'); if (m.morale < 30) tallyStyle('fire');   // релиз через выгорание = пожарный стиль
     st.day += 1; drift(0.6);
-    print('🚀 релиз выкачен: +' + y + ' (всего ' + st.shipped + '/' + GOAL_SHIP + '). Крауч стоит сил.', 'ok');
-    chron('🚀 релиз +' + y + ' (всего ' + st.shipped + '/' + GOAL_SHIP + ')');
+    print('🚀 релиз выкачен (всего ' + st.shipped + '/' + GOAL_SHIP + '). Крауч стоит сил.', 'ok');
+    chron('🚀 релиз (всего ' + st.shipped + '/' + GOAL_SHIP + ')');
     if (st.metrics.morale < 12 && st.team.length) {
       var lost = st.team.pop();
       apply({ conflict: 10, trust: -4 });
@@ -414,11 +431,11 @@ export function makeTama(S) {
       if (!qq || !qq.q) return;
       out.push({
         id: 'q-' + i, q: null, src: { u: qq.u, t: qq.ev || 'разбор сообщества' }, srcQ: qq.q,
-        t: 'С разбора «' + (qq.ev || 'встречи') + '» всплыл вопрос: «' + qq.q + '» Что решаешь?',
+        t: '{name} приносит тему с разбора «' + (qq.ev || 'встречи') + '»: «' + qq.q + '» Команде интересно, что ты об этом думаешь. Как реагируешь?',
         o: [
-          { l: 'Вынести на ретро, решить вместе', s: 'harmony', e: { trust: 6, conflict: -4, xp: 2 }, out: 'Команда оценила, что её слышат.' },
-          { l: 'Решить самому и двигаться', s: 'deliver', e: { conflict: 4, trust: -2, xp: 2 }, out: 'Быстро. Но не все согласны.' },
-          { l: 'Собрать мнение сильных инженеров', s: 'expertise', e: { expertise: 5, trust: 3, xp: 3 }, out: 'Собрал контекст – решили обоснованно.' }
+          { l: 'Вынести на общее обсуждение командой', s: 'harmony', e: { trust: 6, conflict: -4, xp: 2 }, out: 'Разобрали вместе – люди почувствовали, что их слышат.' },
+          { l: 'Поделиться своим опытом и примерами', s: 'people', e: { trust: 4, morale: 3, xp: 3 }, out: 'Твой разбор зашёл – команда унесла что-то полезное.' },
+          { l: 'Сейчас не до этого – вернуться к задачам', s: 'deliver', e: { conflict: 4, morale: -3, xp: 1 }, out: 'Быстро вернулись к делу, но интерес притушили.' }
         ]
       });
     });

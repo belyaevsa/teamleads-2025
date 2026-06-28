@@ -3484,6 +3484,13 @@ button.term-dot:focus-visible{outline:2px solid #39c5cf;outline-offset:2px}
 .hud-trend{flex:0 0 auto;width:12px;text-align:center;font-size:11px}
 .hud-trend.up{color:#3fb950}
 .hud-trend.down{color:#f85149}
+.hud-row.hud-team{align-items:flex-start}
+.hud-team-names{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;gap:0 6px;color:#c9d1d9;line-height:1.5}
+.hud-team-name{white-space:nowrap;cursor:default}
+.hud-team-name.trait-токсичный,.hud-team-name.trait-выгорающий{color:#f85149}
+.hud-team-name.trait-надёжный{color:#3fb950}
+.hud-team-name.trait-звезда{color:#FEC50C}
+.hud-team-empty{color:#6e7681;font-style:italic}
 .term--ps .term-hud{background:#011f49;border-bottom-color:#0a3a73}
 
 @media (max-width:480px){
