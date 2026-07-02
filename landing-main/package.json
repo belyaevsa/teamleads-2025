@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:tama": "node --test tests/tama-economy.test.mjs"
+  }
+}
