@@ -29,12 +29,14 @@ provided, ask for it.
 - `--language LANGUAGE` – ISO code (`ru`, `en`) or `auto`. Default `ru`
   (community meetups are in Russian).
 - `-o, --output PATH` – exact output path. Default `<stem>.txt`.
-- `--rich` – [gemini only] structured JSON with summary, timestamped
-  segments, translation, emotion.
+- `--rich` – structured JSON instead of plain text. [gemini] summary,
+  timestamped segments, translation, emotion. [yandex] duration + timestamped
+  segments.
 - `--jobs N` – [openai] parallel chunk uploads for long files (default 4).
 - `--provider yandex` – [yandex] Russian-native SpeechKit, async long-audio
-  recognition (up to 4h / 1 GB in one shot). Always emits **timestamped JSON**
-  `{ "duration", "segments": [{ "t", "end", "text" }], "text", "audio" }` – the
+  recognition (up to 4h / 1 GB in one shot). Emits plain text `.txt` by
+  default; add `--rich` for the **timestamped JSON**
+  `{ "duration", "segments": [{ "t", "end", "text" }], "text" }` – the
   format the event-page audio player consumes. See below.
 
 Keys for both providers are already stored (`scribe config show`).
@@ -85,19 +87,23 @@ async path handles a full meetup in one shot (unlike Gemini `--rich`, which drop
 second half of long audio):
 
 ```
-scribe transcribe '<stem>.opus' --provider yandex --language ru \
+scribe transcribe '<stem>.opus' --provider yandex --rich --language ru \
   -o '<stem>.transcript.json'
 ```
 
-It uploads the audio to Yandex Object Storage (which doubles as the public audio URL
-the player streams), runs async recognition, and writes the normalized JSON:
+`--rich` is required for the JSON – without it the Yandex provider writes only the
+flat transcript as `.txt`. It uploads the audio to Yandex Object Storage (which
+doubles as the public audio URL the player streams, printed to stdout as
+`audio URI:`), runs async recognition, and writes the normalized JSON:
 
 ```json
-{ "audio": "https://storage.yandexcloud.net/<bucket>/<file>.opus",
-  "duration": 5400,
+{ "duration": 5400,
   "segments": [ { "t": 0.0, "end": 4.2, "text": "…" }, … ],
   "text": "full plain transcript" }
 ```
+
+scribe's output has no `audio` field – add the player's audio URL (the printed
+`audio URI`) when assembling the final `<slug>.transcript.json`.
 
 Prerequisites (one-time):
 - `scribe config set-key --provider yandex` (a SpeechKit **API key**), and Object
