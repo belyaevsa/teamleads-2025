@@ -14,7 +14,8 @@ principles, and step-by-step recipes (add a command, add a module, test).
 
 Source lives in `assets/js/shell/` as ES modules and is bundled by **Hugo's
 `js.Build` (esbuild)** into a single fingerprinted IIFE. There is no separate
-build step or package.json – Hugo does it during `hugo`/`hugo server`.
+front-end build step – Hugo does it during `hugo`/`hugo server`. The local
+`package.json` exists for Node-based tests only.
 
 ```
 assets/js/shell/
@@ -212,6 +213,7 @@ For something bigger (a new panel, a stateful tool):
 - **Dev:** `hugo server` then open `http://localhost:1313/shell/`. Live-reload
   rebuilds the bundle on save (unminified in dev).
 - **Production build:** `hugo` (minifies + fingerprints the bundle).
+- **Node tests:** `npm test` from the site root runs the shell test harnesses.
 - **Syntax:** `node --check assets/js/shell/<file>.js` on any module.
 - **Pure-logic unit tests:** modules with no DOM (e.g. `fs.js`, `markdown.js`)
   can be imported directly in a Node `.mjs` harness with stub deps – see the FS
@@ -288,7 +290,7 @@ Details that matter:
 - **localStorage keys:** `tnk_shell_fs` (user filesystem), `tnk_shell_history`
   (command history), `tnk_shell_theme` (bash/powershell skin), `tnk_shell_user`
   (author name for file metadata), `tnk_shell_tama` (тимагочи save: metrics, team,
-  `ts` timestamp for decay).
+  finance, release progress, `ts` timestamp for decay).
 - **The тимагочи (`tama.js`) is command-driven, not a modal.** Unlike `sim.js`/
   `editor.js` it does NOT grab the keyboard, so it is absent from the prompt
   keydown gate. Its only non-command surface is the `[data-term-hud]` strip and a
@@ -301,7 +303,9 @@ Details that matter:
   same pattern as `scenarios`/`voices`). Append an entry (the file header documents the
   schema: `id` · optional `need: team` · `q` topic · `t` text with `{name}` · `o[]` of
   `{l, s, e, out}`) and it shows up – no code change, esbuild rebuild not required for
-  data. The deck is also auto-extended at runtime by `questionIncidents()`, which turns
+  data. Incident effects can also use `budget`, `releaseProgress`, and `days`: `days`
+  spends team capacity by advancing the clock, applying drift, and charging runway.
+  The deck is also auto-extended at runtime by `questionIncidents()`, which turns
   the live `/questions` backlog (`S.QUESTIONS`) into dilemmas that link back to the
   source meetup. Incident outcomes call `tieIn()` (a matching `S.pool` article or the
   source page + a clickable `claude` question).
@@ -309,14 +313,16 @@ Details that matter:
   `ufs.nodes['team/log.md']` (via `ensureDir`/`ufsSave`), so it's readable with the
   normal `cat team/log.md` / `tail` / `ls team` commands – the game state is the
   source of truth (`st.history`), the file is regenerated on every chronicled beat
-  and on `resume()`. The HUD also shows trend arrows (↑↓ vs `st.prevMetrics`), an
-  XP bar, a sprint counter, and a stage-evolving buddy hat (`STAGE_HAT`). Incidents
-  and `team style` print a content tie-in (a matching `S.pool` article + a clickable
+  and on `resume()`. The HUD also shows finance as a second column (деньги, доход,
+  расход, запас), release progress, trend arrows (↑↓ vs `st.prevMetrics`), an XP
+  bar, a sprint counter, and a stage-evolving buddy hat (`STAGE_HAT`). Incidents and
+  `team style` print a content tie-in (a matching `S.pool` article + a clickable
   `claude` question) – the funnel from game into site content + the offline assistant.
 - **Тимагочи sharing is URL-encoded (the result lives in the link).** `team share`
-  packs the run into a compact code `tl1-<stage>-<shipped>-<day>-<trust>-<exp>-<morale>-<conflict>-<team>-<flag>-<arch>`
+  packs the run into a compact code `tl3-<stage>-<shipped>-<day>-<trust>-<exp>-<morale>-<conflict>-<team>-<flag>-<arch>-<style>-<budget>-<progress>`
   and builds `/s/<milestone>/?cmd=<code>` where `<milestone>` is one of three
   static OG cards picked by outcome (`team-win` / `team-burnout` / `team-result`).
+  Old `tl1`/`tl2` links are still decoded.
   The `/s/` redirect composes `verb + ?cmd` → `team <code>`, and `team()` routes any
   arg matching `/^tl\d/` to `showResult()` (a read-only card of *someone else's* run
   + a "team new" CTA). To add a milestone OG card: add a `[[commands]]` block whose

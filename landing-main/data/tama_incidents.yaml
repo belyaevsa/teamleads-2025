@@ -9,7 +9,8 @@
 #   o     – варианты ответа [2-4 шт.], у каждого:
 #       l   – текст варианта,
 #       s   – стиль решения (для архетипа): people | deliver | harmony | expertise | fire,
-#       e   – эффекты: trust | expertise | morale | conflict | xp | shipped (целые),
+#       e   – эффекты: trust | expertise | morale | conflict | xp | shipped |
+#             budget | releaseProgress | days (целые),
 #       out – исход (тоже поддерживает {name}).
 # Правило стиля: только короткое тире (–), не длинное.
 
@@ -19,86 +20,86 @@ incidents:
     q: Рост
     t: "{name} принесла оффер от другой компании, +40%. Сидит, мнётся."
     o:
-      - { l: "Контроффер деньгами", s: deliver, e: { trust: 3, morale: 4, conflict: 7 }, out: "Деньги нашли. Остальные узнали – и обиделись." }
-      - { l: "Честный 1-on-1", s: people, e: { trust: 9, morale: 5, xp: 4 }, out: "Дело не в деньгах, а в скуке. Дал челлендж – осталась." }
-      - { l: "Отпустить красиво", s: harmony, e: { morale: -6, trust: 5, conflict: -3 }, out: "Ушла тепло, обещала рекомендовать вас. Но дырка в команде." }
+      - { l: "Контроффер деньгами", s: deliver, e: { trust: 3, morale: 4, conflict: 7, budget: -25 }, out: "Деньги нашли. Остальные узнали – и обиделись. Бюджет стал тоньше." }
+      - { l: "Честный 1-on-1", s: people, e: { trust: 9, morale: 5, releaseProgress: -10, days: 1, xp: 4 }, out: "Дело не в деньгах, а в скуке. Дал челлендж – осталась. День ушёл на разговор и план." }
+      - { l: "Отпустить красиво", s: harmony, e: { morale: -6, trust: 5, conflict: -3, releaseProgress: -18 }, out: "Ушла тепло, обещала рекомендовать вас. Но дырка в команде съела темп." }
 
   - id: prod-down
     q: Процессы
     t: "Прод упал в пятницу 18:00. Телефон разрывается."
     o:
-      - { l: "Чиню сам до ночи", s: fire, e: { expertise: 3, morale: -10, trust: 2 }, out: "Поднял к полуночи. Герой. Завтра никакой." }
-      - { l: "Поднимаю дежурного", s: people, e: { trust: 4, expertise: 5, conflict: 3 }, out: "Дежурный справился сам – вырос. Немного поворчал." }
-      - { l: "Откат и разбор в понедельник", s: harmony, e: { morale: 4, conflict: 5 }, out: "Команда выдохнула. Продакт – нет." }
+      - { l: "Чиню сам до ночи", s: fire, e: { expertise: 3, morale: -10, trust: 2, releaseProgress: 25 }, out: "Поднял к полуночи. Релиз спасён. Завтра никакой." }
+      - { l: "Поднимаю дежурного", s: people, e: { trust: 4, expertise: 5, conflict: 3, budget: -6 }, out: "Дежурный справился сам – вырос. Немного поворчал, переработку оплатили." }
+      - { l: "Откат и разбор в понедельник", s: harmony, e: { morale: 4, conflict: 5, releaseProgress: -20, days: 1 }, out: "Команда выдохнула. Продакт – нет. День поставки потеряли." }
 
   - id: arch-feud
     need: team
     q: Процессы
     t: "Два инженера неделю спорят: монолит против микросервисов."
     o:
-      - { l: "Решаю сам, быстро", s: deliver, e: { conflict: -8, trust: -4, morale: -2 }, out: "Спор закрыт. Автономия тоже." }
-      - { l: "ADR + день на прототип", s: expertise, e: { expertise: 8, conflict: -6, morale: 3, xp: 4 }, out: "Решение на данных. Медленно, но по-взрослому." }
-      - { l: "Пусть договорятся сами", s: people, e: { trust: 5, conflict: 4 }, out: "Договорились. Заняло ещё три дня." }
+      - { l: "Решаю сам, быстро", s: deliver, e: { conflict: -8, trust: -4, morale: -2, releaseProgress: 12 }, out: "Спор закрыт. Автономия тоже. Зато поставка сдвинулась." }
+      - { l: "ADR + день на прототип", s: expertise, e: { expertise: 8, conflict: -6, morale: 3, releaseProgress: -15, days: 1, xp: 4 }, out: "Решение на данных. Медленно, но по-взрослому." }
+      - { l: "Пусть договорятся сами", s: people, e: { trust: 5, conflict: 4, releaseProgress: -20, days: 2 }, out: "Договорились. Команда выросла, но два дня утекли в спор." }
 
   - id: junior-ci
     need: team
     q: Процессы
     t: "{name} третий раз за неделю уронил CI на мейне."
     o:
-      - { l: "Публично разобрать", s: fire, e: { conflict: 8, morale: -6, expertise: 2 }, out: "CI больше не падает. И {name} теперь боится коммитить." }
-      - { l: "1-on-1 + менторство", s: people, e: { expertise: 6, trust: 6, morale: 3, xp: 4 }, out: "Оказалось, не знал про pre-commit. Научил – расцвёл." }
-      - { l: "Поставить branch protection", s: expertise, e: { expertise: 5, conflict: -2 }, out: "Процесс вместо нотаций. Мейн в безопасности." }
+      - { l: "Публично разобрать", s: fire, e: { conflict: 8, morale: -6, expertise: 2, releaseProgress: 10 }, out: "CI больше не падает. И {name} теперь боится коммитить." }
+      - { l: "1-on-1 + менторство", s: people, e: { expertise: 6, trust: 6, morale: 3, releaseProgress: -10, days: 1, xp: 4 }, out: "Оказалось, не знал про pre-commit. Научил – расцвёл, но день ушёл." }
+      - { l: "Поставить branch protection", s: expertise, e: { expertise: 5, conflict: -2, releaseProgress: -5 }, out: "Процесс вместо нотаций. Мейн в безопасности, фокус чуть просел." }
 
   - id: deadline-cut
     q: Мотивация
     t: "Продакт срезал срок вдвое: «бизнес просит»."
     o:
-      - { l: "Защитить команду", s: harmony, e: { trust: 8, morale: 6, conflict: 4 }, out: "Отстоял реальные сроки. Продакт надулся, команда зауважала." }
-      - { l: "Согласиться и крауч", s: deliver, e: { shipped: 1, morale: -12, conflict: 6 }, out: "Успели. Цена – выгорание на горизонте." }
-      - { l: "Срезать скоуп", s: expertise, e: { trust: 4, morale: 3, expertise: 2 }, out: "Договорились о MVP. Все живы." }
+      - { l: "Защитить команду", s: harmony, e: { trust: 8, morale: 6, conflict: 4, releaseProgress: -25 }, out: "Отстоял реальные сроки. Продакт надулся, команда зауважала. Темп просел." }
+      - { l: "Согласиться и крауч", s: deliver, e: { releaseProgress: 80, morale: -12, conflict: 6 }, out: "Сильно продвинулись. Цена – выгорание на горизонте." }
+      - { l: "Срезать скоуп", s: expertise, e: { releaseProgress: 35, trust: 4, morale: 3, expertise: 2 }, out: "Договорились о MVP. Все живы, часть релиза поехала дальше." }
 
   - id: burnout-sign
     need: team
     q: Мотивация
     t: "{name} тихо перегружен: PR-ы в 2 ночи, шутки про увольнение."
     o:
-      - { l: "Отправить в отпуск", s: people, e: { morale: 8, trust: 6 }, out: "Вернулся с горящими глазами. Стоило недели простоя." }
-      - { l: "Снять часть задач", s: harmony, e: { morale: 5, trust: 4, conflict: -2 }, out: "Разгрузил. Выдохнул." }
-      - { l: "Сделать вид, что не заметил", s: fire, e: { morale: -8, conflict: 6, trust: -5 }, out: "Через неделю {name} принёс заявление." }
+      - { l: "Отправить в отпуск", s: people, e: { morale: 8, trust: 6, releaseProgress: -25, days: 2 }, out: "Вернулся с горящими глазами. Стоило двух дней простоя." }
+      - { l: "Снять часть задач", s: harmony, e: { morale: 5, trust: 4, conflict: -2, releaseProgress: -15, days: 1 }, out: "Разгрузил. Выдохнул. День ушёл на перераскладку." }
+      - { l: "Сделать вид, что не заметил", s: fire, e: { releaseProgress: 10, morale: -8, conflict: 6, trust: -5 }, out: "Сегодня темп не просел. Через неделю {name} принёс заявление." }
 
   - id: toxic-star
     need: team
     q: Рост
     t: "{name} – сильный инженер, но топит митинги в сарказме. Джуны молчат."
     o:
-      - { l: "Жёсткий разговор", s: fire, e: { conflict: -10, morale: 4, trust: 3 }, out: "Поведение поправилось. Осадок остался." }
-      - { l: "Дать роль ментора", s: people, e: { expertise: 6, conflict: -6, trust: 5, xp: 3 }, out: "Ответственность развернула энергию в плюс." }
-      - { l: "Терпеть ради скилла", s: deliver, e: { expertise: 4, conflict: 9, morale: -5 }, out: "Код едет, атмосфера – нет." }
+      - { l: "Жёсткий разговор", s: fire, e: { conflict: -10, morale: 4, trust: 3, releaseProgress: -5 }, out: "Поведение поправилось. Осадок остался, но фокус почти сохранили." }
+      - { l: "Дать роль ментора", s: people, e: { expertise: 6, conflict: -6, trust: 5, releaseProgress: -10, days: 1, xp: 3 }, out: "Ответственность развернула энергию в плюс. Настройка роли заняла день." }
+      - { l: "Терпеть ради скилла", s: deliver, e: { releaseProgress: 18, expertise: 4, conflict: 9, morale: -5 }, out: "Код едет, атмосфера – нет." }
 
   - id: hire-choice
     q: Карьера
     t: "Два финалиста: ровный мидл и яркий, но рисковый сеньор."
     o:
-      - { l: "Надёжный мидл", s: harmony, e: { trust: 4, conflict: -3, expertise: 3 }, out: "Предсказуемо и спокойно. Без фейерверков." }
-      - { l: "Рисковый сеньор", s: deliver, e: { expertise: 8, conflict: 5, morale: 2 }, out: "Мощно и непредсказуемо. Посмотрим." }
-      - { l: "Никого, поднять текущих", s: people, e: { trust: 6, morale: 5, xp: 4 }, out: "Вложился в своих. Найм подождёт." }
+      - { l: "Надёжный мидл", s: harmony, e: { trust: 4, conflict: -3, expertise: 3, budget: -10 }, out: "Предсказуемо и спокойно. Без фейерверков, но оффер стоит денег." }
+      - { l: "Рисковый сеньор", s: deliver, e: { expertise: 8, conflict: 5, morale: 2, budget: -25, releaseProgress: 15 }, out: "Мощно и непредсказуемо. Дорого, зато сразу добавил скорости." }
+      - { l: "Никого, поднять текущих", s: people, e: { trust: 6, morale: 5, releaseProgress: -10, days: 1, xp: 4 }, out: "Вложился в своих. Найм подождёт, день ушёл в развитие." }
 
   - id: remote-trust
     need: team
     q: Процессы
     t: "{name} на удалёнке: камера выключена, отвечает к вечеру. Команда шепчется."
     o:
-      - { l: "Ввести жёсткий контроль", s: fire, e: { trust: -8, conflict: 6, morale: -4 }, out: "Микроменеджмент. Доверие просело у всех." }
-      - { l: "Договориться об overlap-часах", s: expertise, e: { trust: 4, conflict: -4, expertise: 2 }, out: "Async по-взрослому: договорённости вместо слежки." }
-      - { l: "1-on-1: всё ли ок?", s: people, e: { trust: 8, morale: 4 }, out: "У человека был тяжёлый период. Поддержал." }
+      - { l: "Ввести жёсткий контроль", s: fire, e: { releaseProgress: 10, trust: -8, conflict: 6, morale: -4 }, out: "Микроменеджмент. Сегодня темп виден, доверие просело у всех." }
+      - { l: "Договориться об overlap-часах", s: expertise, e: { trust: 4, conflict: -4, expertise: 2, releaseProgress: -5 }, out: "Async по-взрослому: договорённости вместо слежки. Чуть дороже по координации." }
+      - { l: "1-on-1: всё ли ок?", s: people, e: { trust: 8, morale: 4, releaseProgress: -10, days: 1 }, out: "У человека был тяжёлый период. Поддержал. День ушёл на разговор и адаптацию." }
 
   - id: ai-trap
     q: AI
     t: "Команда залила в прод фичу, которую «дописал» LLM. Никто не вычитал."
     o:
-      - { l: "Ввести обязательное ревью AI-кода", s: expertise, e: { expertise: 7, conflict: 2, trust: 3 }, out: "Скорость чуть упала, доверие к коду выросло." }
-      - { l: "Откатить и отчитать", s: fire, e: { conflict: 7, morale: -5, expertise: 2 }, out: "Урок усвоен через стресс." }
-      - { l: "Разобрать на ретро без виноватых", s: harmony, e: { conflict: -6, trust: 6, expertise: 3, xp: 3 }, out: "Сделали чек-лист вместо поиска виноватого." }
+      - { l: "Ввести обязательное ревью AI-кода", s: expertise, e: { expertise: 7, conflict: 2, trust: 3, releaseProgress: -15, days: 1 }, out: "Скорость упала, доверие к коду выросло." }
+      - { l: "Откатить и отчитать", s: fire, e: { conflict: 7, morale: -5, expertise: 2, releaseProgress: 20 }, out: "Урок усвоен через стресс. Фичу спасли быстро." }
+      - { l: "Разобрать на ретро без виноватых", s: harmony, e: { conflict: -6, trust: 6, expertise: 3, releaseProgress: -10, days: 1, xp: 3 }, out: "Сделали чек-лист вместо поиска виноватого. День ушёл на процесс." }
 
   - id: promo-politics
     need: team
@@ -106,22 +107,22 @@ incidents:
     t: "Грейд только один. {name} и ещё один сеньор оба ждут повышения."
     o:
       - { l: "Повысить по факту вклада", s: expertise, e: { expertise: 4, conflict: 5, trust: 2 }, out: "По делу. Второй обиделся." }
-      - { l: "Честно объяснить обоим план", s: people, e: { trust: 8, morale: 4, conflict: -3 }, out: "Прозрачность сняла напряжение. Оба остались." }
-      - { l: "Оттянуть решение", s: harmony, e: { conflict: 6, trust: -4 }, out: "Неопределённость хуже отказа." }
+      - { l: "Честно объяснить обоим план", s: people, e: { trust: 8, morale: 4, conflict: -3, releaseProgress: -10, days: 1 }, out: "Прозрачность сняла напряжение. Оба остались, день ушёл на разговоры." }
+      - { l: "Оттянуть решение", s: harmony, e: { releaseProgress: 5, conflict: 6, trust: -4 }, out: "Сегодня не отвлекались. Неопределённость хуже отказа." }
 
   - id: on-call-revolt
     need: team
     q: Мотивация
     t: "Команда бунтует против ночных дежурств: «так не нанимались»."
     o:
-      - { l: "Платить за on-call", s: deliver, e: { morale: 6, trust: 4, conflict: -4 }, out: "Деньги решили. Бюджет напрягся." }
-      - { l: "Сократить алерты инженерно", s: expertise, e: { expertise: 8, morale: 5, conflict: -5, xp: 4 }, out: "Убрали шум – дежурить стало незазорно." }
-      - { l: "Приказать терпеть", s: fire, e: { morale: -10, conflict: 8, trust: -6 }, out: "Двое обновили резюме." }
+      - { l: "Платить за on-call", s: deliver, e: { morale: 6, trust: 4, conflict: -4, budget: -20 }, out: "Деньги решили. Бюджет напрягся." }
+      - { l: "Сократить алерты инженерно", s: expertise, e: { expertise: 8, morale: 5, conflict: -5, releaseProgress: -15, days: 1, xp: 4 }, out: "Убрали шум – дежурить стало незазорно. День вложили в систему." }
+      - { l: "Приказать терпеть", s: fire, e: { releaseProgress: 15, morale: -10, conflict: 8, trust: -6 }, out: "Сегодня не тормозили. Двое обновили резюме." }
 
   - id: junior-mature
     q: Рост
     t: "{name} предлагает взять джуна на ваш зрелый проект – всё горит, доменной сложности выше крыши."
     o:
-      - { l: "Отказать: джун тут полгода не вывезет", s: deliver, e: { conflict: 3, morale: -2, xp: 1 }, out: "На сегодня быстрее, но растить в мидлы некого, а бас-фактор растёт." }
-      - { l: "Взять и упростить архитектуру под низкий порог входа", s: expertise, e: { expertise: 6, trust: 5, morale: 3, xp: 4 }, out: "Джун стал стресс-тестом системы – вскрыл, где всё переусложнено. Инвестиция в будущее." }
-      - { l: "Взять и бросить в бой – пусть сам", s: fire, e: { morale: -5, conflict: 5, xp: 1 }, out: "Без ведущего джун буксует, команда теряет время на подхват." }
+      - { l: "Отказать: джун тут полгода не вывезет", s: deliver, e: { releaseProgress: 10, conflict: 3, morale: -2, xp: 1 }, out: "На сегодня быстрее, но растить в мидлы некого, а бас-фактор растёт." }
+      - { l: "Взять и упростить архитектуру под низкий порог входа", s: expertise, e: { expertise: 6, trust: 5, morale: 3, releaseProgress: -25, days: 2, xp: 4 }, out: "Джун стал стресс-тестом системы – вскрыл, где всё переусложнено. Инвестиция в будущее." }
+      - { l: "Взять и бросить в бой – пусть сам", s: fire, e: { releaseProgress: 5, morale: -5, conflict: 5, xp: 1 }, out: "Без ведущего джун буксует, команда теряет время на подхват." }

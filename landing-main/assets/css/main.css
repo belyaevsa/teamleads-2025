@@ -3480,13 +3480,20 @@ button.term-dot:focus-visible{outline:2px solid #39c5cf;outline-offset:2px}
 .hud-face.mood-dead{color:#8b949e;opacity:.7}
 .hud-stats{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px}
 .hud-head{color:#FEC50C;font-size:12px;font-weight:600;letter-spacing:.02em;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-grid{display:grid;grid-template-columns:minmax(270px,1fr) minmax(230px,.86fr);gap:4px 18px;align-items:start}
+.hud-col{min-width:0;display:flex;flex-direction:column;gap:3px}
 .hud-row{display:flex;align-items:center;gap:10px;font-size:12px;color:#8b949e}
 .hud-label{flex:0 0 auto;width:74px}
 .hud-bar{flex:0 0 auto;letter-spacing:1px;color:#39c5cf}
 .hud-num{flex:0 0 auto;width:26px;text-align:right;color:#c9d1d9}
+.hud-value{flex:1 1 auto;min-width:0;color:#c9d1d9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hud-row.is-good .hud-bar{color:#3fb950}
+.hud-row.is-good .hud-value{color:#3fb950}
 .hud-row.is-bad .hud-bar{color:#f85149}
+.hud-row.is-bad .hud-value{color:#f85149}
+.hud-bar.money{color:#39c5cf}
 .hud-bar.xp{color:#FEC50C}
+.hud-money{flex:1 1 auto;min-width:0;color:#c9d1d9;line-height:1.4}
 .hud-trend{flex:0 0 auto;width:12px;text-align:center;font-size:11px}
 .hud-trend.up{color:#3fb950}
 .hud-trend.down{color:#f85149}
@@ -3498,6 +3505,10 @@ button.term-dot:focus-visible{outline:2px solid #39c5cf;outline-offset:2px}
 .hud-team-name.trait-звезда{color:#FEC50C}
 .hud-team-empty{color:#6e7681;font-style:italic}
 .term--ps .term-hud{background:#011f49;border-bottom-color:#0a3a73}
+
+@media (max-width:720px){
+  .hud-grid{grid-template-columns:1fr;gap:3px}
+}
 
 @media (max-width:480px){
   .term{height:78vh}
