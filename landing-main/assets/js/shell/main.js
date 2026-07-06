@@ -489,7 +489,7 @@ import { makeMetaCommands } from './commands-meta.js';
           ['log', 'status', 'diff', 'show', 'blame', 'shortlog', 'branch', 'checkout', 'commit', 'add', 'push', 'pull', 'stash', 'remote', 'tag', 'help'];
       } else if ((verb0 === 'team' || verb0 === 'tamagotchi' || verb0 === 'pet') && parts.length <= 2 && frag.indexOf('/') === -1) {
         // `team <Tab>` → suggest тимагочи actions + management subcommands
-        pool = ['new', '1on1', 'mentor', 'cr', 'pair', 'delegate', 'retro', 'hire', 'fire', 'ship', 'standup', 'share', 'style', 'log', 'yes', 'no', 'cancel', 'reset', 'help'];
+        pool = ['new', '1on1', 'mentor', 'cr', 'pair', 'delegate', 'retro', 'hire', 'fire', 'ship', 'standup', 'daily', 'share', 'style', 'log', 'result', 'yes', 'no', 'cancel', 'reset', 'help'];
       } else if (/^(company|reviews|review|addreview|addreviews)$/.test(verb0)) {
         // `company <Tab>` → complete company slugs from the baked list
         if (!frag) {
@@ -523,8 +523,52 @@ import { makeMetaCommands } from './commands-meta.js';
       return (loaded.sim && loaded.sim.isActive && loaded.sim.isActive()) ||
              (loaded.editor && loaded.editor.isActive && loaded.editor.isActive());
     }
+
+    // ── Ctrl+R reverse history search (like bash's reverse-i-search) ──
+    // Non-modal: state lives here, the live prompt shows `(rev-i-search)'q':`,
+    // and input holds the current match. Ctrl+R again steps to an older match.
+    var rsearch = null;      // null = inactive; else { q, from } (from = index to search back from)
+    function rsMatch(q, from) {
+      for (var i = Math.min(from, hist.length - 1); i >= 0; i--) if (hist[i].indexOf(q) !== -1) return i;
+      return -1;
+    }
+    function rsRender(idx) {
+      if (promptEl) promptEl.innerHTML = "(rev-i-search)'<b>" + rsearch.q.replace(/[<&]/g, '') + "</b>':";
+      input.value = idx >= 0 ? hist[idx] : '';
+    }
+    function rsStart() {
+      if (!hist.length) return;
+      rsearch = { q: '', from: hist.length - 1 };
+      rsRender(-1);
+    }
+    function rsStep() {
+      var idx = rsMatch(rsearch.q, rsearch.from - 1);   // next older match past the current one
+      if (idx >= 0) { rsearch.from = idx; rsRender(idx); }
+    }
+    function rsUpdate() {
+      var idx = rsMatch(rsearch.q, hist.length - 1);
+      rsearch.from = idx >= 0 ? idx : hist.length - 1;
+      rsRender(idx);
+    }
+    function rsEnd(keepValue) {
+      rsearch = null;
+      if (promptEl) promptEl.innerHTML = promptMarkup();
+      if (!keepValue) input.value = '';
+    }
+
     input.addEventListener('keydown', function (e) {
       if (modalActive()) return;  // sim / nano panels own the keyboard while active
+      // Reverse-i-search grabs the keyboard while active.
+      if (rsearch) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); rsStep(); return; }
+        if (e.key === 'Enter') { e.preventDefault(); rsEnd(true); return; }   // accept match, don't auto-run
+        if (e.key === 'Escape') { e.preventDefault(); rsEnd(false); return; } // cancel, clear
+        if (e.key === 'Backspace') { e.preventDefault(); rsearch.q = rsearch.q.slice(0, -1); rsUpdate(); return; }
+        if (e.key === 'Tab' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); rsEnd(true); return; }
+        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); rsearch.q += e.key; rsUpdate(); return; }
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); rsStart(); return; }
       if (e.key === 'Enter') { run(input.value); input.value = ''; }
       else if (e.key === 'Tab') { e.preventDefault(); complete(); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); histPrev(); }

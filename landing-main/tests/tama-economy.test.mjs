@@ -407,3 +407,44 @@ test('result command renders tl3 finance fields', () => {
   assert.equal(h.printed.some((p) => p.text === '  деньги: 123   прогресс релиза: 64%'), true);
   assert.equal(h.printed.some((p) => p.text && p.text.includes('стиль лидерства: 🚢 Капитан')), true);
 });
+
+test('same action twice in a row is halved (anti-spam)', () => {
+  const h = createHarness(baseState({ metrics: { trust: 40, expertise: 35, conflict: 20, morale: 60 } }));
+  h.resume();
+  // First 1on1 (trust +8), then an incident-free second 1on1: fatigue halves it (+4).
+  withRandom(0.99, () => h.team(['1on1']));   // 0.99 → maybeIncident skips (r >= 0.62)
+  const afterFirst = h.state().metrics.trust;
+  withRandom(0.99, () => h.team(['1on1']));
+  const afterSecond = h.state().metrics.trust;
+  const firstGain = afterFirst - 40;
+  const secondGain = afterSecond - afterFirst;
+  // second gain is roughly half the first (both minus the same ~0.6/day drift)
+  assert.ok(secondGain < firstGain, `expected fatigue: first ${firstGain} vs second ${secondGain}`);
+  assert.ok(h.printed.some((p) => p.text && p.text.includes('команда устала')), 'fatigue note printed');
+});
+
+test('different action breaks the fatigue streak', () => {
+  const h = createHarness(baseState());
+  h.resume();
+  withRandom(0.99, () => h.team(['1on1']));
+  withRandom(0.99, () => h.team(['retro']));   // different action → lastAction changes
+  const st = h.state();
+  assert.equal(st.lastAction, 'retro');
+});
+
+test('danger warning fires when morale crosses low threshold', () => {
+  const h = createHarness(baseState({ metrics: { trust: 50, expertise: 35, conflict: 20, morale: 22 } }));
+  h.resume();
+  // mentor costs morale (-3) → dips under 20 → warning
+  withRandom(0.99, () => h.team(['mentor']));
+  assert.ok(h.printed.some((p) => p.text && p.text.includes('настрой критически низкий')), 'low-morale warning printed');
+});
+
+test('resume reports what changed while away', () => {
+  const past = 1000;
+  const now = past + 1000 * 60 * 60 * 18 * 3;   // ~3 decay days later
+  const saved = withDateNow(past, () => baseState({ ts: past }));
+  const h = createHarness(saved);
+  withDateNow(now, () => h.resume());
+  assert.ok(h.printed.some((p) => p.text && p.text.includes('Пока тебя не было')), 'away report printed');
+});

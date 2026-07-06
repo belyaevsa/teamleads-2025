@@ -103,6 +103,7 @@ export function makeTama(S) {
       finance: { budget: START_BUDGET, releaseProgress: 0, releaseSize: RELEASE_SIZE },
       metrics: { trust: 50, expertise: 35, conflict: 20, morale: 60 },
       team: [], style: {}, pending: null, hire: null, history: [], prevMetrics: null,
+      lastAction: null, warn: {},
       asleep: false, over: false, overWhy: '', overLogged: false, won: false
     };
   }
@@ -115,6 +116,8 @@ export function makeTama(S) {
     if (typeof o.finance.releaseProgress !== 'number' || isNaN(o.finance.releaseProgress)) o.finance.releaseProgress = 0;
     if (typeof o.finance.releaseSize !== 'number' || isNaN(o.finance.releaseSize) || o.finance.releaseSize <= 0) o.finance.releaseSize = RELEASE_SIZE;
     o.finance.releaseProgress = Math.max(0, Math.min(o.finance.releaseSize - 1, Math.round(o.finance.releaseProgress)));
+    o.warn = o.warn || {};
+    if (typeof o.lastAction === 'undefined') o.lastAction = null;
     return o;
   }
   function load() {
@@ -142,12 +145,20 @@ export function makeTama(S) {
     checkOver();
   }
   // Реальное время между сессиями → распад (18 ч = «день», максимум 7 дней штрафа).
+  // Возвращает отчёт о том, что изменилось, пока игрока не было (для «живого мира» в resume).
   function decay() {
     var now = Date.now(), gap = now - (st.ts || now);
     var days = Math.min(7, Math.floor(gap / (1000 * 60 * 60 * 18)));
-    if (days > 0) drift(days);
+    var before = null;
+    if (days > 0) {
+      var m = st.metrics; before = { trust: m.trust, expertise: m.expertise, morale: m.morale, conflict: m.conflict };
+      drift(days);
+    }
     st.asleep = gap > 1000 * 60 * 60 * 6;
     st.ts = now;
+    if (!before) return null;
+    var a = st.metrics;
+    return { days: days, d: { trust: a.trust - before.trust, morale: a.morale - before.morale, conflict: a.conflict - before.conflict, expertise: a.expertise - before.expertise } };
   }
   function checkOver() {
     if (st.over) return;
@@ -281,6 +292,25 @@ export function makeTama(S) {
     for (var k in d) { var v = Math.round(d[k]); if (!v) continue; parts.push((v > 0 ? '+' : '') + v + ' ' + (LABELS[k] || k)); }
     return parts.join(' · ');
   }
+  // Одно и то же действие два хода подряд – команда устала от ритуала, эффект слабее.
+  function scaleDelta(d, f) { var o = {}; for (var k in d) o[k] = d[k] * f; return o; }
+  // Проактивные предупреждения: как только метрика впервые заходит в опасную зону,
+  // подсказываем, что делать – а не молчим до game over. Флаг снимается при возврате в норму.
+  function warnDanger() {
+    if (!st || st.over) return;
+    st.warn = st.warn || {};
+    var m = st.metrics, b = st.finance ? st.finance.budget : 100;
+    var checks = [
+      ['morale', m.morale < 20, '⚠ настрой критически низкий (' + Math.round(m.morale) + ') – retro/pair/1on1, иначе выгорание'],
+      ['conflict', m.conflict > 80, '⚠ конфликт зашкаливает (' + Math.round(m.conflict) + ') – срочно retro'],
+      ['trust', m.trust < 20, '⚠ доверие на дне (' + Math.round(m.trust) + ') – больше 1on1 и delegate'],
+      ['budget', b < 15, '⚠ деньги на исходе (' + Math.round(b) + ') – релизы поднимают доход, лишний найм дорог']
+    ];
+    checks.forEach(function (c) {
+      if (c[1]) { if (!st.warn[c[0]]) { print('  ' + c[2], 'err'); st.warn[c[0]] = true; } }
+      else st.warn[c[0]] = false;
+    });
+  }
 
   // ── события: после действия иногда случается жизнь ──
   var EVENTS = [
@@ -337,21 +367,25 @@ export function makeTama(S) {
     print('Игра не начата. team new [coder|frontender|teamlead] – создать напарника. team help – правила.', 'hint');
     return false;
   }
-  function act(d, msg, style) {
+  function act(d, msg, style, key) {
     if (!ensure()) return false;
     if (st.over) { reportOver(); return false; }
     if (st.pending || st.hire) { remindBusy(); return false; }
     st.asleep = false;
     snapPrev();
-    apply(d);
+    var tired = !!(key && key === st.lastAction);   // тот же ритуал подряд → эффект вполовину
+    var eff = tired ? scaleDelta(d, 0.5) : d;
+    apply(eff);
     tallyStyle(style);
+    st.lastAction = key || null;
     st.day += 1;
     drift(0.6);                 // время идёт – лёгкий дневной дрейф
     financeTick();
-    print(msg + '  (' + deltaStr(d) + ')', 'accent');
+    print(msg + '  (' + deltaStr(eff) + ')' + (tired ? ' · то же действие подряд – команда устала, эффект вполовину' : ''), tired ? 'dim' : 'accent');
     chron(msg);
     maybeIncident();
     promote();
+    warnDanger();
     st.ts = Date.now();
     save();
     if (!reportOver()) paint();
@@ -479,39 +513,39 @@ export function makeTama(S) {
   function oneonone(a) {
     var who = (a || []).join(' ').trim();
     return act({ trust: 8, conflict: -6, morale: 3, xp: 2 },
-      '☕ 1-on-1' + (who ? ' c «' + who + '»' : '') + ': выслушал, снял напряжение.', 'people');
+      '☕ 1-on-1' + (who ? ' c «' + who + '»' : '') + ': выслушал, снял напряжение.', 'people', '1on1');
   }
   function mentor(a) {
     var who = (a || []).join(' ').trim();
     return act({ expertise: 8, xp: 6, trust: 2, morale: -3 },
-      '📚 менторишь' + (who ? ' «' + who + '»' : '') + ': растёт экспертиза, но сил это стоит.', 'people');
+      '📚 менторишь' + (who ? ' «' + who + '»' : '') + ': растёт экспертиза, но сил это стоит.', 'people', 'mentor');
   }
   function codereview() {
     return act({ expertise: 6, trust: 3, conflict: 2, morale: -2, xp: 3 },
-      '🔍 код-ревью: качество вверх, придирки чуть злят.', 'expertise');
+      '🔍 код-ревью: качество вверх, придирки чуть злят.', 'expertise', 'cr');
   }
   function pair() {
     return act({ expertise: 5, morale: 5, trust: 3, xp: 4 },
-      '👯 парное программирование: и учитесь, и заряжаетесь.', 'people');
+      '👯 парное программирование: и учитесь, и заряжаетесь.', 'people', 'pair');
   }
   function delegate(a) {
     var what = (a || []).join(' ').trim();
     return act({ morale: 7, trust: 6, expertise: 3, conflict: 2, xp: 3 },
-      '🎯 делегировал' + (what ? ' «' + what + '»' : ' задачу') + ': команда чувствует доверие.', 'people');
+      '🎯 делегировал' + (what ? ' «' + what + '»' : ' задачу') + ': команда чувствует доверие.', 'people', 'delegate');
   }
   function retro() {
     return act({ conflict: -15, trust: 5, morale: 2, xp: 2 },
-      '🔄 ретро: проговорили боль, конфликт спал.', 'harmony');
+      '🔄 ретро: проговорили боль, конфликт спал.', 'harmony', 'retro');
   }
   function standup(a) {
     if (!ensure()) return;
     if (st.over) { reportOver(); return; }
     if (st.pending || st.hire) { remindBusy(); return; }
-    st.asleep = false; snapPrev(); st.day += 1; drift(1);
+    st.asleep = false; snapPrev(); st.lastAction = 'standup'; st.day += 1; drift(1);
     financeTick();
     print('🗓 стендап: новый день, команда синкнулась.', 'accent');
     chron('🗓 стендап');
-    maybeIncident(); promote(); st.ts = Date.now(); save();
+    maybeIncident(); promote(); warnDanger(); st.ts = Date.now(); save();
     if (!reportOver()) paint();
   }
   // hire запускает сценарий-симулятор (startHire); прямого мгновенного найма больше нет.
@@ -535,7 +569,7 @@ export function makeTama(S) {
     var m = st.metrics;
     if (m.morale < 15) { print('🚀 ship: команда на грани выгорания (настрой ' + Math.round(m.morale) + '). Сначала retro/pair/1on1.', 'err'); return; }
     var power = shipPower();
-    st.asleep = false; snapPrev();
+    st.asleep = false; snapPrev(); st.lastAction = 'ship';
     var done = addReleaseProgress(power);
     apply({ morale: -8, trust: 2, conflict: -2, xp: Math.round(power / 4) + done * 10 });
     tallyStyle('deliver'); if (m.morale < 30) tallyStyle('fire');   // релиз через выгорание = пожарный стиль
@@ -549,7 +583,7 @@ export function makeTama(S) {
       print('  ⚠ выгорание после крауча: ' + lost.name + ' ушёл. Береги людей.', 'err');
       chron('⚠ выгорание после крауча: ' + lost.name + ' ушёл');
     }
-    maybeIncident(); promote(); st.ts = Date.now(); save();
+    maybeIncident(); promote(); warnDanger(); st.ts = Date.now(); save();
     if (!reportOver()) paint();
   }
 
@@ -643,7 +677,7 @@ export function makeTama(S) {
     print('→ ' + op.out.replace('{name}', name) + '  (' + deltaStr(op.e) + ')', harsh ? 'err' : 'accent');
     chron('⚡ ' + inc.t.replace('{name}', name) + ' → ' + op.l);
     tieIn({ topic: inc.q, page: inc.src, q: inc.srcQ });
-    st.pending = null; promote(); st.ts = Date.now(); save();
+    st.pending = null; st.lastAction = null; promote(); warnDanger(); st.ts = Date.now(); save();
     if (!reportOver()) paint();
   }
 
@@ -857,7 +891,8 @@ export function makeTama(S) {
   }
 
   // ── контент-связки: воронка из игры в материалы сайта и ассистента ──
-  var TOPIC_K    'Рост': ['рост', 'карьер', 'сеньор', 'грейд', 'эксперт', 'джун', 'ментор', 'онбординг'], 'Процессы': ['процесс', 'ревью', 'инцидент', 'архитектур', 'докум', 'код'],
+  var TOPIC_KW = {
+    'Рост': ['рост', 'карьер', 'сеньор', 'грейд', 'эксперт', 'джун', 'ментор', 'онбординг'], 'Процессы': ['процесс', 'ревью', 'инцидент', 'архитектур', 'докум', 'код'],
     'Мотивация': ['мотивац', 'выгор', 'настро', 'деньги'], 'AI': ['ai', 'llm', 'клод', 'codex', 'нейро'], 'Карьера': ['карьер', 'собес', 'найм', 'оффер', 'зарплат']
   };
   var TOPIC_Q = {
@@ -999,8 +1034,16 @@ export function makeTama(S) {
   function resume() {
     var saved = load();
     if (!saved) return;
-    st = saved; decay(); snapPrev(); save(); paint(); startTick();
+    st = saved; var report = decay(); snapPrev(); save(); paint(); startTick();
     writeLog();   // привести файл-журнал в соответствие с восстановленным состоянием
+    // «Живой мир»: не молчим про распад, а отчитываемся, что случилось, пока тебя не было.
+    if (report) {
+      var human = report.days === 1 ? '1 день' : report.days + ' дн.';
+      var line = deltaStr(report.d);
+      print('⏳ Пока тебя не было (' + human + ')' + (line ? ': ' + line : ' команда держалась') + '.', 'dim');
+      if (st.over) print('  💀 За это время всё рухнуло: ' + st.overWhy + '. team reset – начать заново.', 'err');
+      else warnDanger();
+    }
   }
 
   return {
