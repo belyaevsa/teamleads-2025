@@ -17,6 +17,42 @@ export function makeFsCommands(S) {
       setPrompt = S.setPrompt, pathStr = S.pathStr, reduced = S.reduced,
       getCwd = S.getCwd, setCwd = S.setCwd, getPrevCwd = S.getPrevCwd, setPrevCwd = S.setPrevCwd;
 
+  // ── Mermaid: lazy-load the self-hosted runtime the first time `cat` hits a
+  //    ```mermaid block, then render fenced diagrams to inline SVG. ────────────
+  var _mermaidP = null, _mermaidSeq = 0;
+  function ensureMermaid() {
+    if (_mermaidP) return _mermaidP;
+    _mermaidP = new Promise(function (res, rej) {
+      if (w.mermaid) return res(w.mermaid);
+      if (!w.document) return rej(new Error('no document'));
+      var s = w.document.createElement('script');
+      s.src = '/js/mermaid.min.js'; s.async = true;
+      s.onload = function () {
+        if (!w.mermaid) return rej(new Error('mermaid missing after load'));
+        try { w.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'dark' }); } catch (e) {}
+        res(w.mermaid);
+      };
+      s.onerror = function () { rej(new Error('mermaid failed to load')); };
+      w.document.head.appendChild(s);
+    });
+    return _mermaidP;
+  }
+  function renderMermaid(code) {
+    var box = el('div', 'md-mermaid');
+    var ph = el('div', 'md-mermaid-loading'); ph.textContent = 'рендер диаграммы…';
+    box.appendChild(ph);
+    var id = 'sh-mmd-' + (++_mermaidSeq);
+    ensureMermaid().then(function (m) { return m.render(id, code); }).then(function (r) {
+      box.innerHTML = r.svg;
+      if (r.bindFunctions) r.bindFunctions(box);
+      if (body) body.scrollTop = body.scrollHeight;
+    }).catch(function () {
+      box.className = 'md-pre'; box.textContent = code;   // graceful fallback: show the source
+    });
+    return box;
+  }
+  function renderCode(code) { var pre = el('pre', 'md-pre'); pre.textContent = code; return pre; }
+
   return {
     ls: function (a) {
       // accept and ignore flags (-l, -a, -la …); first non-flag arg is the path,
@@ -97,6 +133,15 @@ export function makeFsCommands(S) {
         if (raw) { slice.forEach(function (l) { print(l); }); }
         else {
           for (var li = 0; li < slice.length; li++) {
+            var fence = /^```(\w*)\s*$/.exec(slice[li]);
+            if (fence) {
+              var lang = fence[1] || '', clines = [], lj = li + 1;
+              for (; lj < slice.length; lj++) { if (/^```\s*$/.test(slice[lj])) break; clines.push(slice[lj]); }
+              var code = clines.join('\n');
+              out.appendChild(lang === 'mermaid' ? renderMermaid(code) : renderCode(code));
+              li = lj;   // skip the closing fence (for-loop's li++ steps past it)
+              continue;
+            }
             var tbl = mdTable(slice, li);
             if (tbl) { out.appendChild(tbl.node); li = tbl.next - 1; continue; }
             var node = mdLine(slice[li]); if (node) out.appendChild(node);

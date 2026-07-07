@@ -3342,6 +3342,11 @@ button.term-dot:focus-visible{outline:2px solid #39c5cf;outline-offset:2px}
 .term-out .term-table th{color:#39c5cf;font-weight:700;background:#161b22;white-space:nowrap}
 .term-out .term-table td{color:#c9d1d9}
 .term-out .term-table tbody tr:nth-child(even) td{background:rgba(255,255,255,.025)}
+/* `cat` fenced code blocks + mermaid diagrams */
+.term-out .md-pre{white-space:pre;overflow-x:auto;background:#161b22;border:1px solid #21262d;border-radius:6px;padding:10px 12px;margin:.7em 0;color:#c9d1d9}
+.term-out .md-mermaid{margin:.9em 0;text-align:center;overflow-x:auto}
+.term-out .md-mermaid svg{max-width:100%;height:auto}
+.term-out .md-mermaid-loading{color:#8b949e;font-style:italic}
 .term-line{display:flex;align-items:baseline;margin-top:2px}
 .term-prompt{color:#39c5cf;margin-right:8px;white-space:nowrap;user-select:none}
 .term-prompt b{color:#3fb950;font-weight:600}
