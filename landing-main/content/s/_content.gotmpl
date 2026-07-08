@@ -24,7 +24,10 @@
   {{ $p := split (strings.TrimPrefix "meetup-" $latestEvent) "-" }}
   {{ if eq (len $p) 3 }}
     {{ $latestEventDate = printf "%s.%s.%s" (index $p 2) (index $p 1) (index $p 0) }}
-    {{ $latestEventHuman = printf "%d %s %s" (int (index $p 2)) (index $ruMon (int (index $p 1))) (index $p 0) }}
+    {{/* strip the leading zero before int: Hugo's int parses with base 0, where "08"/"09" are invalid octal */}}
+    {{ $day := int (strings.TrimPrefix "0" (index $p 2)) }}
+    {{ $mon := int (strings.TrimPrefix "0" (index $p 1)) }}
+    {{ $latestEventHuman = printf "%d %s %s" $day (index $ruMon $mon) (index $p 0) }}
   {{ end }}
 {{ end }}
 {{ $repl := dict "{latest-event}" $latestEvent "{latest-event-date}" $latestEventDate "{latest-event-human}" $latestEventHuman }}
