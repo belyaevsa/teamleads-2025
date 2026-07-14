@@ -100,7 +100,7 @@
                         </div>
                         {{ end }}
                         {{ end }}
-                        <a href="https://t.me/teamleads_kz/{{ with $topic.messageId }}{{ . }}{{ end }}" class="msg-link" target="_blank" rel="noopener">Читать в чате →</a>
+                        <a href="{{ $.Site.Params.telegram }}/{{ with $topic.messageId }}{{ . }}{{ end }}" class="msg-link" target="_blank" rel="noopener">Читать в чате →</a>
                     </div>
                     {{ end }}
                 </div>

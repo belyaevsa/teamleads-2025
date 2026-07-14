@@ -64,7 +64,7 @@ import { makeMetaCommands } from './commands-meta.js';
       if (savedTheme === 'powershell') root.classList.add('term--ps');
       else if (savedTheme === 'bash') root.classList.remove('term--ps');
     } catch (e) {}
-    var TG = root.getAttribute('data-tg') || 'https://t.me/teamleads_kz';
+    var TG = root.getAttribute('data-tg') || 'https://telegram.me/teamleads_kz';
     var FS = {};
     try { FS = JSON.parse(root.getAttribute('data-fs') || '{}') || {}; } catch (e) { FS = {}; }
     var SAL = {};

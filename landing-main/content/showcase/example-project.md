@@ -8,7 +8,7 @@ tags:
   - SaaS
   - Инструмент
 social:
-  telegram: "https://t.me/some-awesome-developer"
+  telegram: "https://telegram.me/some-awesome-developer"
   github: "https://github.com/good-to-know-example"
 draft: true
 ---

@@ -40,7 +40,7 @@ title = "Тимлид не кодит – Сообщество тимлидов 
 
 [params]
   description = "Крупнейшее сообщество тимлидов, инженерных менеджеров и CTO Казахстана: найм, архитектура, процессы и карьера. Зарплаты в IT и отзывы о компаниях."
-  telegram = "https://t.me/teamleads_kz"
+  telegram = "https://telegram.me/teamleads_kz"
   telegramHandle = "@teamleads_kz"
 
   # Stats – participantsCount is the external Telegram member count (update manually);
