@@ -377,7 +377,7 @@
       var t = parseTime(s.t);
       var time = document.createElement('button');
       time.type = 'button'; time.className = 'ap-line-time'; time.textContent = fmt(t);
-      time.addEventListener('click', function () { seekTo(t, true); });
+      time.addEventListener('click', function () { seekTo(t, true); track('audio_transcript_line', { event: slug, at: Math.floor(t) }); });
       var span = document.createElement('span');
       span.className = 'ap-line-text';
       span.textContent = (s.speaker ? s.speaker + ': ' : '') + s.text;
