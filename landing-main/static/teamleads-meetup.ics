@@ -18,8 +18,8 @@ END:VTIMEZONE
 BEGIN:VEVENT
 UID:weekly-meetup@teamleads.kz
 DTSTAMP:20260101T000000Z
-DTSTART;TZID=Asia/Almaty:20260617T160000
-DTEND;TZID=Asia/Almaty:20260617T180000
+DTSTART;TZID=Asia/Almaty:20260617T170000
+DTEND;TZID=Asia/Almaty:20260617T190000
 RRULE:FREQ=WEEKLY;BYDAY=WE
 SUMMARY:Встреча сообщества «Тимлид не кодит»
 DESCRIPTION:Еженедельная онлайн-встреча сообщества тимлидов и технических ли

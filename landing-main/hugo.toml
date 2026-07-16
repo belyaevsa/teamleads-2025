@@ -60,19 +60,19 @@ title = "Тимлид не кодит – Сообщество тимлидов 
   githubBranch = "master"
   githubContentPath = "landing-main/content"
 
-  # Recurring meetup schedule – every Wednesday 16:00, Astana (UTC+5)
+  # Recurring meetup schedule – every Wednesday 17:00, Astana (UTC+5)
   [params.meetup]
     # TODO: replace with the real recurring meeting link. Single source of truth:
     # /join redirects here, and the calendar points at the constant /join URL.
     joinUrl = "https://meet.google.com/gjd-tghw-uit"
     weekdayNominative = "среда"
     weekdayAccusative = "среду"
-    time = "16:00"
+    time = "17:00"
     tzLabel = "Астана, UTC+5"
     tzId = "Asia/Almaty"
     ics = "/teamleads-meetup.ics"
     isoWeekday = 3   # Mon=1 … Wed=3 – used by JS to compute the next occurrence
-    hour = 16
+    hour = 17
 
   # Kazakhstan-inspired colors
   [params.colors]
