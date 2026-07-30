@@ -2,7 +2,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using TeamleadsBackend.Data;
 using TeamleadsBackend.Search;
 using TeamleadsBackend.Security;
 using TeamleadsBackend.Settings;
@@ -27,7 +30,9 @@ public static class TelegramWebhookEndpoints
         Привет. Я Падаван – бот сообщества «Тимлид не кодит».
 
         Что я умею:
-        🔍 Поиск по архиву: наберите @temlead_helper_bot и ключевое слово в любом чате (например, @temlead_helper_bot 1-on-1) или отправьте команду /search <запрос>.
+        🔍 Поиск по архиву: наберите @temlead_helper_bot и ключевое слово в любом чате.
+
+        📋 Paste: отправьте мне код, конфиг или длинный лог командой /paste. Я верну ссылку, которую можно отправить в чат. Если вставите в меня сообщение-простыню длиннее 300 символов, я сам предложу создать paste-ссылку. С пастой будет видно ваше имя – её, в отличие от анонимного вопроса, не нужно модерировать, и она не попадёт в общий чат.
 
         🎭 Анонимные вопросы: через меня можно задать вопрос в общий чат анонимно.
 
@@ -37,12 +42,9 @@ public static class TelegramWebhookEndpoints
         3. Чат обсуждает. Кто прислал – не видит никто, включая админов.
 
         Что я храню: только текст. Ни вашего имени, ни id, ни username – в базе их нет.
-        Пересылки тоже нет: в чат уходит новое сообщение от меня, без следов автора.
 
         Не верите на слово – проверьте код, он открыт:
         github.com/belyaevsa/teamleads-2025/tree/master/backend
-
-        Пишите вопрос или ищите материалы по архиву!
         """;
 
     public static IEndpointRouteBuilder MapTelegramWebhook(this IEndpointRouteBuilder api)
@@ -54,6 +56,7 @@ public static class TelegramWebhookEndpoints
             DilemmaService dilemmas,
             QuestionService questions,
             SearchService search,
+            AppDbContext db,
             SettingsService settings,
             TelegramClient tg,
             IOptions<TelegramOptions> options,
@@ -96,7 +99,7 @@ public static class TelegramWebhookEndpoints
 
                 if (update?.InlineQuery is { } inline) await HandleInlineQueryAsync(inline, search, tg, ct);
                 else if (update?.CallbackQuery is { } cb) await HandleCallbackAsync(cb, anon, tg, adminChat, ct);
-                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, questions, search, settings, tg, adminChat, cfg, ct);
+                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, questions, search, db, settings, tg, adminChat, cfg, ct);
             }
             catch (Exception ex)
             {
@@ -116,6 +119,7 @@ public static class TelegramWebhookEndpoints
 
     private static async Task HandleMessageAsync(
         Message msg, AnonService anon, DilemmaService dilemmas, QuestionService questions, SearchService search,
+        AppDbContext db,
         SettingsService settings, TelegramClient tg,
         long adminChat, IConfiguration cfg, CancellationToken ct)
     {
@@ -198,7 +202,22 @@ public static class TelegramWebhookEndpoints
             return;
         }
 
+        if (text.StartsWith("/paste", StringComparison.Ordinal))
+        {
+            await HandlePasteWebhookAsync(msg, text, db, cfg, tg, ct);
+            return;
+        }
+
         if (text.StartsWith('/')) return;   // unknown command: stay quiet
+
+        // Code/log detection: a wall of text (300+ chars) with code-like patterns.
+        // Suggest paste instead of silently turning it into an anonymous question.
+        if (text.Length >= 300 && LooksLikeCode(text))
+        {
+            await tg.SendMessageAsync(msg.Chat.Id,
+                "Похоже на код, конфиг или лог.\n\nОтправьте /paste чтобы создать ссылку – она будет с вашим именем. Или повторите это же сообщение, если хотите отправить его как анонимный вопрос в чат.", ct: ct);
+            return;
+        }
 
         if (text.Length < MinTextLength)
         {
@@ -426,6 +445,119 @@ public static class TelegramWebhookEndpoints
         await tg.SendMessageAsync(msg.Chat.Id, string.Join("\n", lines).TrimEnd(), ct: ct);
     }
 
+    // ── paste ────────────────────────────────────────────────────────────────
+
+    private static async Task HandlePasteWebhookAsync(
+        Message msg, string text, AppDbContext db, IConfiguration cfg, TelegramClient tg, CancellationToken ct)
+    {
+        var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var content = parts.Length >= 2
+            ? parts[1]
+            : msg.ReplyToMessage?.Text;
+
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            await tg.SendMessageAsync(msg.Chat.Id,
+                "Отправьте текст для paste:\n\n`/paste ваш код, лог или конфиг`\n\nИли ответьте этой командой на сообщение с текстом.", ct: ct);
+            return;
+        }
+
+        if (content.Length < 10)
+        {
+            await tg.SendMessageAsync(msg.Chat.Id, "Слишком коротко. Минимум 10 символов.", ct: ct);
+            return;
+        }
+
+        if (content.Length > 64 * 1024)
+        {
+            await tg.SendMessageAsync(msg.Chat.Id, "Слишком длинно. Максимум 64 КБ.", ct: ct);
+            return;
+        }
+
+        var language = LanguageDetector.Detect(content);
+        var publicId = await GeneratePasteIdAsync(db, ct);
+        var authorName = (msg.From ?? new User(0)).GetDisplayName().Truncate(120);
+
+        db.Pastes.Add(new Paste
+        {
+            PublicId = publicId,
+            Content = content,
+            Language = language,
+            AuthorName = authorName,
+            AuthorTgId = msg.From?.Id,
+            Source = "bot",
+            CreatedAt = DateTimeOffset.UtcNow,
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
+        });
+        await db.SaveChangesAsync(ct);
+
+        await tg.SendMessageAsync(msg.Chat.Id,
+            $"📋 Paste создан: https://teamleads.kz/p/{publicId}/\n\nЯзык: {LanguageLabel(language)}, автор: {authorName}", ct: ct);
+    }
+
+    private static bool LooksLikeCode(string text)
+    {
+        var lines = text.Replace("\r\n", "\n").Split('\n');
+        if (lines.Length < 3) return false;
+
+        var specialCount = 0;
+        var totalCount = 0;
+        var longLineCount = 0;
+        var braces = 0;
+
+        foreach (var line in lines.Take(30))
+        {
+            totalCount += line.Length;
+            if (line.Length > 80) longLineCount++;
+
+            foreach (var ch in line)
+            {
+                if (ch is '{' or '}' or '[' or ']' or '(' or ')' or '=' or ':' or ';' or '<' or '>' or '|'
+                    or '&' or '!' or '@' or '#' or '$' or '%' or '^' or '*' or '\\' or '"' or '\'')
+                    specialCount++;
+            }
+            if (line.Contains('{') && line.Contains('}')) braces++;
+        }
+
+        var ratio = (double)specialCount / Math.Max(1, totalCount);
+        var hasLongLines = longLineCount >= 2;
+        var hasStructure = braces >= 3;
+
+        return ratio > 0.03 || hasLongLines || hasStructure;
+    }
+
+    private static async Task<string> GeneratePasteIdAsync(AppDbContext db, CancellationToken ct)
+    {
+        const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ23456789";
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            var chars = new char[7];
+            for (var i = 0; i < chars.Length; i++)
+                chars[i] = alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)];
+            var id = new string(chars);
+            if (!await db.Pastes.AnyAsync(p => p.PublicId == id, ct)) return id;
+        }
+
+        var fallback = new char[12];
+        for (var i = 0; i < fallback.Length; i++)
+            fallback[i] = alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)];
+        return new string(fallback);
+    }
+
+    private static string LanguageLabel(string lang) => lang switch
+    {
+        "go" => "Go",
+        "python" => "Python",
+        "json" => "JSON",
+        "yaml" => "YAML",
+        "sql" => "SQL",
+        "rust" => "Rust",
+        "bash" => "Bash",
+        "plaintext" => "code",
+        _ => "text",
+    };
+
     // ── payloads ────────────────────────────────────────────────────────────
     // Only the fields we act on. Telegram adds fields constantly; unknown ones
     // are ignored, and nothing here is persisted beyond the hashed author id.
@@ -457,11 +589,27 @@ public static class TelegramWebhookEndpoints
         [property: JsonPropertyName("id")] long Id,
         [property: JsonPropertyName("type")] string Type);
 
-    private sealed record User([property: JsonPropertyName("id")] long Id);
+    private sealed record User(
+        [property: JsonPropertyName("id")] long Id,
+        [property: JsonPropertyName("first_name")] string FirstName = "",
+        [property: JsonPropertyName("last_name")] string LastName = "")
+    {
+        public string GetDisplayName()
+        {
+            var name = $"{FirstName} {LastName}".Trim();
+            return name.Length > 0 ? name : $"tg{Id}";
+        }
+    }
 
     private sealed record CallbackQuery(
         [property: JsonPropertyName("id")] string Id,
         [property: JsonPropertyName("from")] User? From,
         [property: JsonPropertyName("data")] string? Data,
         [property: JsonPropertyName("message")] Message? Message);
+}
+
+file static class StringTruncate
+{
+    public static string Truncate(this string text, int limit) =>
+        text.Length <= limit ? text : string.Concat(text.AsSpan(0, limit - 1), "…");
 }

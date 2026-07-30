@@ -1,0 +1,157 @@
+{{- define "main" -}}
+<article class="paste-article">
+  {{ .Content }}
+</article>
+
+<style>
+  .paste-page { max-width: 800px; margin: 0 auto; padding: 20px 16px 60px; }
+  .paste-page-title { font-size: 28px; font-weight: 700; margin-bottom: 8px; color: var(--fg, #e6edf3); }
+  .paste-page-sub { font-size: 15px; color: var(--fg-muted, #8b949e); margin-bottom: 28px; line-height: 1.6; }
+  .paste-page-sub strong { color: var(--accent, #FEC50C); }
+
+  .paste-form { background: var(--bg-card, #161b22); border: 1px solid var(--border, #30363d); border-radius: 8px; padding: 20px; }
+  .paste-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--fg, #e6edf3); }
+  .paste-textarea {
+    width: 100%;
+    min-height: 300px;
+    background: var(--bg, #0d1117);
+    color: var(--fg, #c9d1d9);
+    border: 1px solid var(--border, #30363d);
+    border-radius: 6px;
+    padding: 14px;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+  }
+  .paste-textarea:focus { border-color: var(--primary, #00AFCA); box-shadow: 0 0 0 2px rgba(0,175,202,0.2); }
+  .paste-char-count { text-align: right; font-size: 12px; color: var(--fg-muted, #8b949e); margin: 4px 0 16px; }
+  .paste-submit {
+    background: var(--primary, #00AFCA);
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .paste-submit:hover { background: var(--primary-dark, #008BA3); }
+  .paste-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  .paste-error { display: inline-block; margin-left: 12px; font-size: 14px; color: #f85149; }
+
+  .paste-result { margin-top: 24px; padding: 16px 20px; background: var(--bg-card, #161b22); border: 1px solid var(--border, #30363d); border-radius: 8px; }
+  .paste-result-label { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #3fb950; }
+  .paste-result-url { display: flex; gap: 8px; align-items: center; }
+  .paste-url-input {
+    flex: 1;
+    background: var(--bg, #0d1117);
+    color: var(--primary, #58a6ff);
+    border: 1px solid var(--border, #30363d);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: monospace;
+    font-size: 13px;
+    outline: none;
+  }
+  .paste-copy-btn {
+    background: var(--bg-btn, #21262d);
+    color: var(--fg, #c9d1d9);
+    border: 1px solid var(--border, #30363d);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .paste-copy-btn:hover { background: #30363d; }
+  .paste-result-raw { margin-top: 8px; font-size: 13px; }
+  .paste-result-raw a { color: var(--primary, #58a6ff); text-decoration: none; }
+  .paste-result-raw a:hover { text-decoration: underline; }
+
+  .paste-instructions {
+    margin-top: 32px;
+    padding: 16px 20px;
+    background: var(--bg-card, #161b22);
+    border: 1px solid var(--border, #30363d);
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--fg-muted, #8b949e);
+  }
+  .paste-instructions summary { cursor: pointer; font-weight: 600; color: var(--fg, #e6edf3); font-size: 15px; margin-bottom: 12px; }
+  .paste-instructions ul { padding-left: 20px; }
+  .paste-instructions li { margin-bottom: 6px; }
+  .paste-instructions code { background: var(--bg, #0d1117); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  .paste-instructions a { color: var(--primary, #58a6ff); text-decoration: none; }
+  .paste-instructions a:hover { text-decoration: underline; }
+  .paste-instructions p { margin-top: 8px; }
+</style>
+
+<script>
+(function () {
+  var page = document.querySelector('[data-paste-page]');
+  if (!page) return;
+
+  var form = page.querySelector('[data-paste-form]');
+  var textarea = page.querySelector('[data-paste-textarea]');
+  var count = page.querySelector('[data-paste-count]');
+  var submit = page.querySelector('[data-paste-submit]');
+  var error = page.querySelector('[data-paste-error]');
+  var resultBox = page.querySelector('[data-paste-result]');
+  var urlInput = page.querySelector('[data-paste-url]');
+  var copyBtn = page.querySelector('[data-paste-copy]');
+  var rawLink = page.querySelector('[data-paste-raw]');
+
+  var MAX = 64000;
+  var MIN = 10;
+
+  textarea.addEventListener('input', function () { count.textContent = textarea.value.length + ' / ' + MAX.toLocaleString(); });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = textarea.value.trim();
+    error.textContent = '';
+    resultBox.hidden = true;
+
+    if (text.length < MIN) { error.textContent = 'Минимум ' + MIN + ' символов.'; return; }
+    if (text.length > MAX) { error.textContent = 'Максимум ' + (MAX / 1000) + ' КБ.'; return; }
+
+    submit.disabled = true;
+    submit.textContent = 'Создаётся…';
+
+    fetch('/api/pastes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text, source: 'web', website: '' })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, body: j }; });
+    }).then(function (r) {
+      submit.disabled = false;
+      submit.textContent = 'Создать paste';
+
+      if (!r.ok) { error.textContent = (r.body && r.body.detail) || 'Ошибка при создании paste.'; return; }
+
+      urlInput.value = r.body.url;
+      rawLink.href = r.body.raw_url;
+      resultBox.hidden = false;
+      textarea.value = '';
+      count.textContent = '0 / ' + MAX.toLocaleString();
+    }).catch(function () {
+      submit.disabled = false;
+      submit.textContent = 'Создать paste';
+      error.textContent = 'Сетевая ошибка. Попробуйте снова.';
+    });
+  });
+
+  copyBtn.addEventListener('click', function () {
+    navigator.clipboard.writeText(urlInput.value).then(function () {
+      copyBtn.textContent = 'Copied!';
+      setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1500);
+    });
+  });
+})();
+</script>
+{{- end -}}

@@ -8,6 +8,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Submission> Submissions => Set<Submission>();
     public DbSet<AnonRequest> AnonRequests => Set<AnonRequest>();
     public DbSet<BotPost> BotPosts => Set<BotPost>();
+    public DbSet<Paste> Pastes => Set<Paste>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
 
@@ -71,6 +72,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.LastError).HasMaxLength(512);
             // The dispatcher's only query: pending rows that are due.
             e.HasIndex(x => new { x.Status, x.NextAttemptAt });
+        });
+
+        b.Entity<Paste>(e =>
+        {
+            e.Property(x => x.PublicId).HasMaxLength(12).IsRequired();
+            e.Property(x => x.Content).IsRequired();
+            e.Property(x => x.Language).HasMaxLength(32).IsRequired();
+            e.Property(x => x.AuthorName).HasMaxLength(120);
+            e.Property(x => x.IpHash).HasMaxLength(64);
+            e.Property(x => x.Source).HasMaxLength(16).IsRequired();
+            e.HasIndex(x => x.PublicId).IsUnique();
+            e.HasIndex(x => x.CreatedAt);
         });
 
         b.Entity<Setting>(e =>

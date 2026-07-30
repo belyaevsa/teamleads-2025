@@ -86,6 +86,11 @@ builder.Services.AddRateLimiter(o =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: ClientFingerprint.ClientIp(http),
             _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
+
+    o.AddPolicy("paste_post", http =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ClientFingerprint.ClientIp(http),
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 
 // ── Telegram bot (anonymous requests) ───────────────────────────────────────
@@ -140,6 +145,10 @@ api.MapSubmissions();
 api.MapAnon();
 api.MapSettings();
 api.MapTelegramWebhook();
+api.MapPastes();
+
+// Paste viewing pages at clean /p/{id} URLs.
+PasteEndpoints.MapPastePage(app);
 
 // ── Startup migration with retry ────────────────────────────────────────────
 // The remote pgsql can briefly be unreachable during a deploy, so retry a few
