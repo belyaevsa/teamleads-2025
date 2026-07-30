@@ -82,12 +82,17 @@ public sealed class TelegramClient(HttpClient http, IOptions<TelegramOptions> op
             .ToArray();
     }
 
-    public Task<Result> AnswerInlineQueryAsync(string inlineQueryId, IEnumerable<object> results, int cacheTime = 300, CancellationToken ct = default) =>
+    // `button` is the strip Telegram draws above the result list (InlineQueryResultsButton).
+    // It is the only way to say anything when there are no results – an empty list
+    // renders as an empty popup, which reads as a broken bot.
+    public Task<Result> AnswerInlineQueryAsync(string inlineQueryId, IEnumerable<object> results,
+        int cacheTime = 300, object? button = null, CancellationToken ct = default) =>
         CallAsync("answerInlineQuery", new
         {
             inline_query_id = inlineQueryId,
             results = results.ToArray(),
             cache_time = cacheTime,
+            button,
         }, ct);
 
     public Task<Result> SetWebhookAsync(string url, string secretToken, CancellationToken ct = default) =>

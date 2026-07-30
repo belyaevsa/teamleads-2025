@@ -66,10 +66,14 @@ jobs:
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
           docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+          # BOT_DATA_PATH points into the landing deploy dir. Without this mount that
+          # path does not exist inside the container: the search index silently falls
+          # back to HTTP and the archive feed (BotDataClient) has no fallback at all.
           docker run -d --name "$CONTAINER" \
             --restart unless-stopped \
             -p "${HOST_BIND}:8080" \
             --env-file "$ENV_DIR/backend.env" \
+            -v /opt/teamleads.kz/latest:/opt/teamleads.kz/latest:ro \
             "${IMAGE}:${SHORT_SHA}"
 
       - name: Health gate

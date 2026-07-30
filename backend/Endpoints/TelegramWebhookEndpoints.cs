@@ -329,17 +329,48 @@ public static class TelegramWebhookEndpoints
 
     // ── search ──────────────────────────────────────────────────────────────
 
+    private const string SiteUrl = "https://teamleads.kz/";
+
+    // Opens a private chat with the bot from the inline results strip. start_parameter
+    // is required for the button to appear at all; the bot answers /start either way.
+    private static object PmButton(string text) => new { text, start_parameter = "search" };
+
     private static async Task HandleInlineQueryAsync(
         InlineQuery inline, SearchService search, TelegramClient tg, CancellationToken ct)
     {
         var query = inline.Query?.Trim() ?? "";
+
+        // Nothing typed yet: no results to show, but the button explains what this is.
+        // cache_time 0 – the next keystroke must re-query, not reuse this answer.
         if (string.IsNullOrWhiteSpace(query))
         {
-            await tg.AnswerInlineQueryAsync(inline.Id, [], ct: ct);
+            await tg.AnswerInlineQueryAsync(inline.Id, [], cacheTime: 0,
+                button: PmButton("Поиск по архиву: наберите запрос"), ct: ct);
             return;
         }
 
         var hits = await search.SearchAsync(query, limit: 10, ct: ct);
+
+        // No hits (or the index failed to load). One card, so the user sees an answer
+        // instead of an empty popup, and a button into the bot – "не нашлось" is
+        // exactly when someone should be asking the chat instead.
+        if (hits.Count == 0)
+        {
+            await tg.AnswerInlineQueryAsync(inline.Id, [new
+            {
+                type = "article",
+                id = "empty",
+                title = $"Ничего не найдено по «{query}»",
+                description = "Отправить ссылку на архив сообщества",
+                url = SiteUrl,
+                input_message_content = new
+                {
+                    message_text = $"🔍 По запросу «{query}» в архиве ничего не нашлось.\n\nВесь архив: {SiteUrl}",
+                    disable_web_page_preview = false,
+                },
+            }], cacheTime: 30, button: PmButton("Не нашлось? Спросите чат анонимно"), ct: ct);
+            return;
+        }
         var results = hits.Select((h, i) => new
         {
             type = "article",
