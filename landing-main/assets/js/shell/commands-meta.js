@@ -168,6 +168,7 @@ export function makeMetaCommands(S) {
         print('anon <вопрос> – задать вопрос в чат сообщества анонимно.', 'accent');
         print('Админ проверит текст и опубликует его в чате от имени бота.');
         print('Автор не сохраняется: ни имени, ни id, ни IP – только текст.', 'dim');
+        printNode(link('https://t.me/temlead_helper_bot', '→ открыть бота @temlead_helper_bot', true));
         print('Код бэкенда открыт – проверьте сами, что там хранится:', 'dim');
         printNode(link('https://github.com/belyaevsa/teamleads-2025/tree/master/backend', 'github.com/belyaevsa/teamleads-2025 · backend', true));
         print('Длинный вопрос удобнее набрать на странице:', 'hint');
@@ -188,12 +189,16 @@ export function makeMetaCommands(S) {
       }).then(function (data) {
         print('Запрос ' + ((data && data.publicId) || '') + ' отправлен на модерацию.', 'ok');
         print('Опубликуем в чате анонимно. Статус – в боте: /status ' + ((data && data.publicId) || ''), 'dim');
-        printNode(link('https://t.me/temlead_helper_bot', '@temlead_helper_bot', true));
+        // Labelled link, not a bare handle: in the terminal a lone @name reads as output,
+        // not as something you can click to open the bot.
+        printNode(link('https://t.me/temlead_helper_bot', '→ открыть бота @temlead_helper_bot', true));
         try { if (w.ym) w.ym(106055675, 'reachGoal', 'anon_submit', { source: 'shell' }); } catch (e) {}
       }).catch(function (err) {
         print(err && err.message === 'rate'
-          ? 'Слишком много запросов с вашего адреса. Попробуйте через час или напишите боту.'
-          : 'Не отправилось. Попробуйте форму на /anon/ или бота @temlead_helper_bot.', 'err');
+          ? 'Слишком много запросов с вашего адреса. Попробуйте через час или напишите боту:'
+          : 'Не отправилось. Попробуйте форму или напишите боту:', 'err');
+        printNode(link('https://t.me/temlead_helper_bot', '→ открыть бота @temlead_helper_bot', true));
+        printNode(link('/anon/', '→ форма на teamleads.kz/anon'));
       });
     },
     // ── easter eggs ──

@@ -578,7 +578,15 @@ import { makeMetaCommands } from './commands-meta.js';
     });
 
     // (Simulator keyboard handler lives in sim.js, installed on the root node.)
-    body.addEventListener('click', function (e) { if (e.target.tagName !== 'A') input.focus(); });
+    // Click anywhere in the terminal to focus the prompt – EXCEPT when the click ends a
+    // text selection. Focusing an input collapses the selection, so an unconditional
+    // focus() here made the output impossible to copy: the highlight vanished on mouseup.
+    body.addEventListener('click', function (e) {
+      if (e.target.tagName === 'A') return;
+      var sel = w.getSelection && w.getSelection();
+      if (sel && !sel.isCollapsed && body.contains(sel.anchorNode)) return;
+      input.focus();
+    });
 
     // Mobile helper bar – taps map to the same actions as the hardware keys.
     var keysBar = root.querySelector('[data-term-keys]');

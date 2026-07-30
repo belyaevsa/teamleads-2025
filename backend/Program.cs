@@ -99,6 +99,7 @@ builder.Services.AddHttpClient<TelegramClient>(c =>
     c.Timeout = TimeSpan.FromSeconds(15);   // the webhook must answer fast; Telegram redelivers otherwise
 });
 builder.Services.AddSingleton<SettingsService>();   // process-wide 5-minute cache
+builder.Services.AddScoped<Outbox>();
 builder.Services.AddScoped<AnonService>();
 builder.Services.AddScoped<DilemmaService>();
 
@@ -106,6 +107,7 @@ builder.Services.AddScoped<DilemmaService>();
 // keeping its own copy. See BotData/BotDataClient.cs for why.
 builder.Services.AddHttpClient<BotDataClient>(c => c.Timeout = TimeSpan.FromSeconds(20));
 builder.Services.AddHostedService<BotScheduler>();
+builder.Services.AddHostedService<OutboxDispatcher>();
 
 // In Development the Hugo dev server (localhost:1313) calls us cross-origin.
 // In production nginx makes everything same-origin, so CORS is dev-only.

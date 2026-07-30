@@ -12,6 +12,7 @@ namespace TeamleadsBackend.Telegram;
 public sealed class AnonService(
     AppDbContext db,
     TelegramClient tg,
+    Outbox outbox,
     SettingsService settings,
     IOptions<TelegramOptions> options,
     ILogger<AnonService> log)
@@ -64,28 +65,17 @@ public sealed class AnonService(
         return (CreateOutcome.Created, row);
     }
 
-    // Posts (or re-renders) the moderation card. Failure is not fatal: the row is
-    // already stored and GET /api/anon still shows it.
+    // Queues the moderation card rather than sending it. The submitter's HTTP request
+    // does not wait on Telegram, and – more importantly – a card is never lost to an
+    // outage, a rate limit, or a bot that is not configured yet: the outbox keeps
+    // retrying and flushes the backlog once the token appears.
     private async Task SendCardAsync(AnonRequest row, CancellationToken ct)
     {
-        if (!_opt.Enabled)
-        {
-            log.LogWarning("Telegram is not configured; anon request {PublicId} stored without a moderation card.", row.PublicId);
-            return;
-        }
-
-        var adminChat = await settings.GetLongAsync("tg.admin_chat_id", ct);
-        if (adminChat == 0)
-        {
-            log.LogWarning("tg.admin_chat_id is not set; anon request {PublicId} stored without a moderation card.", row.PublicId);
-            return;
-        }
-
-        var res = await tg.SendMessageAsync(adminChat, CardText(row), PendingKeyboard(row.PublicId), ct);
-        if (!res.Ok) return;
-
-        row.AdminMessageId = res.MessageId;
-        await db.SaveChangesAsync(ct);
+        // Destination resolved at send time via the setting, so a card queued while
+        // tg.admin_chat_id is wrong (or unset) still lands once it is corrected.
+        // No TTL: a moderation card is worth delivering however late it arrives.
+        await outbox.EnqueueAsync("anon_card", 0, CardText(row), PendingKeyboard(row.PublicId),
+            relatedKind: "anon", relatedKey: row.PublicId, chatSetting: "tg.admin_chat_id", ct: ct);
     }
 
     public async Task<AnonRequest?> FindAsync(string publicId, CancellationToken ct) =>

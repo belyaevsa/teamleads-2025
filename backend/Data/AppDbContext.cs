@@ -9,6 +9,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AnonRequest> AnonRequests => Set<AnonRequest>();
     public DbSet<BotPost> BotPosts => Set<BotPost>();
     public DbSet<Setting> Settings => Set<Setting>();
+    public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -57,6 +58,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Key).HasMaxLength(128).IsRequired();
             e.HasIndex(x => new { x.Kind, x.Key });
             e.HasIndex(x => x.PostedAt);
+        });
+
+        b.Entity<OutboxMessage>(e =>
+        {
+            e.Property(x => x.Kind).HasMaxLength(32).IsRequired();
+            e.Property(x => x.ChatSetting).HasMaxLength(64);
+            e.Property(x => x.Text).HasMaxLength(4096).IsRequired();
+            e.Property(x => x.RelatedKind).HasMaxLength(32);
+            e.Property(x => x.RelatedKey).HasMaxLength(64);
+            e.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            e.Property(x => x.LastError).HasMaxLength(512);
+            // The dispatcher's only query: pending rows that are due.
+            e.HasIndex(x => new { x.Status, x.NextAttemptAt });
         });
 
         b.Entity<Setting>(e =>

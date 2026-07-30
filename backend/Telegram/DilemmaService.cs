@@ -101,9 +101,13 @@ public sealed class DilemmaService(
         var votes = await tg.StopPollAsync(post.ChatId, post.MessageId, ct);
         var sent = await tg.SendMessageAsync(post.ChatId, Reveal(scenario, votes), ct: ct);
 
+        // Only settle it when the reveal actually landed. Marking it done on failure
+        // would leave the chat with a closed poll and no consequences, permanently.
+        if (!sent.Ok) return $"Не отправилось, попробуем на следующем тике: {sent.Error}";
+
         post.FollowedUpAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
-        return sent.Ok ? $"Раскрыта дилемма {post.Key}." : $"Не отправилось: {sent.Error}";
+        return $"Раскрыта дилемма {post.Key}.";
     }
 
     // Round-robin by content order, not random: the sequence stays predictable and
