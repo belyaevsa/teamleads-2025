@@ -6,6 +6,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<Feedback> Feedback => Set<Feedback>();
     public DbSet<Submission> Submissions => Set<Submission>();
+    public DbSet<AnonRequest> AnonRequests => Set<AnonRequest>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -30,6 +31,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Status).HasMaxLength(16).IsRequired();
             e.HasIndex(x => x.CreatedAt);
             e.HasIndex(x => x.Status);
+        });
+
+        b.Entity<AnonRequest>(e =>
+        {
+            e.Ignore(x => x.PublishText);   // computed in code, not a column
+            e.Property(x => x.PublicId).HasMaxLength(12).IsRequired();
+            e.Property(x => x.Text).HasMaxLength(4000).IsRequired();
+            e.Property(x => x.EditedText).HasMaxLength(4000);
+            e.Property(x => x.Source).HasMaxLength(16).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            e.Property(x => x.AuthorHash).HasMaxLength(64);
+            e.Property(x => x.RejectReason).HasMaxLength(256);
+            e.HasIndex(x => x.PublicId).IsUnique();
+            e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.AuthorHash);
         });
     }
 }

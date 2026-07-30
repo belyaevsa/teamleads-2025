@@ -367,6 +367,13 @@ desc = "Оставить обратную связь по сайту – отк�
 out = ["Откроется форма нового issue на GitHub.", "→ github.com/belyaevsa/teamleads-2025/issues/new"]
 
 [[commands]]
+id = "anon"
+cmd = "anon"
+run = "anon"
+desc = "Задать вопрос в чат сообщества анонимно – через модерацию, без следов автора."
+out = ["anon <вопрос> – спросить в чате анонимно.", "Автор не сохраняется: ни имени, ни id, ни IP."]
+
+[[commands]]
 id = "fun"
 cmd = "fun"
 run = "fun"

@@ -322,7 +322,7 @@ import { makeMetaCommands } from './commands-meta.js';
     var commands = Object.assign(
       {},
       makeFsCommands(S),       // ls cd open cat pwd tree find grep latest random head tail wc stat mkdir touch rm rmdir mv cp
-      makeMetaCommands(S)      // help man whatis apropos which alias theme share feedback neofetch date echo history clear fortune vim top sudo coffee 42 home exit
+      makeMetaCommands(S)      // help man whatis apropos which alias theme share feedback anon neofetch date echo history clear fortune vim top sudo coffee 42 home exit
     );
     S.commands = commands;     // wire cross-command calls (git show→cat, checkout→cd, …)
     // Every command name known up-front (loaded + lazy + aliases) – powers help/completion.
@@ -349,6 +349,7 @@ import { makeMetaCommands } from './commands-meta.js';
       ['contribute_salary', 'submit'], ['добавить-зарплату', 'submit'],
       ['projects', 'showcase'], ['витрина', 'showcase'],
       ['bug', 'feedback'], ['справка', 'apropos'], ['ll', 'ls'],
+      ['анонимно', 'anon'], ['спросить', 'anon'], ['анон', 'anon'],
       ['puzzles', 'fun'], ['задачки', 'fun'], ['задачка', 'fun'],
       // PowerShell dialect – Windows visitors drive the shell with the verbs they know.
       ['dir', 'ls'], ['gci', 'ls'], ['get-childitem', 'ls'],

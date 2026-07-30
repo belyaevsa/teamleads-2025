@@ -40,6 +40,10 @@ jobs:
           CONN: ${{ secrets.BACKEND_CONNECTION_STRING }}
           ADMIN_KEY: ${{ secrets.BACKEND_ADMIN_API_KEY }}
           IP_SALT: ${{ secrets.BACKEND_IP_HASH_SALT }}
+          TG_TOKEN: ${{ secrets.BACKEND_TG_BOT_TOKEN }}
+          TG_SECRET: ${{ secrets.BACKEND_TG_WEBHOOK_SECRET }}
+          TG_ADMIN: ${{ secrets.BACKEND_TG_ADMIN_CHAT_ID }}
+          TG_COMMUNITY: ${{ secrets.BACKEND_TG_COMMUNITY_CHAT_ID }}
         run: |
           install -d -m 700 "$ENV_DIR"
           umask 077
@@ -48,6 +52,10 @@ jobs:
             printf 'ConnectionStrings__Default=%s\n' "$CONN"
             printf 'ADMIN_API_KEY=%s\n' "$ADMIN_KEY"
             printf 'IP_HASH_SALT=%s\n' "$IP_SALT"
+            printf 'TG_BOT_TOKEN=%s\n' "$TG_TOKEN"
+            printf 'TG_WEBHOOK_SECRET=%s\n' "$TG_SECRET"
+            printf 'TG_ADMIN_CHAT_ID=%s\n' "$TG_ADMIN"
+            printf 'TG_COMMUNITY_CHAT_ID=%s\n' "$TG_COMMUNITY"
           } > "$ENV_DIR/backend.env"
 
       - name: Swap container

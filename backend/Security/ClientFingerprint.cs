@@ -32,7 +32,18 @@ public static class ClientFingerprint
         var salt = config["IP_HASH_SALT"];
         if (string.IsNullOrEmpty(salt)) return null;
 
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(salt + "|" + ClientIp(http)));
+        return Hash(ClientIp(http), config);
+    }
+
+    // Same salted hash for any other author identifier (e.g. a telegram user id).
+    // The caller passes a namespaced value like "tg|12345" so identifiers from
+    // different sources can never collide.
+    public static string? Hash(string value, IConfiguration config)
+    {
+        var salt = config["IP_HASH_SALT"];
+        if (string.IsNullOrEmpty(salt)) return null;
+
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(salt + "|" + value));
         return Convert.ToHexStringLower(bytes);
     }
 }

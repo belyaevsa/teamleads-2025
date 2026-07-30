@@ -1,9 +1,11 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using TeamleadsBackend.Data;
 using TeamleadsBackend.Endpoints;
 using TeamleadsBackend.Security;
+using TeamleadsBackend.Telegram;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,7 +63,23 @@ builder.Services.AddRateLimiter(o =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: ClientFingerprint.ClientIp(http),
             _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+    o.AddPolicy(Policies.AnonPost, http =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ClientFingerprint.ClientIp(http),
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
 });
+
+// ── Telegram bot (anonymous requests) ───────────────────────────────────────
+// Flat env vars, validated in TelegramOptions.Enabled. With the bot unconfigured
+// the webhook 404s and /api/anon still stores requests – nothing else breaks.
+builder.Services.AddSingleton(Options.Create(TelegramOptions.FromConfiguration(builder.Configuration)));
+builder.Services.AddHttpClient<TelegramClient>(c =>
+{
+    c.BaseAddress = new Uri("https://api.telegram.org/");
+    c.Timeout = TimeSpan.FromSeconds(15);   // the webhook must answer fast; Telegram redelivers otherwise
+});
+builder.Services.AddScoped<AnonService>();
 
 // In Development the Hugo dev server (localhost:1313) calls us cross-origin.
 // In production nginx makes everything same-origin, so CORS is dev-only.
@@ -87,6 +105,8 @@ var api = app.MapGroup("/api");
 api.MapHealth();
 api.MapFeedback();
 api.MapSubmissions();
+api.MapAnon();
+api.MapTelegramWebhook();
 
 // ── Startup migration with retry ────────────────────────────────────────────
 // The remote pgsql can briefly be unreachable during a deploy, so retry a few

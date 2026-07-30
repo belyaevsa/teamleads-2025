@@ -1,6 +1,6 @@
 /*!
  * Help, documentation, environment and easter-egg commands: help, man, whatis,
- * apropos, which, alias, theme, share, feedback, neofetch, date, echo, history,
+ * apropos, which, alias, theme, share, feedback, anon, neofetch, date, echo, history,
  * clear, fortune, vim, top, sudo, coffee, 42, home, exit. The alias table and
  * man pages come from S; `hist` and `vimMode` are reached via accessors.
  */
@@ -43,6 +43,7 @@ export function makeMetaCommands(S) {
         ['claude/codex <q>', 'офлайн-ассистенты по материалам сообщества'],
         ['salary', 'зарплаты рынка (живые данные): salary senior backend'],
         ['submit <что>', 'отправить: salary · review <фирма> · project'],
+        ['anon <вопрос>', 'спросить в чат анонимно (через модерацию)'],
         ['sim / games', 'тимлид-симулятор · игры (sim, sudoku)'],
         ['fun [имя]', 'инженерные задачки – открыть с Claude/Codex'],
         ['discuss', 'случайная тема из бэклога + разбор по ней'],
@@ -158,6 +159,42 @@ export function makeMetaCommands(S) {
       print('Спасибо! Откроется форма нового issue на GitHub.', 'accent');
       printNode(link(url, url, true));
       w.open(url, '_blank', 'noopener');
+    },
+    // Anonymous question to the community chat: the shell twin of /anon/. The text
+    // goes to the same moderated pipeline; nothing about the sender is stored.
+    anon: function (a) {
+      var body = a.join(' ').trim();
+      if (!body) {
+        print('anon <вопрос> – задать вопрос в чат сообщества анонимно.', 'accent');
+        print('Админ проверит текст и опубликует его в чате от имени бота.');
+        print('Автор не сохраняется: ни имени, ни id, ни IP – только текст.', 'dim');
+        print('Код бэкенда открыт – проверьте сами, что там хранится:', 'dim');
+        printNode(link('https://github.com/belyaevsa/teamleads-2025/tree/master/backend', 'github.com/belyaevsa/teamleads-2025 · backend', true));
+        print('Длинный вопрос удобнее набрать на странице:', 'hint');
+        printNode(link('/anon/', 'teamleads.kz/anon'));
+        return;
+      }
+      if (body.length < 20) { print('Слишком коротко: нужно хотя бы 20 символов. Чату нужен контекст.', 'err'); return; }
+
+      print('Отправляем…', 'dim');
+      w.fetch(w.TEAMLEADS_ANON_API || '/api/anon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: body, source: 'shell' })
+      }).then(function (r) {
+        if (r.status === 429) throw new Error('rate');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function (data) {
+        print('Запрос ' + ((data && data.publicId) || '') + ' отправлен на модерацию.', 'ok');
+        print('Опубликуем в чате анонимно. Статус – в боте: /status ' + ((data && data.publicId) || ''), 'dim');
+        printNode(link('https://t.me/temlead_helper_bot', '@temlead_helper_bot', true));
+        try { if (w.ym) w.ym(106055675, 'reachGoal', 'anon_submit', { source: 'shell' }); } catch (e) {}
+      }).catch(function (err) {
+        print(err && err.message === 'rate'
+          ? 'Слишком много запросов с вашего адреса. Попробуйте через час или напишите боту.'
+          : 'Не отправилось. Попробуйте форму на /anon/ или бота @temlead_helper_bot.', 'err');
+      });
     },
     // ── easter eggs ──
     vim: function () { setVimMode(true); print('~', 'dim'); print('~  VIM – Vi IMproved', 'dim'); print('~', 'dim'); print('Вы в vim. Удачи с выходом: :q (или :q!).', 'hint'); },

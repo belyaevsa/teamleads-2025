@@ -1,0 +1,185 @@
+{{ define "main" }}
+<section class="report-hero">
+    <div class="container">
+        <a href="/" class="report-back">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            На главную
+        </a>
+        <h1 class="report-title">{{ .Title }}</h1>
+        <p class="anon-lede">В чате сообщества сидят ваши коллеги и руководитель. Поэтому самые
+        важные вопросы там не задают. Задайте здесь – админ проверит и опубликует его в чате
+        от имени бота. Обсуждение будет, автора не будет видно.</p>
+    </div>
+</section>
+
+<section class="report-content">
+    <div class="container report-container">
+
+        <div class="anon-guarantee">
+            <div class="anon-guarantee-item">
+                <span class="anon-guarantee-label">Что храним</span>
+                <p>Только текст вопроса. Ни имени, ни телеграм-id, ни IP-адреса в базе нет –
+                от IP остается необратимый хеш, и тот нужен лишь чтобы отсечь спам.</p>
+            </div>
+            <div class="anon-guarantee-item">
+                <span class="anon-guarantee-label">Кто видит</span>
+                <p>Админ сообщества видит текст и кнопки «опубликовать» или «отклонить».
+                Кто прислал – не видит и он. Такой информации у нас просто нет.</p>
+            </div>
+            <div class="anon-guarantee-item">
+                <span class="anon-guarantee-label">Что уходит в чат</span>
+                <p>Новое сообщение от бота, а не пересылка вашего. Пересылка тянет за собой
+                автора, поэтому мы ее не используем.</p>
+            </div>
+        </div>
+
+        {{- /* Credibility: the anonymity claim is only worth what a reader can check.
+               Deep links go to the exact files where each promise is visible in code. */ -}}
+        {{- $repo := printf "https://github.com/%s/blob/%s/backend" (site.Params.githubRepo | default "belyaevsa/teamleads-2025") (site.Params.githubBranch | default "master") -}}
+        <details class="anon-verify">
+            <summary>Не верите на слово? Проверьте код</summary>
+            <p>Бэкенд сообщества открыт. Обещание анонимности – это не текст на странице,
+            а то, какие колонки есть в таблице. Смотрите сами:</p>
+            <ul>
+                <li><a href="{{ $repo }}/Data/AnonRequest.cs" target="_blank" rel="noopener"><code>Data/AnonRequest.cs</code></a>
+                – все, что сохраняется. Полей с именем, телеграм-id или IP там нет. Есть
+                <code>AuthorHash</code>: необратимый хеш с секретной солью, только чтобы отсечь спам.</li>
+                <li><a href="{{ $repo }}/Security/ClientFingerprint.cs" target="_blank" rel="noopener"><code>Security/ClientFingerprint.cs</code></a>
+                – как считается этот хеш. SHA-256 с солью, которая лежит только на сервере.
+                Обратно в ваш адрес он не разворачивается.</li>
+                <li><a href="{{ $repo }}/Telegram/AnonService.cs" target="_blank" rel="noopener"><code>Telegram/AnonService.cs</code></a>
+                – что уходит в чат. Обычный <code>sendMessage</code> от бота, а не пересылка:
+                пересылка несет в себе автора, поэтому ее тут нет.</li>
+                <li><a href="{{ $repo }}/Endpoints/AnonEndpoints.cs" target="_blank" rel="noopener"><code>Endpoints/AnonEndpoints.cs</code></a>
+                – что видит админ. Список для модерации не отдает даже хеш.</li>
+            </ul>
+            <p class="anon-verify-honest">Честная граница: вы проверяете код, а не сервер, на котором
+            он запущен – это верно для любого сервиса. Что можно проверить снаружи: сообщение в чате
+            приходит от бота, а не переслано, и по нему нельзя перейти к автору.</p>
+            <p><a href="{{ $repo }}" target="_blank" rel="noopener">Весь бэкенд на GitHub →</a></p>
+        </details>
+
+        <form class="anon-form" id="anon-form" novalidate>
+            <label class="anon-label" for="anon-text">Ваш вопрос или ситуация</label>
+            <p class="anon-hint">Пишите как есть. Детали, по которым вас можно узнать – название
+            компании, размер команды, редкий стек – лучше убрать самому. Админ тоже подчистит,
+            но он не знает вашего контекста.</p>
+            <textarea id="anon-text" name="text" class="anon-textarea" rows="9" maxlength="4000"
+                      minlength="20" required
+                      placeholder="Например: руководитель ставит задачи в личке, а потом отрицает, что ставил. Как выстроить фиксацию договоренностей, не выглядя параноиком?"></textarea>
+
+            <div class="anon-form-row">
+                <span class="anon-counter" id="anon-counter" aria-live="polite">0 / 4000</span>
+                <button type="submit" class="btn btn-primary" id="anon-submit">Отправить на модерацию</button>
+            </div>
+
+            {{- /* Honeypot: hidden from people, irresistible to bots. The backend drops
+                   any submission where it is filled in. */ -}}
+            <div class="anon-hp" aria-hidden="true">
+                <label for="anon-website">Не заполняйте это поле</label>
+                <input type="text" id="anon-website" name="website" tabindex="-1" autocomplete="off">
+            </div>
+
+            <p class="anon-status" id="anon-status" role="status" aria-live="polite"></p>
+        </form>
+
+        <div class="anon-done" id="anon-done" hidden>
+            <h2>Отправлено</h2>
+            <p>Номер вашего запроса:</p>
+            <p class="anon-ticket" id="anon-ticket"></p>
+            <p>Админ проверит его и опубликует в чате анонимно. Запишите номер: по нему можно
+            узнать статус – напишите боту <code>/status НОМЕР</code>. Больше никакой связи с
+            запросом у вас нет, и в этом весь смысл.</p>
+            <p><a class="btn btn-secondary" href="https://t.me/temlead_helper_bot" target="_blank" rel="noopener">Открыть бота</a></p>
+        </div>
+
+        <div class="anon-alt">
+            <h2>Через бота</h2>
+            <p>То же самое, но прямо в телеграме: напишите вопрос боту
+            <a href="https://t.me/temlead_helper_bot" target="_blank" rel="noopener">@temlead_helper_bot</a>
+            в личные сообщения. Ваш телеграм-id он хеширует и не сохраняет – поэтому и написать
+            вам о публикации не сможет.</p>
+            <p class="anon-alt-shell">В <a href="/shell/">shell-режиме</a> работает команда
+            <a href="/shell/?cmd=anon" class="questions-shell-cmd">anon</a> – тот же путь, не выходя из терминала.</p>
+        </div>
+
+        <div class="report-bottom-nav">
+            <a href="/" class="btn btn-secondary">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                На главную
+            </a>
+        </div>
+    </div>
+</section>
+
+{{ partial "footer.html" . }}
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+(function () {
+    var form = document.getElementById('anon-form');
+    if (!form) return;
+
+    var api = window.TEAMLEADS_ANON_API || '/api/anon';
+    var text = document.getElementById('anon-text');
+    var counter = document.getElementById('anon-counter');
+    var status = document.getElementById('anon-status');
+    var submit = document.getElementById('anon-submit');
+    var done = document.getElementById('anon-done');
+    var MIN = 20;
+
+    function say(msg, kind) {
+        status.textContent = msg || '';
+        status.className = 'anon-status' + (kind ? ' is-' + kind : '');
+    }
+
+    text.addEventListener('input', function () {
+        counter.textContent = text.value.length + ' / 4000';
+    });
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var value = text.value.trim();
+        if (value.length < MIN) {
+            say('Слишком коротко: нужно хотя бы ' + MIN + ' символов. Чату нужен контекст, чтобы ответить по делу.', 'err');
+            text.focus();
+            return;
+        }
+
+        submit.disabled = true;
+        say('Отправляем…');
+
+        fetch(api, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: value,
+                source: 'form',
+                website: document.getElementById('anon-website').value
+            })
+        }).then(function (res) {
+            // 429 is the per-IP hourly cap; anything else non-2xx is a real failure.
+            if (res.status === 429) throw new Error('rate');
+            if (!res.ok) throw new Error('http ' + res.status);
+            return res.json();
+        }).then(function (data) {
+            form.hidden = true;
+            document.getElementById('anon-ticket').textContent = (data && data.publicId) || '–';
+            done.hidden = false;
+            done.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            try { if (window.ym) window.ym(106055675, 'reachGoal', 'anon_submit', { source: 'form' }); } catch (err) {}
+        }).catch(function (err) {
+            submit.disabled = false;
+            say(err && err.message === 'rate'
+                ? 'Слишком много запросов с вашего адреса. Попробуйте через час – или напишите боту @temlead_helper_bot.'
+                : 'Не отправилось. Попробуйте еще раз или напишите боту @temlead_helper_bot.', 'err');
+        });
+    });
+})();
+</script>
+{{ end }}
