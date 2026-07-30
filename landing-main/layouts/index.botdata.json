@@ -1,0 +1,92 @@
+{{- /*
+  /bot-data.json – what @temlead_helper_bot needs from the archive, in one fetch.
+
+  Rules for anything added here:
+  · absolute URLs only (a Telegram message has no site to be relative to);
+  · links resolved at build time (the bot must not know how "articles/slug" maps to a URL);
+  · Telegram poll limits respected at the source – question ≤300 chars, option ≤100.
+    We do NOT truncate here: the backend skips anything oversized and logs it, so a bad
+    scenario shows up as a warning instead of a silently mangled poll.
+  Consumed by backend/BotData/BotDataClient.cs.
+*/ -}}
+{{- $scenarios := slice -}}
+{{- range (site.Data.scenarios).scenarios -}}
+  {{- $link := dict -}}
+  {{- with .link -}}
+    {{- with site.GetPage (printf "/%s" .) -}}
+      {{- $link = dict "title" .Title "url" .Permalink -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $options := slice -}}
+  {{- range .options -}}
+    {{- $options = $options | append (dict
+        "label" .label
+        "good" (.good | default false)
+        "votes" (.votes | default 0)
+        "outcome" (.outcome | default "")) -}}
+  {{- end -}}
+  {{- $scenarios = $scenarios | append (dict
+      "id" .id
+      "prompt" (.prompt | replaceRE `\s+` " " | strings.TrimSpace)
+      "options" $options
+      "lesson" (.lesson | default "")
+      "link" $link) -}}
+{{- end -}}
+
+{{- /* Quizzes reuse the scenario shape; `good` marks the right answer, which becomes
+       Telegram's correct_option_id in a native quiz poll. */ -}}
+{{- $quizzes := slice -}}
+{{- range (site.Data.quizzes).quizzes -}}
+  {{- $questions := slice -}}
+  {{- range .scenarios -}}
+    {{- $options := slice -}}
+    {{- range .options -}}
+      {{- $options = $options | append (dict "label" .label "good" (.good | default false)) -}}
+    {{- end -}}
+    {{- $questions = $questions | append (dict
+        "prompt" (.prompt | replaceRE `\s+` " " | strings.TrimSpace)
+        "options" $options
+        "lesson" (.lesson | default "")) -}}
+  {{- end -}}
+  {{- $insight := "" -}}
+  {{- with site.GetPage (printf "/insights/%s" .id) -}}{{- $insight = .Permalink -}}{{- end -}}
+  {{- $quizzes = $quizzes | append (dict
+      "id" .id
+      "title" .title
+      "url" $insight
+      "questions" $questions) -}}
+{{- end -}}
+
+{{- /* Open discussion backlog – same computation as the shell's `discuss`. */ -}}
+{{- $questions := slice -}}
+{{- range (where site.RegularPages "Section" "events").ByDate.Reverse -}}
+  {{- $ev := . -}}
+  {{- range (.Params.nextQuestions | default slice) -}}
+    {{- if not .answeredIn -}}
+      {{- $questions = $questions | append (dict
+          "question" .question
+          "event" $ev.Title
+          "date" ($ev.Date.Format "2006-01-02")
+          "url" $ev.Permalink) -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Latest material per section – lets the bot greet newcomers and link digests
+       without a second fetch. */ -}}
+{{- $latest := dict -}}
+{{- range $s := (slice "events" "articles" "insights") -}}
+  {{- $items := slice -}}
+  {{- range first 10 (where site.RegularPages "Section" $s).ByDate.Reverse -}}
+    {{- $items = $items | append (dict "title" .Title "url" .Permalink "date" (.Date.Format "2006-01-02") "description" .Description) -}}
+  {{- end -}}
+  {{- $latest = merge $latest (dict $s $items) -}}
+{{- end -}}
+
+{{- dict
+    "generated" (now.Format "2006-01-02T15:04:05Z07:00")
+    "scenarios" $scenarios
+    "quizzes" $quizzes
+    "questions" $questions
+    "latest" $latest
+  | jsonify (dict "indent" "  ") -}}

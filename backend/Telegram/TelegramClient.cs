@@ -53,6 +53,35 @@ public sealed class TelegramClient(HttpClient http, IOptions<TelegramOptions> op
     public Task<Result> AnswerCallbackQueryAsync(string callbackQueryId, string? text = null, CancellationToken ct = default) =>
         CallAsync("answerCallbackQuery", new { callback_query_id = callbackQueryId, text }, ct);
 
+    // A native poll. `correctOptionId` turns it into a quiz (Telegram then reveals the
+    // right answer and the explanation itself); left null it stays a plain anonymous
+    // poll, which is the point for a dilemma – no answer is "correct", and an anonymous
+    // vote is exactly what someone who won't type in front of their boss will still do.
+    public Task<Result> SendPollAsync(long chatId, string question, IEnumerable<string> options,
+        int? correctOptionId = null, string? explanation = null, CancellationToken ct = default) =>
+        CallAsync("sendPoll", new
+        {
+            chat_id = chatId,
+            question,
+            options = options.ToArray(),
+            is_anonymous = true,
+            type = correctOptionId is null ? "regular" : "quiz",
+            correct_option_id = correctOptionId,
+            explanation,
+        }, ct);
+
+    // Closes a poll and returns the final vote count per option, in option order.
+    public async Task<int[]?> StopPollAsync(long chatId, long messageId, CancellationToken ct = default)
+    {
+        var (ok, result, _) = await CallJsonAsync("stopPoll", new { chat_id = chatId, message_id = messageId }, ct);
+        if (!ok || result is not { ValueKind: JsonValueKind.Object } poll) return null;
+        if (!poll.TryGetProperty("options", out var options)) return null;
+
+        return options.EnumerateArray()
+            .Select(o => o.TryGetProperty("voter_count", out var v) ? v.GetInt32() : 0)
+            .ToArray();
+    }
+
     public Task<Result> SetWebhookAsync(string url, string secretToken, CancellationToken ct = default) =>
         CallAsync("setWebhook", new
         {
@@ -64,8 +93,14 @@ public sealed class TelegramClient(HttpClient http, IOptions<TelegramOptions> op
 
     private async Task<Result> CallAsync(string method, object payload, CancellationToken ct)
     {
+        var (ok, result, error) = await CallJsonAsync(method, payload, ct);
+        return ok ? new Result(true, MessageIdOf(result), null) : Result.Fail(error ?? "unknown");
+    }
+
+    private async Task<(bool Ok, JsonElement? Result, string? Error)> CallJsonAsync(string method, object payload, CancellationToken ct)
+    {
         if (string.IsNullOrWhiteSpace(_opt.BotToken))
-            return Result.Fail("TG_BOT_TOKEN is not configured");
+            return (false, null, "TG_BOT_TOKEN is not configured");
 
         try
         {
@@ -76,17 +111,17 @@ public sealed class TelegramClient(HttpClient http, IOptions<TelegramOptions> op
             var body = await resp.Content.ReadFromJsonAsync<ApiResponse>(cancellationToken: ct);
 
             if (body is { Ok: true })
-                return new Result(true, MessageIdOf(body.Result), null);
+                return (true, body.Result, null);
 
             // description is Telegram's human-readable reason ("chat not found", "bot was blocked", …)
             var error = body?.Description ?? $"HTTP {(int)resp.StatusCode}";
             log.LogWarning("Telegram {Method} failed: {Error}", method, error);
-            return Result.Fail(error);
+            return (false, null, error);
         }
         catch (Exception ex)
         {
             log.LogWarning(ex, "Telegram {Method} threw.", method);
-            return Result.Fail(ex.Message);
+            return (false, null, ex.Message);
         }
     }
 

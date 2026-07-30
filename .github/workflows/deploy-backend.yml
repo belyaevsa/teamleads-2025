@@ -42,8 +42,6 @@ jobs:
           IP_SALT: ${{ secrets.BACKEND_IP_HASH_SALT }}
           TG_TOKEN: ${{ secrets.BACKEND_TG_BOT_TOKEN }}
           TG_SECRET: ${{ secrets.BACKEND_TG_WEBHOOK_SECRET }}
-          TG_ADMIN: ${{ secrets.BACKEND_TG_ADMIN_CHAT_ID }}
-          TG_COMMUNITY: ${{ secrets.BACKEND_TG_COMMUNITY_CHAT_ID }}
         run: |
           install -d -m 700 "$ENV_DIR"
           umask 077
@@ -54,8 +52,13 @@ jobs:
             printf 'IP_HASH_SALT=%s\n' "$IP_SALT"
             printf 'TG_BOT_TOKEN=%s\n' "$TG_TOKEN"
             printf 'TG_WEBHOOK_SECRET=%s\n' "$TG_SECRET"
-            printf 'TG_ADMIN_CHAT_ID=%s\n' "$TG_ADMIN"
-            printf 'TG_COMMUNITY_CHAT_ID=%s\n' "$TG_COMMUNITY"
+            # Chat ids live in the Settings table (seeded by migration, edited via /set).
+            # Archive feed: read the landing deploy dir on this host, no network hop.
+            printf 'BOT_DATA_PATH=/opt/teamleads.kz/latest/bot-data.json\n'
+            printf 'BOT_DATA_URL=https://teamleads.kz/bot-data.json\n'
+            # Scheduler switch and dilemma slot are NOT written here: they live in the
+            # Settings table (seeded on startup, edited via /set). A deploy must not be
+            # able to silently revert what someone changed from the admin chat.
           } > "$ENV_DIR/backend.env"
 
       - name: Swap container

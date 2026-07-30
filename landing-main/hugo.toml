@@ -34,9 +34,20 @@ title = "Тимлид не кодит – Сообщество тимлидов 
   suffix = "html"
   notAlternative = true
 
+# Machine-readable feed for @temlead_helper_bot: the data the bot posts to the chat
+# (simulator dilemmas, quizzes, the open questions backlog) with links already
+# resolved to absolute URLs. The site stays the single source of truth – the backend
+# fetches this file instead of holding its own copy of the content.
+[outputFormats.botdata]
+  mediaType = "application/json"
+  baseName = "bot-data"
+  suffix = "json"
+  isPlainText = true
+  notAlternative = true
+
 [outputs]
   page = ["html", "cat"]
-  home = ["html", "rss", "shellindex"]
+  home = ["html", "rss", "shellindex", "botdata"]
 
 [params]
   description = "Крупнейшее сообщество тимлидов, инженерных менеджеров и CTO Казахстана: найм, архитектура, процессы и карьера. Зарплаты в IT и отзывы о компаниях."
@@ -45,7 +56,7 @@ title = "Тимлид не кодит – Сообщество тимлидов 
 
   # Stats – participantsCount is the external Telegram member count (update manually);
   # the other homepage stats are computed live from content and never go stale.
-  participantsCount = "510"
+  participantsCount = "540"
   topicsCount = "50+"
 
   # Salary data endpoint for the browser (shell `salary` + /salary/ page).

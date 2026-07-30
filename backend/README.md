@@ -21,9 +21,11 @@ and **submissions** persisted to pgsql with admin-only moderation lists.
 backend/
   Program.cs              host, logging standard, middleware, /api group, startup migration
   appsettings*.json       log levels; empty ConnectionStrings:Default (supplied via env)
-  Data/                   AppDbContext, Feedback + Submission + AnonRequest entities, factory
-  Endpoints/              Health / Feedback / Submission / Anon / Telegram webhook, validation, policies
-  Telegram/               Bot API client, AnonService (moderation pipeline), options
+  Data/                   AppDbContext, Feedback / Submission / AnonRequest / BotPost / Setting, factory
+  Endpoints/              Health / Feedback / Submission / Anon / Settings / Telegram webhook, validation
+  Telegram/               Bot API client, AnonService, DilemmaService, BotScheduler, options
+  BotData/                archive feed client (/bot-data.json) + Telegram poll-text limits
+  Settings/               runtime settings: closed catalog + 5-minute cached service
   Security/               ApiKey filter, ClientFingerprint (IP from X-Forwarded-For + salted hash)
   Migrations/             EF Core migrations (committed)
   Dockerfile, run.sh, set-webhook.sh, backend.env.example
@@ -42,6 +44,8 @@ backend/
 | POST   | `/api/anon`          | public²     | `{ text, source? }` → 201 `{ publicId }` – anonymous question |
 | GET    | `/api/anon`          | `X-Api-Key` | audit list (`?status=&take=`); never returns author data |
 | POST   | `/api/tg/webhook/{secret}` | secret³ | Telegram updates: DM submissions + admin moderation buttons |
+| GET    | `/api/settings`      | `X-Api-Key` | runtime tunables with their effective value and source |
+| PUT    | `/api/settings/{key}`| `X-Api-Key` | change one (validated against the catalog) |
 
 ¹ Public POSTs are rate-limited (5/min/IP), validated, and honeypot-guarded (a `website`
 field that must stay empty). The caller IP comes from `X-Forwarded-For` (set by nginx) and
@@ -63,8 +67,8 @@ and colleagues are in it. The pipeline: submit (site form, shell, or DM to
 one tap publishes it to the community chat as a message from the bot.
 
 **Anonymity is a storage property, not a promise.** `AnonRequest` holds no telegram id, no
-username, no raw IP – only `AuthorHash`, a salted SHA-256 used for flood control (max 5
-pending per author). `GET /api/anon` projects a subset that excludes even that. Publishing
+username, no raw IP – only `AuthorHash`, a salted SHA-256 used for flood control
+(`anon.max_pending_per_author`, default 5). `GET /api/anon` projects a subset that excludes even that. Publishing
 is a fresh `sendMessage`, never a forward (a forward carries `forward_from`), and the text
 goes out with `parse_mode` unset so a submitter can't smuggle in a hidden `tg://user?id=`
 mention.
@@ -75,13 +79,108 @@ The consequence: **we cannot notify an author when their question is published.*
 Code: `Telegram/` (client, `AnonService`, options), `Endpoints/AnonEndpoints.cs`,
 `Endpoints/TelegramWebhookEndpoints.cs`, `Data/AnonRequest.cs`.
 
+## How the bot reads the archive
+
+The bot never keeps its own copy of the content. The site publishes a machine-readable
+feed – `landing-main/layouts/index.botdata.json` → **`/bot-data.json`** (simulator
+dilemmas, quizzes, the open questions backlog, latest materials) – and `BotData/BotDataClient.cs`
+reads it. Hugo already knows how `articles/slug` resolves to a URL and which questions
+are still unanswered; duplicating that here would rot on the first content move. It also
+keeps landing and backend deploys independent.
+
+Two transports, one code path:
+
+- **`BOT_DATA_PATH`** – read the file off disk. Both services run on this host, so
+  `/opt/teamleads.kz/latest/bot-data.json` is a local read: no network, fresh the instant
+  a landing deploy lands. This is the default in the deploy workflow.
+- **`BOT_DATA_URL`** – HTTP with ETag revalidation, 15-minute TTL. Works if the two ever
+  split hosts. nginx serves `.json` under the server-level `max-age=0, must-revalidate`
+  (no asset location block matches it), so an unchanged feed costs a 304, not a download.
+
+A failed refresh never takes the feature down – the last good snapshot keeps serving.
+
+Poll texts are shortened by `BotData/PollText.cs`: Telegram caps a question at 300 chars
+and an option at 100, which 3 of 87 simulator options and 19 of 53 backlog questions
+exceed. It prefers the clause before a colon (in this backlog that is almost always the
+topic name) and falls back to a word-boundary cut. The full text always goes into the
+message body, so the shortening only ever affects the button.
+
+## Runtime settings
+
+`Settings/` holds the tunables that must change without a deploy – the scheduler's
+master switch, the dilemma slot, the anon flood limit. **The table is the only source.**
+Rows are seeded by a migration (`…_SeedSettings`) with `ON CONFLICT DO NOTHING`, so it
+runs once, in order, and never overwrites an operator's edit – nor fails on a key that
+somebody already created through the API. Adding a catalog key later means adding it to
+a migration; forget one and `SettingsService` still resolves it to the catalog default,
+so nothing breaks, the row is just missing from `/set` until you add it.
+
+The two chat ids live here too – `tg.admin_chat_id` and `tg.community_chat_id`. Moving
+the moderation group or migrating the community to a new supergroup is a settings change,
+not a redeploy. `0` means "not configured", and since no real chat id is 0, every admin
+path is simply inert until it is set.
+
+These are deliberately *not* env vars. Two places to set the same thing is how you end
+up with a deploy that silently undoes a change made from a phone – so `TG_SCHEDULER_ENABLED`
+`TG_DILEMMA_*`, `TG_ADMIN_CHAT_ID` and
+`TG_COMMUNITY_CHAT_ID` no longer exist. Nothing posts to the chat until `tg.scheduler.enabled`
+is `true` **in the table**.
+
+The catalog default still backs every read, so a key not seeded yet – or a database
+briefly unreachable – resolves to the same value the seed would have written. Settings
+can never be the reason the bot stops working.
+
+`SettingsService` is a singleton with a **5-minute cache**, refreshed lazily on read and
+invalidated immediately on write – a change from the admin chat lands at once locally and
+within one cache window everywhere. `BotScheduler` re-reads on every tick rather than at
+startup, which is the point: turning the bot off is a message, not a redeploy.
+
+`Settings/SettingsCatalog.cs` is a **closed list**. Only keys declared there can be stored
+or read, values are type- and range-checked on write, and an unknown key is a 400 rather
+than a setting that silently does nothing.
+
+> **Secrets stay in env, deliberately.** `TG_BOT_TOKEN`, `ADMIN_API_KEY` and especially
+> `IP_HASH_SALT` are not in the catalog and must never be added. Storing the salt in the
+> same database as the `AuthorHash` column it salts would make one dump enough to
+> brute-force telegram ids back out of the hashes – the exact property the anonymous
+> requests promise. The env file is a different blast radius from the database.
+
+| Where | How |
+|---|---|
+| HTTP | `GET /api/settings` (effective value + source), `PUT /api/settings/{key}` – both `X-Api-Key` |
+| Admin chat | `/set` lists everything, `/set <key> <value>` changes one |
+
+`source` in the GET response is `db` once a key is seeded, `default` if it is not in the
+table yet – useful for spotting a seed that did not run.
+
+## Weekly dilemma
+
+`Telegram/DilemmaService.cs` posts one simulator scenario as an anonymous poll and reveals
+the consequences 24h later (final chat tally from `stopPoll`, the site's own vote split,
+the lesson, and the link to the related material).
+
+`Telegram/BotScheduler.cs` ticks every five minutes and asks "is it time yet" instead of
+sleeping to the next slot, so a deploy mid-window can't skip it. Idempotency lives in the
+`BotPosts` table, not in the loop: repeated ticks and container swaps still produce exactly
+one post. Rotation is round-robin over the feed order – every dilemma runs before any repeats.
+
+Off by default: nothing posts until `tg.scheduler.enabled` is `true` in the settings
+table. The slot is `tg.dilemma.dow` (0=Sunday) + `tg.dilemma.hour`, Almaty time, seeded
+to Tuesday 11:00. In the admin chat, `/dilemma` and `/reveal` run the same code paths
+by hand, and `/set` changes the schedule.
+
 ### Telegram setup (one time, manual)
 
 1. BotFather → `/setprivacy` → **Enable** (the bot must not read community chat messages).
+   Avatar: `/setuserpic` with `landing-main/static/images/bot/padawan-avatar-512.png`
+   (source SVG next to it; artwork sits inside the inscribed circle because Telegram
+   crops avatars round).
 2. Add the bot to the community chat with permission to send messages.
 3. Add the bot to the private admin chat.
-4. Get both chat ids (e.g. temporarily forward a message to `@getidsbot`), put them into
-   `TG_ADMIN_CHAT_ID` / `TG_COMMUNITY_CHAT_ID`.
+4. Chat ids are seeded by the `SeedSettings` migration. To change either:
+   `/set tg.community_chat_id -100…` in the admin chat, or PUT /api/settings/<key>.
+   Verify an id before trusting it:
+   `curl "https://api.telegram.org/bot$TG_BOT_TOKEN/getChat?chat_id=-100…"`
 5. Register the webhook: `./set-webhook.sh` (reads `backend.env`, defaults to
    `https://teamleads.kz`). Re-run after rotating `TG_WEBHOOK_SECRET`.
 

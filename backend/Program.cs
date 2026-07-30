@@ -2,9 +2,11 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using TeamleadsBackend.BotData;
 using TeamleadsBackend.Data;
 using TeamleadsBackend.Endpoints;
 using TeamleadsBackend.Security;
+using TeamleadsBackend.Settings;
 using TeamleadsBackend.Telegram;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -74,12 +76,21 @@ builder.Services.AddRateLimiter(o =>
 // Flat env vars, validated in TelegramOptions.Enabled. With the bot unconfigured
 // the webhook 404s and /api/anon still stores requests – nothing else breaks.
 builder.Services.AddSingleton(Options.Create(TelegramOptions.FromConfiguration(builder.Configuration)));
+
+var tgOptions = TelegramOptions.FromConfiguration(builder.Configuration);
 builder.Services.AddHttpClient<TelegramClient>(c =>
 {
-    c.BaseAddress = new Uri("https://api.telegram.org/");
+    c.BaseAddress = new Uri(tgOptions.ApiBase);
     c.Timeout = TimeSpan.FromSeconds(15);   // the webhook must answer fast; Telegram redelivers otherwise
 });
+builder.Services.AddSingleton<SettingsService>();   // process-wide 5-minute cache
 builder.Services.AddScoped<AnonService>();
+builder.Services.AddScoped<DilemmaService>();
+
+// Archive feed (/bot-data.json): the bot reads content from the site rather than
+// keeping its own copy. See BotData/BotDataClient.cs for why.
+builder.Services.AddHttpClient<BotDataClient>(c => c.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddHostedService<BotScheduler>();
 
 // In Development the Hugo dev server (localhost:1313) calls us cross-origin.
 // In production nginx makes everything same-origin, so CORS is dev-only.
@@ -106,6 +117,7 @@ api.MapHealth();
 api.MapFeedback();
 api.MapSubmissions();
 api.MapAnon();
+api.MapSettings();
 api.MapTelegramWebhook();
 
 // ── Startup migration with retry ────────────────────────────────────────────

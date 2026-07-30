@@ -14,8 +14,13 @@ cd "$(dirname "$0")"
 ENV_FILE="${ENV_FILE:-backend.env}"
 [[ -f "$ENV_FILE" ]] || { echo "Missing $ENV_FILE" >&2; exit 1; }
 
-# shellcheck disable=SC1090
-set -a; source "$ENV_FILE"; set +a
+# Read the two keys we need instead of sourcing the file. `source` would execute it as
+# shell, and the connection string contains both `;` and `SSL Mode=Require`, which the
+# shell reads as a command separator followed by a command named SSL.
+env_value() { grep -m1 -E "^$1=" "$ENV_FILE" | cut -d= -f2-; }
+
+TG_BOT_TOKEN="$(env_value TG_BOT_TOKEN)"
+TG_WEBHOOK_SECRET="$(env_value TG_WEBHOOK_SECRET)"
 
 : "${TG_BOT_TOKEN:?TG_BOT_TOKEN is not set in $ENV_FILE}"
 : "${TG_WEBHOOK_SECRET:?TG_WEBHOOK_SECRET is not set in $ENV_FILE}"

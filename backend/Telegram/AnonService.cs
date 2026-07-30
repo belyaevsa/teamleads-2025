@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TeamleadsBackend.Data;
+using TeamleadsBackend.Settings;
 
 namespace TeamleadsBackend.Telegram;
 
@@ -11,6 +12,7 @@ namespace TeamleadsBackend.Telegram;
 public sealed class AnonService(
     AppDbContext db,
     TelegramClient tg,
+    SettingsService settings,
     IOptions<TelegramOptions> options,
     ILogger<AnonService> log)
 {
@@ -23,10 +25,11 @@ public sealed class AnonService(
     // Ambiguous glyphs (0/O, 1/I) left out – people read these ids back to the bot.
     private const string IdAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-    // Beyond this many still-pending requests from the same author, we stop
-    // creating cards. The submitter still gets a success response: telling a
-    // flooder they were throttled just invites them to rotate identity.
-    private const int MaxPendingPerAuthor = 5;
+    // Beyond this many still-pending requests from the same author, we stop creating
+    // cards. Tunable at runtime (anon.max_pending_per_author): the right number depends
+    // on how much moderation the admins can absorb, which only shows up in practice.
+    // The submitter still gets a success response either way – telling a flooder they
+    // were throttled just invites them to rotate identity.
 
     public enum CreateOutcome { Created, Throttled }
 
@@ -37,7 +40,7 @@ public sealed class AnonService(
         {
             var pending = await db.AnonRequests.CountAsync(
                 r => r.AuthorHash == authorHash && r.Status == "pending", ct);
-            if (pending >= MaxPendingPerAuthor)
+            if (pending >= await settings.GetIntAsync("anon.max_pending_per_author", ct))
             {
                 log.LogWarning("Anon request throttled: {Pending} already pending for this author.", pending);
                 return (CreateOutcome.Throttled, new AnonRequest { PublicId = RandomId(6), Text = text });
@@ -71,7 +74,14 @@ public sealed class AnonService(
             return;
         }
 
-        var res = await tg.SendMessageAsync(_opt.AdminChatId, CardText(row), PendingKeyboard(row.PublicId), ct);
+        var adminChat = await settings.GetLongAsync("tg.admin_chat_id", ct);
+        if (adminChat == 0)
+        {
+            log.LogWarning("tg.admin_chat_id is not set; anon request {PublicId} stored without a moderation card.", row.PublicId);
+            return;
+        }
+
+        var res = await tg.SendMessageAsync(adminChat, CardText(row), PendingKeyboard(row.PublicId), ct);
         if (!res.Ok) return;
 
         row.AdminMessageId = res.MessageId;
@@ -87,7 +97,10 @@ public sealed class AnonService(
     {
         if (row.Status != "pending") return $"Уже {StatusRu(row.Status)}.";
 
-        var sent = await tg.SendMessageAsync(_opt.CommunityChatId, PublishedText(row), ct: ct);
+        var communityChat = await settings.GetLongAsync("tg.community_chat_id", ct);
+        if (communityChat == 0) return "Не задан tg.community_chat_id.";
+
+        var sent = await tg.SendMessageAsync(communityChat, PublishedText(row), ct: ct);
         if (!sent.Ok)
         {
             // Leave it pending with live buttons so the admin can retry after the fix.
@@ -101,7 +114,7 @@ public sealed class AnonService(
         row.ModeratedByTgId = byTgId;
         await db.SaveChangesAsync(ct);
 
-        var link = MessageLink(_opt.CommunityChatId, sent.MessageId);
+        var link = MessageLink(communityChat, sent.MessageId);
         await UpdateCardAsync(row, $"✅ Опубликовано · {row.PublicId}\n{link}\n\n{row.PublishText}", null, ct);
         return "Опубликовано.";
     }
@@ -134,7 +147,9 @@ public sealed class AnonService(
     private async Task UpdateCardAsync(AnonRequest row, string text, object? keyboard, CancellationToken ct)
     {
         if (row.AdminMessageId is not { } messageId) return;
-        await tg.EditMessageTextAsync(_opt.AdminChatId, messageId, text, keyboard, ct);
+        var adminChat = await settings.GetLongAsync("tg.admin_chat_id", ct);
+        if (adminChat == 0) return;
+        await tg.EditMessageTextAsync(adminChat, messageId, text, keyboard, ct);
     }
 
     // ── rendering ───────────────────────────────────────────────────────────

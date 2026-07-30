@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- @temlead_helper_bot «Падаван»: a terminal window that is also a speech bubble.
+       Terminal = the site's own idiom (/shell/), bubble = what the bot does with your
+       message. Bright plate on purpose: it has to be findable in a list of dark avatars.
+       Artwork stays inside the inscribed circle – Telegram crops avatars round. -->
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#0E7490"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#plate)"/>
+  <path fill="#0B1220"
+        d="M116 120 h280 a34 34 0 0 1 34 34 v186 a34 34 0 0 1 -34 34 h-166 l-84 62 v-62 h-30 a34 34 0 0 1 -34 -34 v-186 a34 34 0 0 1 34 -34 z"/>
+  <g fill="#334155">
+    <circle cx="152" cy="158" r="10"/>
+    <circle cx="186" cy="158" r="10"/>
+    <circle cx="220" cy="158" r="10"/>
+  </g>
+  <path fill="none" stroke="#22D3EE" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"
+        d="M224 226 L270 268 L224 310"/>
+  <rect x="306" y="222" width="28" height="92" rx="6" fill="#FEC50C"/>
+</svg>

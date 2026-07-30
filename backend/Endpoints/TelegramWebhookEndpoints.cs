@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 using TeamleadsBackend.Security;
+using TeamleadsBackend.Settings;
 using TeamleadsBackend.Telegram;
 
 namespace TeamleadsBackend.Endpoints;
@@ -48,6 +49,8 @@ public static class TelegramWebhookEndpoints
             string secret,
             HttpRequest request,
             AnonService anon,
+            DilemmaService dilemmas,
+            SettingsService settings,
             TelegramClient tg,
             IOptions<TelegramOptions> options,
             IConfiguration cfg,
@@ -82,8 +85,13 @@ public static class TelegramWebhookEndpoints
 
             try
             {
-                if (update?.CallbackQuery is { } cb) await HandleCallbackAsync(cb, anon, tg, opt, ct);
-                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, tg, opt, cfg, ct);
+                // Resolved per update rather than at startup: moving the moderation
+                // group is a settings change, not a redeploy. 0 means "not configured",
+                // and no real chat id is 0, so every admin path is simply inert.
+                var adminChat = await settings.GetLongAsync("tg.admin_chat_id", ct);
+
+                if (update?.CallbackQuery is { } cb) await HandleCallbackAsync(cb, anon, tg, adminChat, ct);
+                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, settings, tg, adminChat, cfg, ct);
             }
             catch (Exception ex)
             {
@@ -102,21 +110,40 @@ public static class TelegramWebhookEndpoints
     // ── messages ────────────────────────────────────────────────────────────
 
     private static async Task HandleMessageAsync(
-        Message msg, AnonService anon, TelegramClient tg, TelegramOptions opt, IConfiguration cfg, CancellationToken ct)
+        Message msg, AnonService anon, DilemmaService dilemmas, SettingsService settings, TelegramClient tg,
+        long adminChat, IConfiguration cfg, CancellationToken ct)
     {
         var text = msg.Text?.Trim();
         if (string.IsNullOrEmpty(text)) return;
 
         // In the admin chat, a reply to an "✏️ Правка XXXX" prompt carries the new text.
-        if (msg.Chat.Id == opt.AdminChatId)
+        if (adminChat != 0 && msg.Chat.Id == adminChat)
         {
+            // Manual triggers for the weekly dilemma – the same code the scheduler runs,
+            // so what you test by hand is what fires on Monday.
+            if (text.StartsWith("/dilemma", StringComparison.Ordinal))
+            {
+                await tg.SendMessageAsync(adminChat, await dilemmas.PostAsync(ct), ct: ct);
+                return;
+            }
+            if (text.StartsWith("/reveal", StringComparison.Ordinal))
+            {
+                await tg.SendMessageAsync(adminChat, await dilemmas.FollowUpAsync(TimeSpan.Zero, ct), ct: ct);
+                return;
+            }
+            if (text.StartsWith("/set", StringComparison.Ordinal))
+            {
+                await HandleSettingsAsync(msg, text, settings, tg, adminChat, ct);
+                return;
+            }
+
             if (EditTargetOf(msg.ReplyToMessage?.Text) is { } publicId)
             {
                 var target = await anon.FindAsync(publicId, ct);
                 var reply = target is null
                     ? $"Запрос {publicId} не найден."
                     : await anon.ApplyEditAsync(target, text, ct);
-                await tg.SendMessageAsync(opt.AdminChatId, reply, ct: ct);
+                await tg.SendMessageAsync(adminChat, reply, ct: ct);
             }
             return;
         }
@@ -161,6 +188,30 @@ public static class TelegramWebhookEndpoints
             """, ct: ct);
     }
 
+    // Runtime settings from the admin chat: `/set` lists them with their effective
+    // values, `/set <key> <value>` changes one. This is the point of moving settings
+    // into the database – turning the bot off is a message, not a deploy.
+    private static async Task HandleSettingsAsync(
+        Message msg, string text, SettingsService settings, TelegramClient tg, long adminChat, CancellationToken ct)
+    {
+        var parts = text.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (parts.Length < 3)
+        {
+            var lines = new List<string> { "⚙️ Настройки бота", "" };
+            foreach (dynamic s in await settings.DescribeAsync(ct))
+                lines.Add($"{s.key} = {s.value}  ({s.source})\n    {s.Description}");
+            lines.Add("");
+            lines.Add("Изменить: /set <ключ> <значение>");
+            await tg.SendMessageAsync(adminChat, string.Join("\n", lines), ct: ct);
+            return;
+        }
+
+        var error = await settings.SetAsync(parts[1], parts[2], msg.From?.Id, ct);
+        await tg.SendMessageAsync(adminChat,
+            error ?? $"✅ {parts[1]} = {parts[2]}. Применится в течение 5 минут (кэш настроек).", ct: ct);
+    }
+
     private static async Task HandleStatusAsync(Message msg, string text, AnonService anon, TelegramClient tg, CancellationToken ct)
     {
         var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -183,11 +234,11 @@ public static class TelegramWebhookEndpoints
     // ── callbacks ───────────────────────────────────────────────────────────
 
     private static async Task HandleCallbackAsync(
-        CallbackQuery cb, AnonService anon, TelegramClient tg, TelegramOptions opt, CancellationToken ct)
+        CallbackQuery cb, AnonService anon, TelegramClient tg, long adminChat, CancellationToken ct)
     {
         // Only buttons pressed inside the admin chat count. Callback data is
         // attacker-controllable in general, so the chat check is the real gate.
-        if (cb.Message?.Chat.Id != opt.AdminChatId)
+        if (adminChat == 0 || cb.Message?.Chat.Id != adminChat)
         {
             await tg.AnswerCallbackQueryAsync(cb.Id, "Недоступно.", ct);
             return;
@@ -212,16 +263,16 @@ public static class TelegramWebhookEndpoints
         {
             "pub" => await anon.PublishAsync(row, adminId, ct),
             "rej" => await anon.RejectAsync(row, adminId, ct),
-            "edit" => await PromptEditAsync(row.PublicId, tg, opt, ct),
+            "edit" => await PromptEditAsync(row.PublicId, tg, adminChat, ct),
             _ => "",
         };
 
         await tg.AnswerCallbackQueryAsync(cb.Id, answer, ct);
     }
 
-    private static async Task<string> PromptEditAsync(string publicId, TelegramClient tg, TelegramOptions opt, CancellationToken ct)
+    private static async Task<string> PromptEditAsync(string publicId, TelegramClient tg, long adminChat, CancellationToken ct)
     {
-        await tg.SendMessageAsync(opt.AdminChatId, $"""
+        await tg.SendMessageAsync(adminChat, $"""
             ✏️ Правка {publicId}
             Ответьте на это сообщение новым текстом – он заменит исходный.
             Обычный случай: убрать детали, по которым автора можно вычислить.

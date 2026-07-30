@@ -7,6 +7,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Feedback> Feedback => Set<Feedback>();
     public DbSet<Submission> Submissions => Set<Submission>();
     public DbSet<AnonRequest> AnonRequests => Set<AnonRequest>();
+    public DbSet<BotPost> BotPosts => Set<BotPost>();
+    public DbSet<Setting> Settings => Set<Setting>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -47,6 +49,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.CreatedAt);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.AuthorHash);
+        });
+
+        b.Entity<BotPost>(e =>
+        {
+            e.Property(x => x.Kind).HasMaxLength(16).IsRequired();
+            e.Property(x => x.Key).HasMaxLength(128).IsRequired();
+            e.HasIndex(x => new { x.Kind, x.Key });
+            e.HasIndex(x => x.PostedAt);
+        });
+
+        b.Entity<Setting>(e =>
+        {
+            e.HasKey(x => x.Key);
+            e.Property(x => x.Key).HasMaxLength(64);
+            e.Property(x => x.Value).HasMaxLength(2000).IsRequired();
         });
     }
 }
