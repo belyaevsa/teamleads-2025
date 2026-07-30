@@ -12,27 +12,33 @@ using TeamleadsBackend.Telegram;
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Logging standard ────────────────────────────────────────────────────────
-// One console sink, structured. Production emits JSON (one object per line) so
-// `docker logs` / any aggregator can parse it; Development stays human-readable.
-// Levels are tuned in appsettings.json. Scopes are on, so the request method/path
-// and any BeginScope context ride along with every line.
+// One console sink, one line per event, readable in `docker logs` without a JSON
+// parser. Set LOG_FORMAT=json to switch to structured output if an aggregator that
+// wants it ever appears.
+//
+// Scopes stay OFF in production. They repeat the request path on every line, which
+// is both noise (HttpLogging already reports method/path/status) and a leak: the
+// Telegram webhook carries its secret in the path, and a scope prefix would print it
+// on every log line the request produces. See HttpLoggingRedaction for the other half.
 builder.Logging.ClearProviders();
-if (builder.Environment.IsDevelopment())
-{
-    builder.Logging.AddSimpleConsole(o =>
-    {
-        o.IncludeScopes = true;
-        o.SingleLine = true;
-        o.TimestampFormat = "HH:mm:ss ";
-    });
-}
-else
+if (string.Equals(builder.Configuration["LOG_FORMAT"], "json", StringComparison.OrdinalIgnoreCase))
 {
     builder.Logging.AddJsonConsole(o =>
     {
         o.IncludeScopes = true;
         o.UseUtcTimestamp = true;
         o.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
+    });
+}
+else
+{
+    var development = builder.Environment.IsDevelopment();
+    builder.Logging.AddSimpleConsole(o =>
+    {
+        o.IncludeScopes = development;
+        o.SingleLine = true;
+        o.UseUtcTimestamp = !development;
+        o.TimestampFormat = development ? "HH:mm:ss " : "yyyy-MM-dd HH:mm:ss ";
     });
 }
 
@@ -61,6 +67,9 @@ builder.Services.AddHttpLogging(o =>
                     | HttpLoggingFields.Duration;
     o.CombineLogs = true;
 });
+
+// The webhook secret travels in the request path, so the access log needs redaction.
+builder.Services.AddHttpLoggingInterceptor<HttpLoggingRedaction>();
 
 // Per-client fixed-window limiter for the public POSTs (5/min/IP). The partition
 // key is the real client IP from X-Forwarded-For (see ClientFingerprint).

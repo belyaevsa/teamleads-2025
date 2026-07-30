@@ -34,6 +34,8 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::7}"
           docker build -t "${IMAGE}:${SHORT_SHA}" -t "${IMAGE}:latest" backend
 
+      # Prerequisite, one time on the host (the runner user cannot write to /opt):
+      #   sudo install -d -m 700 -o <runner-user> -g <runner-user> /opt/teamleads-backend
       - name: Write env file from secrets
         env:
           CONN: ${{ secrets.BACKEND_CONNECTION_STRING }}

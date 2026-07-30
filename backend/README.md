@@ -228,6 +228,15 @@ dotnet dotnet-ef migrations add <Name>   # committed under Migrations/
 
 ## Deploy (CI/CD)
 
+Host prerequisites, one time (the runner user cannot write to `/opt`, and the runner
+needs the Docker socket):
+
+```bash
+sudo install -d -m 700 -o <runner-user> -g <runner-user> /opt/teamleads-backend
+sudo usermod -aG docker <runner-user>
+sudo systemctl restart actions.runner.belyaevsa-teamleads-2025.<id>.service
+```
+
 `.github/workflows/deploy-backend.yml` runs on the **self-hosted runner on the server**
 (same pattern as the Hugo deploys). On a push to `master` touching `backend/**` it:
 
