@@ -4628,3 +4628,157 @@ button.topic-node:focus-visible,
     border-left: 3px solid var(--gray-200);
     color: var(--gray-500);
 }
+
+/* ============================================================
+   Paste – форма живет по тем же правилам, что и анонимная:
+   те же токены, та же сетка, те же состояния. Своего тут только
+   моноширинное поле и блок с готовой ссылкой.
+   ============================================================ */
+.paste-lede {
+    max-width: 46rem;
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    color: var(--gray-600);
+    margin-bottom: var(--space-lg);
+}
+
+.paste-form { margin-bottom: var(--space-3xl); }
+
+.paste-label {
+    display: block;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: var(--space-xs);
+}
+
+.paste-hint {
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--gray-500);
+    margin-bottom: var(--space-md);
+}
+
+.paste-textarea {
+    width: 100%;
+    padding: var(--space-md);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--gray-900);
+    background: var(--white);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-lg);
+    resize: vertical;
+    tab-size: 2;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.paste-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgb(0 175 202 / 0.15);
+}
+
+.paste-form-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    margin-top: var(--space-md);
+}
+
+.paste-counter {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--gray-400);
+}
+
+.paste-counter.is-over { color: #b91c1c; }
+
+/* Honeypot: off-screen rather than display:none – some bots skip hidden fields. */
+.paste-hp {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.paste-status {
+    margin-top: var(--space-md);
+    font-size: 0.9375rem;
+    color: var(--gray-500);
+    min-height: 1.4em;
+}
+
+.paste-status.is-err { color: #b91c1c; }
+
+.paste-done {
+    padding: var(--space-xl);
+    margin-bottom: var(--space-3xl);
+    background: var(--kz-gold-light);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-lg);
+}
+
+.paste-done[hidden] { display: none; }
+.paste-done h2 { margin-top: 0; }
+.paste-done p { font-size: 0.9375rem; line-height: 1.6; color: var(--gray-600); }
+
+.paste-url-row {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: stretch;
+    margin: var(--space-md) 0 var(--space-sm);
+}
+
+.paste-url {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-sm) var(--space-md);
+    font-family: var(--font-mono);
+    font-size: 0.9375rem;
+    color: var(--gray-900);
+    background: var(--white);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-lg);
+}
+
+.paste-url:focus { outline: none; border-color: var(--primary); }
+.paste-copy { flex: 0 0 auto; }
+.paste-done-meta { color: var(--gray-500); }
+
+.paste-alt {
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--gray-200);
+}
+
+.paste-alt h2 { margin-top: 0; }
+
+.paste-alt p {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--gray-600);
+}
+
+.paste-alt-shell { color: var(--gray-500); }
+
+.paste-alt kbd {
+    padding: 1px 6px;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--gray-800);
+    background: var(--gray-100);
+    border: 1px solid var(--gray-300);
+    border-radius: 4px;
+}
+
+@media (max-width: 640px) {
+    .paste-form-row { flex-direction: column-reverse; align-items: stretch; }
+    .paste-form-row .btn { width: 100%; }
+    .paste-url-row { flex-direction: column; }
+}

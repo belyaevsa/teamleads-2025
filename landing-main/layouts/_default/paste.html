@@ -1,157 +1,79 @@
-{{- define "main" -}}
-<article class="paste-article">
-  {{ .Content }}
-</article>
+{{ define "main" }}
+<section class="report-hero">
+    <div class="container">
+        <a href="/" class="report-back">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            На главную
+        </a>
+        <h1 class="report-title">{{ .Title }}</h1>
+        <p class="paste-lede">Простыня кода в чате хоронит обсуждение. Вставьте ее сюда – получите
+        короткую ссылку с подсветкой синтаксиса. Без регистрации, живет 30 дней.</p>
+    </div>
+</section>
 
-<style>
-  .paste-page { max-width: 800px; margin: 0 auto; padding: 20px 16px 60px; }
-  .paste-page-title { font-size: 28px; font-weight: 700; margin-bottom: 8px; color: var(--fg, #e6edf3); }
-  .paste-page-sub { font-size: 15px; color: var(--fg-muted, #8b949e); margin-bottom: 28px; line-height: 1.6; }
-  .paste-page-sub strong { color: var(--accent, #FEC50C); }
+<section class="report-content">
+    <div class="container report-container">
 
-  .paste-form { background: var(--bg-card, #161b22); border: 1px solid var(--border, #30363d); border-radius: 8px; padding: 20px; }
-  .paste-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--fg, #e6edf3); }
-  .paste-textarea {
-    width: 100%;
-    min-height: 300px;
-    background: var(--bg, #0d1117);
-    color: var(--fg, #c9d1d9);
-    border: 1px solid var(--border, #30363d);
-    border-radius: 6px;
-    padding: 14px;
-    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace;
-    font-size: 13px;
-    line-height: 1.5;
-    resize: vertical;
-    outline: none;
-  }
-  .paste-textarea:focus { border-color: var(--primary, #00AFCA); box-shadow: 0 0 0 2px rgba(0,175,202,0.2); }
-  .paste-char-count { text-align: right; font-size: 12px; color: var(--fg-muted, #8b949e); margin: 4px 0 16px; }
-  .paste-submit {
-    background: var(--primary, #00AFCA);
-    color: #fff;
-    border: none;
-    padding: 10px 24px;
-    border-radius: 6px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-  .paste-submit:hover { background: var(--primary-dark, #008BA3); }
-  .paste-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-  .paste-error { display: inline-block; margin-left: 12px; font-size: 14px; color: #f85149; }
+        <form class="paste-form" id="paste-form" novalidate data-paste-page>
+            <label class="paste-label" for="paste-content">Код, конфиг или лог</label>
+            <p class="paste-hint">Язык определяется сам – размечать ничего не нужно. Секреты,
+            токены и внутренние адреса лучше вычистить: ссылка открыта всем, у кого она есть.</p>
+            <textarea id="paste-content" class="paste-textarea" rows="16" spellcheck="false"
+                      maxlength="64000" required data-paste-textarea
+                      placeholder="docker run -d --name teamleads-backend \&#10;  --restart unless-stopped \&#10;  -p 127.0.0.1:8080:8080 \&#10;  --env-file backend.env \&#10;  teamleads-backend:latest"></textarea>
 
-  .paste-result { margin-top: 24px; padding: 16px 20px; background: var(--bg-card, #161b22); border: 1px solid var(--border, #30363d); border-radius: 8px; }
-  .paste-result-label { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #3fb950; }
-  .paste-result-url { display: flex; gap: 8px; align-items: center; }
-  .paste-url-input {
-    flex: 1;
-    background: var(--bg, #0d1117);
-    color: var(--primary, #58a6ff);
-    border: 1px solid var(--border, #30363d);
-    border-radius: 6px;
-    padding: 8px 12px;
-    font-family: monospace;
-    font-size: 13px;
-    outline: none;
-  }
-  .paste-copy-btn {
-    background: var(--bg-btn, #21262d);
-    color: var(--fg, #c9d1d9);
-    border: 1px solid var(--border, #30363d);
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 13px;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-  .paste-copy-btn:hover { background: #30363d; }
-  .paste-result-raw { margin-top: 8px; font-size: 13px; }
-  .paste-result-raw a { color: var(--primary, #58a6ff); text-decoration: none; }
-  .paste-result-raw a:hover { text-decoration: underline; }
+            <div class="paste-form-row">
+                <span class="paste-counter" id="paste-counter" aria-live="polite">0 / 64 000</span>
+                <button type="submit" class="btn btn-primary" data-paste-submit>Создать ссылку</button>
+            </div>
 
-  .paste-instructions {
-    margin-top: 32px;
-    padding: 16px 20px;
-    background: var(--bg-card, #161b22);
-    border: 1px solid var(--border, #30363d);
-    border-radius: 8px;
-    font-size: 14px;
-    line-height: 1.7;
-    color: var(--fg-muted, #8b949e);
-  }
-  .paste-instructions summary { cursor: pointer; font-weight: 600; color: var(--fg, #e6edf3); font-size: 15px; margin-bottom: 12px; }
-  .paste-instructions ul { padding-left: 20px; }
-  .paste-instructions li { margin-bottom: 6px; }
-  .paste-instructions code { background: var(--bg, #0d1117); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
-  .paste-instructions a { color: var(--primary, #58a6ff); text-decoration: none; }
-  .paste-instructions a:hover { text-decoration: underline; }
-  .paste-instructions p { margin-top: 8px; }
-</style>
+            {{- /* Honeypot: hidden from people, irresistible to bots. The backend drops
+                   any submission where it is filled in. */ -}}
+            <div class="paste-hp" aria-hidden="true">
+                <label for="paste-website">Не заполняйте это поле</label>
+                <input type="text" id="paste-website" name="website" tabindex="-1" autocomplete="off">
+            </div>
 
-<script>
-(function () {
-  var page = document.querySelector('[data-paste-page]');
-  if (!page) return;
+            <p class="paste-status" id="paste-status" role="status" aria-live="polite"></p>
+        </form>
 
-  var form = page.querySelector('[data-paste-form]');
-  var textarea = page.querySelector('[data-paste-textarea]');
-  var count = page.querySelector('[data-paste-count]');
-  var submit = page.querySelector('[data-paste-submit]');
-  var error = page.querySelector('[data-paste-error]');
-  var resultBox = page.querySelector('[data-paste-result]');
-  var urlInput = page.querySelector('[data-paste-url]');
-  var copyBtn = page.querySelector('[data-paste-copy]');
-  var rawLink = page.querySelector('[data-paste-raw]');
+        <div class="paste-done" hidden data-paste-result>
+            <h2>Ссылка готова</h2>
+            <div class="paste-url-row">
+                <input type="text" class="paste-url" readonly aria-label="Ссылка на paste" data-paste-url>
+                <button type="button" class="btn btn-primary paste-copy" data-paste-copy>Копировать</button>
+            </div>
+            <p class="paste-done-meta">
+                <a href="" target="_blank" rel="noopener" data-paste-open>Открыть</a> ·
+                <a href="" target="_blank" rel="noopener" data-paste-raw>Raw</a> ·
+                живет 30 дней
+            </p>
+            <p><button type="button" class="btn btn-secondary" data-paste-again>Создать еще одну</button></p>
+        </div>
 
-  var MAX = 64000;
-  var MIN = 10;
+        <div class="paste-alt">
+            <h2>То же самое, не открывая сайт</h2>
+            <p><strong>В телеграме:</strong> отправьте <code>/paste ваш код</code> боту
+            <a href="https://t.me/temlead_helper_bot" target="_blank" rel="noopener">@temlead_helper_bot</a>.
+            Если просто пришлете ему простыню длиннее 300 символов, он сам предложит сделать
+            ссылку. Paste из бота живет 7 дней, и рядом с ним видно ваше имя – в отличие от
+            <a href="/anon/">анонимного вопроса</a>.</p>
+            <p class="paste-alt-shell"><strong>В терминале:</strong> в <a href="/shell/">шелл-режиме</a>
+            наберите <a href="/shell/?cmd=nano+snippet.sh" class="questions-shell-cmd">nano snippet.sh</a>,
+            напишите текст и нажмите <kbd>^U</kbd> – ссылка появится прямо в терминале.
+            Уже сохраненный файл выкладывает <code>nano --share snippet.sh</code>.</p>
+        </div>
 
-  textarea.addEventListener('input', function () { count.textContent = textarea.value.length + ' / ' + MAX.toLocaleString(); });
-
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    var text = textarea.value.trim();
-    error.textContent = '';
-    resultBox.hidden = true;
-
-    if (text.length < MIN) { error.textContent = 'Минимум ' + MIN + ' символов.'; return; }
-    if (text.length > MAX) { error.textContent = 'Максимум ' + (MAX / 1000) + ' КБ.'; return; }
-
-    submit.disabled = true;
-    submit.textContent = 'Создаётся…';
-
-    fetch('/api/pastes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: text, source: 'web', website: '' })
-    }).then(function (r) {
-      return r.json().then(function (j) { return { ok: r.ok, body: j }; });
-    }).then(function (r) {
-      submit.disabled = false;
-      submit.textContent = 'Создать paste';
-
-      if (!r.ok) { error.textContent = (r.body && r.body.detail) || 'Ошибка при создании paste.'; return; }
-
-      urlInput.value = r.body.url;
-      rawLink.href = r.body.raw_url;
-      resultBox.hidden = false;
-      textarea.value = '';
-      count.textContent = '0 / ' + MAX.toLocaleString();
-    }).catch(function () {
-      submit.disabled = false;
-      submit.textContent = 'Создать paste';
-      error.textContent = 'Сетевая ошибка. Попробуйте снова.';
-    });
-  });
-
-  copyBtn.addEventListener('click', function () {
-    navigator.clipboard.writeText(urlInput.value).then(function () {
-      copyBtn.textContent = 'Copied!';
-      setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1500);
-    });
-  });
-})();
-</script>
-{{- end -}}
+        <div class="report-bottom-nav">
+            <a href="/" class="btn btn-secondary">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                На главную
+            </a>
+        </div>
+    </div>
+</section>
+{{ end }}
