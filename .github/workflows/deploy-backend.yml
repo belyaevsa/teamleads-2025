@@ -1,17 +1,16 @@
 name: Deploy backend → teamleads.kz/api
 
-# ⚠️ AUTO-DEPLOY DISABLED (for now). The backend isn't live yet – host Docker,
-# the GitHub secrets, and the remote pgsql are still pending. The `push` trigger
-# is commented out so commits don't deploy; only manual runs are possible.
-# To re-enable continuous deploy, uncomment the `push:` block below.
+# Continuous deploy: a push to master touching backend/** swaps the container on the
+# host. The container applies EF migrations on startup, so a merged migration reaches
+# the production schema without a separate step – review migrations with that in mind.
 on:
-  # push:
-  #   branches: [master]
-  #   paths:
-  #     - 'backend/**'
-  #     - '.github/workflows/deploy-backend.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
 
-  workflow_dispatch:   # manual trigger only (Actions tab → Run workflow)
+  workflow_dispatch:   # manual re-run (Actions tab → Run workflow)
 
 # Don't let two backend deploys race on the same container/env file.
 concurrency:

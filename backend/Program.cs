@@ -37,8 +37,14 @@ else
 }
 
 // ── Services ────────────────────────────────────────────────────────────────
-var conn = builder.Configuration.GetConnectionString("Default")
-           ?? throw new InvalidOperationException("ConnectionStrings__Default is not configured.");
+// Supplied as the ConnectionStrings__Default env var (double underscore = nested key);
+// the environment provider is part of Configuration and overrides appsettings.json.
+// Checked for empty, not just null: appsettings.json holds "" as a placeholder, so a
+// missing env var yields an empty string and `?? throw` would never fire – the app
+// would boot and fail later inside Npgsql with a far less obvious message.
+var conn = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(conn))
+    throw new InvalidOperationException("ConnectionStrings__Default is not configured.");
 
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseNpgsql(conn, npg => npg.EnableRetryOnFailure()));

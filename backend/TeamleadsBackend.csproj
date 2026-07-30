@@ -14,7 +14,14 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+
+    <!-- Transitive pin. Microsoft.AspNetCore.OpenApi 10.0.10 still asks for
+         Microsoft.OpenApi 2.0.0, which carries GHSA-v5pm-xwqc-g5wc (circular schema
+         references can abort OpenAPI parsing). The 2.x line is patched at 2.7.5, and
+         the parent's dependency is a minimum rather than an exact pin, so lifting it
+         here is safe. Drop this line once the parent package moves past 2.7.5. -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
   </ItemGroup>
 
 </Project>
