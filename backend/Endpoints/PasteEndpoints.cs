@@ -26,7 +26,9 @@ public static class PasteEndpoints
 
     public static IEndpointRouteBuilder MapPastes(this IEndpointRouteBuilder api)
     {
-        var group = api.MapGroup("/api/pastes");
+        // Relative to the caller's group. Program.cs already maps everything under
+        // "/api", so an absolute "/api/pastes" here would land on /api/api/pastes.
+        var group = api.MapGroup("/pastes");
 
         group.MapPost("/", CreateAsync)
             .WithName("CreatePaste")

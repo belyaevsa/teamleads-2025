@@ -97,9 +97,13 @@ public static class TelegramWebhookEndpoints
                 // and no real chat id is 0, so every admin path is simply inert.
                 var adminChat = await settings.GetLongAsync("tg.admin_chat_id", ct);
 
-                if (update?.InlineQuery is { } inline) await HandleInlineQueryAsync(inline, search, tg, ct);
-                else if (update?.CallbackQuery is { } cb) await HandleCallbackAsync(cb, anon, tg, adminChat, ct);
-                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, questions, search, db, settings, tg, adminChat, cfg, ct);
+                // One line per update saying what it was and what we did with it.
+                // Deliberately never logs message text, telegram ids or usernames:
+                // the anonymity promise has to hold in the log file too.
+                if (update?.InlineQuery is { } inline) await HandleInlineQueryAsync(inline, search, tg, log, ct);
+                else if (update?.CallbackQuery is { } cb) await HandleCallbackAsync(cb, anon, tg, adminChat, log, ct);
+                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, questions, search, db, settings, tg, adminChat, cfg, log, ct);
+                else log.LogInformation("Update ignored: no message, callback or inline_query.");
             }
             catch (Exception ex)
             {
@@ -121,10 +125,14 @@ public static class TelegramWebhookEndpoints
         Message msg, AnonService anon, DilemmaService dilemmas, QuestionService questions, SearchService search,
         AppDbContext db,
         SettingsService settings, TelegramClient tg,
-        long adminChat, IConfiguration cfg, CancellationToken ct)
+        long adminChat, IConfiguration cfg, ILogger log, CancellationToken ct)
     {
         var text = msg.Text?.Trim();
-        if (string.IsNullOrEmpty(text)) return;
+        if (string.IsNullOrEmpty(text)) { log.LogInformation("Message ignored: no text (photo, sticker or service update)."); return; }
+
+        // Command name only – never the arguments, which are the user's content.
+        var command = text.StartsWith('/') ? text.Split(' ', 2)[0] : null;
+        var scope = adminChat != 0 && msg.Chat.Id == adminChat ? "admin" : msg.Chat.Type;
 
         // Bootstrap helper, answered in ANY chat: reports the id of the chat it is called
         // from. Configuring tg.admin_chat_id otherwise means guessing whether a group is
