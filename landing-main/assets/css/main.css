@@ -3584,6 +3584,23 @@ body.cl-lock{overflow:hidden}
 @media (prefers-reduced-motion:reduce){.cl-typing span{animation:none}}
 
 /* ============================================================
+   Context Ask – анонимный вопрос по выделенной цитате.
+   Переиспользует оверлей и панель Claude-чата (.cl-overlay/.cl-panel/.cl-bar/
+   .cl-form/.cl-input/.cl-send), чтобы не заводить третий стиль модалки.
+   ============================================================ */
+.ask-tip{position:absolute;z-index:1002;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;background:var(--cl-ink);color:#fff;border-radius:10px;font-size:13.5px;line-height:1;cursor:pointer;white-space:nowrap;box-shadow:0 12px 30px -12px rgba(0,0,0,.6);user-select:none;-webkit-user-select:none}
+.ask-tip[hidden]{display:none}
+.ask-tip:hover{background:var(--cl-coral)}
+/* Чат тянется на 80vh, форме вопроса это не нужно – высота по содержимому. */
+.cl-panel--ask{height:auto;max-height:min(80vh,760px)}
+.ask-quote{margin:16px 16px 0;padding:10px 12px;border-left:3px solid var(--cl-coral);border-radius:0 10px 10px 0;background:var(--cl-surface);color:var(--cl-muted);font-size:13.5px;line-height:1.55;font-style:italic;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.ask-source{margin:10px 16px 0;font-size:11.5px;color:var(--cl-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ask-status{margin:10px 16px 0;font-size:12.5px;line-height:1.4;color:var(--cl-muted);min-height:1em}
+.ask-status.is-error{color:#c0392b}
+.ask-status.is-ok{color:var(--cl-coral)}
+.ask-hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+
+/* ============================================================
    Teamleads Codex — offline, Codex/ChatGPT-styled chat overlay
    (no network calls). OpenAI dark theme. window.TeamleadsCodex
    ============================================================ */

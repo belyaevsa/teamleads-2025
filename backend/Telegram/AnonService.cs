@@ -191,6 +191,7 @@ public sealed class AnonService(
         "form" => "сайт",
         "shell" => "терминал",
         "bot" => "бот",
+        "context" => "цитата из текста",
         _ => source,
     };
 

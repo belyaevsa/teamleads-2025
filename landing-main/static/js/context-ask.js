@@ -1,182 +1,245 @@
-(function initContextAsk() {
-    // Ensure it only runs once
-    if (window.__tlContextAskLoaded) return;
-    window.__tlContextAskLoaded = true;
+/*!
+ * Context Ask – выделил кусок текста, спросил в чат. Вопрос уходит в тот же
+ * POST /api/anon, что форма и терминал, с source=context. Оформление берет
+ * оверлей Claude-чата (.cl-overlay/.cl-panel/...), стили живут в main.css.
+ */
+(function () {
+    // Тег стоит с defer, так что body уже есть. Ветка – на случай переезда в <head>.
+    if (document.body) init();
+    else document.addEventListener('DOMContentLoaded', init, { once: true });
 
-    // Wait for body to be available if script loaded synchronously in head somehow
-    if (!document.body) {
-        document.addEventListener('DOMContentLoaded', initContextAsk);
-        return;
-    }
+    function init() {
+        if (window.__tlContextAskLoaded) return;
+        window.__tlContextAskLoaded = true;
 
-    // 1. Создаем UI элементы (кнопка и модалка) и внедряем в DOM
-    const uiTemplate = `
-        <style>
-            #ask-tooltip {
-                position: absolute; display: none; z-index: 1000;
-                background: #333; color: #fff; padding: 6px 12px;
-                border-radius: 6px; cursor: pointer; font-size: 14px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: opacity 0.2s;
-            }
-            #ask-tooltip:hover { background: #444; }
-            #ask-modal {
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0,0,0,0.5); display: none; justify-content: center;
-                align-items: center; z-index: 1001;
-            }
-            #ask-modal.active { display: flex; }
-            .ask-dialog {
-                background: var(--bg, #fff); color: var(--text, #333);
-                padding: 20px; border-radius: 8px; width: 90%; max-width: 400px;
-                box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            }
-            .ask-quote { font-style: italic; color: var(--text-muted, #666); border-left: 3px solid var(--border-color, #ccc); padding-left: 10px; margin-bottom: 15px; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-            .ask-textarea { width: 100%; height: 80px; padding: 10px; margin-bottom: 15px; border: 1px solid var(--border-color, #ccc); border-radius: 4px; resize: none; font-family: inherit; background: var(--bg-alt, #fafafa); color: var(--text, #333); box-sizing: border-box; }
-            .ask-actions { display: flex; justify-content: flex-end; gap: 10px; }
-            .ask-btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; }
-            .ask-btn-cancel { background: var(--bg-hover, #eee); color: var(--text, #333); }
-            .ask-btn-cancel:hover { background: var(--border-color, #ddd); }
-            .ask-btn-submit { background: var(--accent, #00AFCA); color: #fff; }
-            .ask-btn-submit:hover { opacity: 0.9; }
-            .ask-btn-submit:disabled { opacity: 0.7; cursor: not-allowed; }
-            #ask-website-hp { display: none; } /* Honeypot */
-        </style>
+        // Все контейнеры с текстом: статьи, инсайты, встречи, тулкит, зарплаты,
+        // вопросы. Шаблоны заворачивают контент в .report-content, статьи и тулкит –
+        // дополнительно в .article-body. Своя разметка включается data-context-ask.
+        const CONTENT_SELECTOR = [
+            'article',
+            'main',
+            '.article-body',
+            '.report-content',
+            '.report-container',
+            '.year-review-content',
+            '.content',
+            '.post-body',
+            '.prose',
+            '[data-context-ask]',
+        ].join(', ');
 
-        <div id="ask-tooltip">🤔 Спросить в чате</div>
+        // Виджеты, где выделение – часть интерфейса, а не текст для вопроса.
+        const EXCLUDE_SELECTOR = [
+            '.cl-overlay',
+            '.cx-overlay',
+            '.term',
+            '.cc-win',
+            '.ask-tip',
+            'nav',
+            'header',
+            'footer',
+            'input',
+            'textarea',
+            '[data-no-context-ask]',
+        ].join(', ');
 
-        <div id="ask-modal">
-            <div class="ask-dialog">
-                <h3 style="margin-top:0; margin-bottom: 15px;">Анонимный вопрос</h3>
-                <div class="ask-quote" id="ask-quote-text"></div>
-                <input type="text" id="ask-website-hp" value="" tabindex="-1" autocomplete="off">
-                <textarea id="ask-input" class="ask-textarea" placeholder="Напишите ваш вопрос к этому абзацу..."></textarea>
-                <div class="ask-actions">
-                    <button class="ask-btn ask-btn-cancel" id="ask-cancel">Отмена</button>
-                    <button class="ask-btn ask-btn-submit" id="ask-submit">Отправить</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', uiTemplate);
+        const MIN_LEN = 10;
+        const MAX_LEN = 500;
 
-    const tooltip = document.getElementById('ask-tooltip');
-    const modal = document.getElementById('ask-modal');
-    const quoteEl = document.getElementById('ask-quote-text');
-    const inputEl = document.getElementById('ask-input');
-    const submitBtn = document.getElementById('ask-submit');
-    const cancelBtn = document.getElementById('ask-cancel');
-    const honeypot = document.getElementById('ask-website-hp');
+        const tip = document.createElement('div');
+        tip.className = 'ask-tip';
+        tip.setAttribute('role', 'button');
+        tip.setAttribute('tabindex', '0');
+        tip.hidden = true;
+        tip.textContent = '🤔 Спросить в чате';
+        document.body.appendChild(tip);
 
-    let currentSelection = '';
+        const overlay = document.createElement('div');
+        overlay.className = 'cl-overlay';
+        overlay.hidden = true;
+        overlay.innerHTML =
+            '<div class="cl-panel cl-panel--ask" role="dialog" aria-modal="true" aria-label="Анонимный вопрос по цитате">' +
+                '<div class="cl-bar">' +
+                    '<div class="cl-titles"><strong>Анонимный вопрос</strong>' +
+                        '<span>уйдет на модерацию, автор не сохраняется</span></div>' +
+                    '<button class="cl-close" type="button" aria-label="Закрыть">✕</button>' +
+                '</div>' +
+                '<blockquote class="ask-quote" data-ask-quote></blockquote>' +
+                '<p class="ask-source" data-ask-source></p>' +
+                '<p class="ask-status" data-ask-status role="status" aria-live="polite"></p>' +
+                '<form class="cl-form">' +
+                    '<input type="text" class="ask-hp" tabindex="-1" autocomplete="off" aria-hidden="true" data-ask-hp>' +
+                    '<textarea class="cl-input" rows="1" placeholder="Напишите ваш вопрос к этой цитате…" data-ask-input></textarea>' +
+                    '<button class="cl-send" type="submit" aria-label="Отправить">↑</button>' +
+                '</form>' +
+            '</div>';
+        document.body.appendChild(overlay);
 
-    // 2. Логика выделения текста
-    document.addEventListener('selectionchange', () => {
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) {
-            tooltip.style.display = 'none';
-            return;
-        }
+        const quoteEl = overlay.querySelector('[data-ask-quote]');
+        const sourceEl = overlay.querySelector('[data-ask-source]');
+        const statusEl = overlay.querySelector('[data-ask-status]');
+        const inputEl = overlay.querySelector('[data-ask-input]');
+        const honeypot = overlay.querySelector('[data-ask-hp]');
+        const form = overlay.querySelector('.cl-form');
+        const sendBtn = overlay.querySelector('.cl-send');
 
-        const text = selection.toString().trim();
-        const anchor = selection.anchorNode;
-        const anchorElement = anchor && (anchor.nodeType === Node.TEXT_NODE ? anchor.parentElement : anchor);
-        const isContent = anchorElement && typeof anchorElement.closest === 'function' && anchorElement.closest('article, .content, .post-body, .prose, .article-body, .report-content');
+        let currentSelection = '';
 
-        if (text.length > 10 && text.length < 500 && isContent) {
-            currentSelection = text;
+        const hideTip = () => { tip.hidden = true; };
+
+        // Текстовый узел не умеет closest – поднимаемся до ближайшего элемента.
+        const elementOf = (node) =>
+            !node ? null : node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+
+        // ── выделение ───────────────────────────────────────────────────────
+        const updateTip = () => {
+            if (!overlay.hidden) return;
+
+            const selection = window.getSelection();
+            if (!selection || selection.isCollapsed || selection.rangeCount === 0) return hideTip();
+
+            const text = selection.toString().trim();
+            if (text.length < MIN_LEN || text.length > MAX_LEN) return hideTip();
+
             const range = selection.getRangeAt(0);
+            // commonAncestorContainer, а не anchorNode: выделение через несколько
+            // абзацев или пунктов списка проверяется по общему родителю.
+            const host = elementOf(range.commonAncestorContainer);
+            if (!host || !host.closest(CONTENT_SELECTOR)) return hideTip();
+            if (host.closest(EXCLUDE_SELECTOR)) return hideTip();
+
             const rect = range.getBoundingClientRect();
-            
-            // Do not show if selection bounds are invalid
-            if (rect.width === 0 || rect.height === 0) return;
+            if (rect.width === 0 && rect.height === 0) return hideTip();
 
-            tooltip.style.display = 'block';
-            tooltip.style.top = `${rect.top + window.scrollY - 35}px`;
-            tooltip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (tooltip.offsetWidth / 2)}px`;
-        } else {
-            tooltip.style.display = 'none';
-        }
-    });
+            currentSelection = text;
+            tip.hidden = false;
 
-    // Hide tooltip on outside click
-    document.addEventListener('mousedown', (e) => {
-        if (e.target !== tooltip && !tooltip.contains(e.target)) {
-            tooltip.style.display = 'none';
-        }
-    });
+            const top = rect.top + window.scrollY - tip.offsetHeight - 8;
+            const left = rect.left + window.scrollX + rect.width / 2 - tip.offsetWidth / 2;
+            const maxLeft = document.documentElement.clientWidth - tip.offsetWidth - 4;
+            tip.style.top = `${Math.max(window.scrollY + 4, top)}px`;
+            tip.style.left = `${Math.max(4, Math.min(left, maxLeft))}px`;
+        };
 
-    // 3. Открытие модалки
-    tooltip.addEventListener('mousedown', (e) => {
-        e.preventDefault(); // чтобы выделение не сбросилось
-        quoteEl.textContent = `"${currentSelection}"`;
-        modal.classList.add('active');
-        inputEl.value = '';
-        tooltip.style.display = 'none';
-        setTimeout(() => inputEl.focus(), 50);
-    });
+        // selectionchange летит и во время протяжки – кнопку показываем по концу
+        // жеста, иначе она прыгает под курсором. touchend закрывает мобильный кейс.
+        let raf = 0;
+        const scheduleUpdate = () => {
+            cancelAnimationFrame(raf);
+            raf = requestAnimationFrame(updateTip);
+        };
+        document.addEventListener('mouseup', scheduleUpdate);
+        document.addEventListener('touchend', scheduleUpdate);
+        document.addEventListener('keyup', (e) => { if (e.shiftKey) scheduleUpdate(); });
+        document.addEventListener('selectionchange', () => {
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed) hideTip();
+        });
+        window.addEventListener('scroll', hideTip, { passive: true });
+        window.addEventListener('resize', hideTip);
 
-    // 4. Закрытие модалки
-    const closeModal = () => modal.classList.remove('active');
-    cancelBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
+        // ── модалка ─────────────────────────────────────────────────────────
+        const pageUrl = () => window.location.href.split('#')[0];
 
-    // 5. Отправка на бэкенд
-    submitBtn.addEventListener('click', async () => {
-        const question = inputEl.value.trim();
-        if (!question) return;
+        // Тайтл собран как "Заголовок | Тимлиды", поэтому режем по «|».
+        // Резать по дефису нельзя: он живет внутри заголовков («AI-агенты»).
+        const pageTitle = () => {
+            const raw = document.querySelector('meta[property="og:title"]')?.content || document.title;
+            return raw.split('|')[0].trim() || raw;
+        };
 
-        // Защита от ботов
-        if (honeypot.value !== "") return;
+        const setStatus = (text, kind) => {
+            statusEl.textContent = text || '';
+            statusEl.className = `ask-status${kind ? ` is-${kind}` : ''}`;
+        };
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Отправка...';
+        const open = (e) => {
+            e.preventDefault(); // выделение не должно схлопнуться
+            quoteEl.textContent = `«${currentSelection.replace(/\s+/g, ' ').trim()}»`;
+            sourceEl.textContent = pageTitle();
+            setStatus('');
+            inputEl.value = '';
+            inputEl.style.height = 'auto';
+            hideTip();
+            overlay.hidden = false;
+            document.body.classList.add('cl-lock');
+            setTimeout(() => inputEl.focus(), 50);
+        };
 
-        const pageUrl = window.location.href.split('#')[0]; // без якорей
-        let pageTitle = document.title.split('-')[0].trim();
-        if (pageTitle.includes('|')) {
-            pageTitle = pageTitle.split('|')[0].trim();
-        }
+        const close = () => {
+            overlay.hidden = true;
+            document.body.classList.remove('cl-lock');
+        };
 
-        // Форматируем текст, который уйдет в Telegram-бот
-        const fullText = `📍 Вопрос из архива: [${pageTitle}](${pageUrl})\n\nЦитата:\n> ${currentSelection}\n\nВопрос: ${question}`;
+        tip.addEventListener('pointerdown', open);
+        tip.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') open(e); });
 
-        let apiUrl = window.TEAMLEADS_ANON_API || '/api/anon';
-        if (!window.TEAMLEADS_ANON_API && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-            apiUrl = 'http://localhost:5080/api/anon';
-        }
+        overlay.querySelector('.cl-close').addEventListener('click', close);
+        overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !overlay.hidden) close(); });
 
-        try {
-            const res = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    text: fullText, 
-                    source: 'context',
-                    website: honeypot.value 
-                })
-            });
+        inputEl.addEventListener('input', () => {
+            inputEl.style.height = 'auto';
+            inputEl.style.height = `${Math.min(inputEl.scrollHeight, 140)}px`;
+        });
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+        });
 
-            if (res.ok) {
-                const data = await res.json();
-                inputEl.value = '';
-                alert(`Ваш вопрос отправлен на модерацию!\nID: ${data.publicId || 'успешно'}`);
-                closeModal();
-                window.getSelection().removeAllRanges();
-            } else if (res.status === 429) {
-                alert("Вы задаете вопросы слишком часто. Подождите немного.");
-            } else if (res.status === 400) {
-                const err = await res.json();
-                console.error('Validation error:', err);
-                alert("Ошибка валидации. Проверьте ваш текст.");
-            } else {
-                alert("Ошибка отправки. Попробуйте позже.");
+        // ── отправка ────────────────────────────────────────────────────────
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const question = inputEl.value.trim();
+            if (!question) return setStatus('Напишите вопрос.', 'error');
+            if (honeypot.value !== '') return; // бот
+
+            sendBtn.disabled = true;
+            setStatus('Отправляем…');
+
+            // Бот шлет сообщения без parse_mode (см. TelegramClient): текст автора
+            // никогда не разбирается как разметка. Поэтому никакого Markdown –
+            // верстаем то, что читается как обычный текст. Голую ссылку Telegram
+            // подсветит сам. Перенос строк в цитате схлопываем: выделение через
+            // абзацы иначе разваливает сообщение.
+            const quote = currentSelection.replace(/\s+/g, ' ').trim();
+            const text = [
+                `📍 Вопрос из архива: ${pageTitle()}`,
+                pageUrl(),
+                '',
+                'Цитата:',
+                `«${quote}»`,
+                '',
+                `Вопрос: ${question}`,
+            ].join('\n');
+
+            try {
+                const res = await fetch(window.TEAMLEADS_ANON_API || '/api/anon', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, source: 'context', website: honeypot.value }),
+                });
+
+                if (res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    setStatus(`Отправлено на модерацию${data.publicId ? ` · ${data.publicId}` : ''}`, 'ok');
+                    inputEl.value = '';
+                    window.getSelection()?.removeAllRanges();
+                    setTimeout(close, 1600);
+                } else if (res.status === 429) {
+                    setStatus('Слишком часто. Подождите немного.', 'error');
+                } else if (res.status === 400) {
+                    console.error('Context ask validation error:', await res.text());
+                    setStatus('Вопрос не прошел проверку. Попробуйте сформулировать иначе.', 'error');
+                } else {
+                    setStatus('Не отправилось. Попробуйте позже.', 'error');
+                }
+            } catch (err) {
+                console.error('Context ask:', err);
+                setStatus('Ошибка сети.', 'error');
+            } finally {
+                sendBtn.disabled = false;
             }
-        } catch (e) {
-            console.error("Ошибка:", e);
-            alert("Ошибка сети.");
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Отправить';
-        }
-    });
+        });
+    }
 })();
