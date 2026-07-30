@@ -116,6 +116,23 @@ public static class TelegramWebhookEndpoints
         var text = msg.Text?.Trim();
         if (string.IsNullOrEmpty(text)) return;
 
+        // Bootstrap helper, answered in ANY chat: reports the id of the chat it is called
+        // from. Configuring tg.admin_chat_id otherwise means guessing whether a group is
+        // -id or -100id, and a wrong guess fails as an indistinguishable "chat not found".
+        // A chat id is not a secret – it grants nothing to someone who is already in the
+        // chat – so this needs no gate.
+        if (text.StartsWith("/id", StringComparison.Ordinal))
+        {
+            await tg.SendMessageAsync(msg.Chat.Id, $"""
+                chat_id: {msg.Chat.Id}
+                тип: {msg.Chat.Type}
+
+                Прописать этот чат как админский:
+                PUT /api/settings/tg.admin_chat_id  ->  {msg.Chat.Id}
+                """, ct: ct);
+            return;
+        }
+
         // In the admin chat, a reply to an "✏️ Правка XXXX" prompt carries the new text.
         if (adminChat != 0 && msg.Chat.Id == adminChat)
         {
