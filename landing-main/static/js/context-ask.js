@@ -1,4 +1,14 @@
-document.addEventListener('DOMContentLoaded', () => {
+(function initContextAsk() {
+    // Ensure it only runs once
+    if (window.__tlContextAskLoaded) return;
+    window.__tlContextAskLoaded = true;
+
+    // Wait for body to be available if script loaded synchronously in head somehow
+    if (!document.body) {
+        document.addEventListener('DOMContentLoaded', initContextAsk);
+        return;
+    }
+
     // 1. Создаем UI элементы (кнопка и модалка) и внедряем в DOM
     const uiTemplate = `
         <style>
@@ -62,21 +72,35 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Логика выделения текста
     document.addEventListener('selectionchange', () => {
         const selection = window.getSelection();
-        const text = selection.toString().trim();
+        if (!selection || selection.rangeCount === 0) {
+            tooltip.style.display = 'none';
+            return;
+        }
 
-        // Проверяем, что выделили не пустоту и находимся внутри контента статьи (подстройте селектор под ваш дизайн)
+        const text = selection.toString().trim();
         const anchor = selection.anchorNode;
-        const isContent = anchor && anchor.parentElement && anchor.parentElement.closest('article, .content, .post-body, .prose, .article-body');
+        const anchorElement = anchor && (anchor.nodeType === Node.TEXT_NODE ? anchor.parentElement : anchor);
+        const isContent = anchorElement && typeof anchorElement.closest === 'function' && anchorElement.closest('article, .content, .post-body, .prose, .article-body, .report-content');
 
         if (text.length > 10 && text.length < 500 && isContent) {
             currentSelection = text;
             const range = selection.getRangeAt(0);
             const rect = range.getBoundingClientRect();
             
+            // Do not show if selection bounds are invalid
+            if (rect.width === 0 || rect.height === 0) return;
+
             tooltip.style.display = 'block';
-            tooltip.style.top = \`\${rect.top + window.scrollY - 35}px\`;
-            tooltip.style.left = \`\${rect.left + window.scrollX + (rect.width / 2) - (tooltip.offsetWidth / 2)}px\`;
+            tooltip.style.top = `${rect.top + window.scrollY - 35}px`;
+            tooltip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (tooltip.offsetWidth / 2)}px`;
         } else {
+            tooltip.style.display = 'none';
+        }
+    });
+
+    // Hide tooltip on outside click
+    document.addEventListener('mousedown', (e) => {
+        if (e.target !== tooltip && !tooltip.contains(e.target)) {
             tooltip.style.display = 'none';
         }
     });
@@ -84,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. Открытие модалки
     tooltip.addEventListener('mousedown', (e) => {
         e.preventDefault(); // чтобы выделение не сбросилось
-        quoteEl.textContent = \`"\${currentSelection}"\`;
+        quoteEl.textContent = `"${currentSelection}"`;
         modal.classList.add('active');
         inputEl.value = '';
         tooltip.style.display = 'none';
@@ -108,12 +132,18 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.textContent = 'Отправка...';
 
         const pageUrl = window.location.href.split('#')[0]; // без якорей
-        const pageTitle = document.title.split('-')[0].trim(); // Упрощаем тайтл
+        let pageTitle = document.title.split('-')[0].trim();
+        if (pageTitle.includes('|')) {
+            pageTitle = pageTitle.split('|')[0].trim();
+        }
 
         // Форматируем текст, который уйдет в Telegram-бот
-        const fullText = \`📍 Вопрос из архива: [\${pageTitle}](\${pageUrl})\\n\\nЦитата:\\n> \${currentSelection}\\n\\nВопрос: \${question}\`;
+        const fullText = `📍 Вопрос из архива: [${pageTitle}](${pageUrl})\n\nЦитата:\n> ${currentSelection}\n\nВопрос: ${question}`;
 
-        const apiUrl = window.TEAMLEADS_ANON_API || '/api/anon';
+        let apiUrl = window.TEAMLEADS_ANON_API || '/api/anon';
+        if (!window.TEAMLEADS_ANON_API && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+            apiUrl = 'http://localhost:5080/api/anon';
+        }
 
         try {
             const res = await fetch(apiUrl, {
@@ -129,11 +159,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 const data = await res.json();
                 inputEl.value = '';
-                alert(\`Ваш вопрос отправлен на модерацию!\\nID: \${data.publicId || 'успешно'}\`);
+                alert(`Ваш вопрос отправлен на модерацию!\nID: ${data.publicId || 'успешно'}`);
                 closeModal();
                 window.getSelection().removeAllRanges();
             } else if (res.status === 429) {
                 alert("Вы задаете вопросы слишком часто. Подождите немного.");
+            } else if (res.status === 400) {
+                const err = await res.json();
+                console.error('Validation error:', err);
+                alert("Ошибка валидации. Проверьте ваш текст.");
             } else {
                 alert("Ошибка отправки. Попробуйте позже.");
             }
@@ -145,4 +179,4 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.textContent = 'Отправить';
         }
     });
-});
+})();
