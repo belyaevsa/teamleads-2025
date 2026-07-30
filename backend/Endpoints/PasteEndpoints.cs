@@ -63,23 +63,35 @@ public static class PasteEndpoints
         HttpRequest request,
         AppDbContext db,
         IConfiguration cfg,
+        ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
+        // Every rejection says why. Never logs the paste body – only its size:
+        // people put credentials and customer data in pastes.
+        var log = loggerFactory.CreateLogger("Paste");
+
         PasteBody? body;
         try
         {
             body = await JsonSerializer.DeserializeAsync<PasteBody>(request.Body, JsonOpts, ct);
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
+            log.LogWarning("Paste rejected: body is not valid JSON ({Message}).", ex.Message);
             return Results.BadRequest(new { error = "invalid_json" });
         }
 
         var content = (body?.Content ?? "").Trim();
         if (content.Length < MinContentLength)
+        {
+            log.LogInformation("Paste rejected: {Length} chars, below the {Minimum}-char minimum.", content.Length, MinContentLength);
             return Results.BadRequest(new { error = "too_short", detail = $"Минимум {MinContentLength} символов." });
+        }
         if (content.Length > MaxContentLength)
+        {
+            log.LogInformation("Paste rejected: {Length} chars, over the {Maximum}-char limit.", content.Length, MaxContentLength);
             return Results.BadRequest(new { error = "too_long", detail = $"Максимум {MaxContentLength / 1024} КБ." });
+        }
 
         var source = body?.Source ?? "web";
         var authorName = body?.AuthorName?.Trim().Truncate(120);
@@ -90,7 +102,10 @@ public static class PasteEndpoints
 
         // Honeypot: a form field named "website" must stay empty.
         if (!string.IsNullOrWhiteSpace(body?.Website))
+        {
+            log.LogInformation("Paste dropped: honeypot filled in (source {Source}).", source);
             return Results.Created();
+        }
 
         var language = LanguageDetector.Detect(content);
         var publicId = await GeneratePublicIdAsync(db, ct);
@@ -110,6 +125,8 @@ public static class PasteEndpoints
 
         db.Pastes.Add(paste);
         await db.SaveChangesAsync(ct);
+        log.LogInformation("Paste {PublicId} created: {Length} chars, language {Language}, source {Source}.",
+            publicId, content.Length, language, source);
 
         return Results.Created($"/p/{publicId}", new
         {

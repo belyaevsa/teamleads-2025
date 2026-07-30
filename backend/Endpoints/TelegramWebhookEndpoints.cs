@@ -141,6 +141,7 @@ public static class TelegramWebhookEndpoints
         // chat – so this needs no gate.
         if (text.StartsWith("/id", StringComparison.Ordinal))
         {
+            log.LogInformation("/id answered for a {Scope} chat.", scope);
             await tg.SendMessageAsync(msg.Chat.Id, $"""
                 chat_id: {msg.Chat.Id}
                 тип: {msg.Chat.Type}
@@ -177,6 +178,8 @@ public static class TelegramWebhookEndpoints
                 return;
             }
 
+            log.LogInformation("Admin chat: {Command}.", command ?? "reply");
+
             if (EditTargetOf(msg.ReplyToMessage?.Text) is { } publicId)
             {
                 var target = await anon.FindAsync(publicId, ct);
@@ -190,38 +193,48 @@ public static class TelegramWebhookEndpoints
 
         // Anything outside a private chat is not ours (privacy mode keeps the bot
         // from seeing community chat messages anyway).
-        if (!string.Equals(msg.Chat.Type, "private", StringComparison.Ordinal)) return;
+        if (!string.Equals(msg.Chat.Type, "private", StringComparison.Ordinal))
+        {
+            log.LogInformation("Message ignored: chat type {ChatType} is neither private nor the admin chat.", msg.Chat.Type);
+            return;
+        }
 
         if (text.StartsWith("/start", StringComparison.Ordinal) || text.StartsWith("/help", StringComparison.Ordinal))
         {
+            log.LogInformation("DM {Command}: sent the help text.", command);
             await tg.SendMessageAsync(msg.Chat.Id, StartText, ct: ct);
             return;
         }
 
         if (text.StartsWith("/status", StringComparison.Ordinal))
         {
-            await HandleStatusAsync(msg, text, anon, tg, ct);
+            await HandleStatusAsync(msg, text, anon, tg, log, ct);
             return;
         }
 
         if (text.StartsWith("/search", StringComparison.Ordinal) || text.StartsWith("/find", StringComparison.Ordinal))
         {
-            await HandleSearchAsync(msg, text, search, tg, ct);
+            await HandleSearchAsync(msg, text, search, tg, log, ct);
             return;
         }
 
         if (text.StartsWith("/paste", StringComparison.Ordinal))
         {
-            await HandlePasteWebhookAsync(msg, text, db, cfg, tg, ct);
+            await HandlePasteWebhookAsync(msg, text, db, cfg, tg, log, ct);
             return;
         }
 
-        if (text.StartsWith('/')) return;   // unknown command: stay quiet
+        if (text.StartsWith('/'))
+        {
+            log.LogInformation("DM {Command}: unknown command, staying quiet.", command);
+            return;   // unknown command: stay quiet
+        }
 
         // Code/log detection: a wall of text (300+ chars) with code-like patterns.
         // Suggest paste instead of silently turning it into an anonymous question.
         if (text.Length >= 300 && LooksLikeCode(text))
         {
+            log.LogInformation("DM: {Length} chars look like code, offered /paste instead of an anon question.", text.Length);
             await tg.SendMessageAsync(msg.Chat.Id,
                 "Похоже на код, конфиг или лог.\n\nОтправьте /paste чтобы создать ссылку – она будет с вашим именем. Или повторите это же сообщение, если хотите отправить его как анонимный вопрос в чат.", ct: ct);
             return;
@@ -229,6 +242,7 @@ public static class TelegramWebhookEndpoints
 
         if (text.Length < MinTextLength)
         {
+            log.LogInformation("DM rejected: {Length} chars, below the {Minimum}-char minimum.", text.Length, MinTextLength);
             await tg.SendMessageAsync(msg.Chat.Id,
                 "Слишком коротко. Опишите ситуацию хотя бы парой предложений – чату нужен контекст, чтобы ответить по делу.", ct: ct);
             return;
@@ -237,7 +251,9 @@ public static class TelegramWebhookEndpoints
         // The author's telegram id is hashed here and never stored raw. That is also
         // why we cannot notify them later – see /status below.
         var authorHash = ClientFingerprint.Hash($"tg|{msg.From?.Id}", cfg);
-        var (_, row) = await anon.CreateAsync(text, "bot", authorHash, ct);
+        var (outcome, row) = await anon.CreateAsync(text, "bot", authorHash, ct);
+        // Id and length only. The text itself is the thing we promised not to keep.
+        log.LogInformation("Anon request {Outcome} from a DM: {PublicId}, {Length} chars.", outcome, row.PublicId, text.Length);
 
         await tg.SendMessageAsync(msg.Chat.Id, $"""
             Принято. Номер запроса: {row.PublicId}
@@ -273,7 +289,7 @@ public static class TelegramWebhookEndpoints
             error ?? $"✅ {parts[1]} = {parts[2]}. Применится в течение 5 минут (кэш настроек).", ct: ct);
     }
 
-    private static async Task HandleStatusAsync(Message msg, string text, AnonService anon, TelegramClient tg, CancellationToken ct)
+    private static async Task HandleStatusAsync(Message msg, string text, AnonService anon, TelegramClient tg, ILogger log, CancellationToken ct)
     {
         var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (parts.Length < 2)
@@ -295,12 +311,14 @@ public static class TelegramWebhookEndpoints
     // ── callbacks ───────────────────────────────────────────────────────────
 
     private static async Task HandleCallbackAsync(
-        CallbackQuery cb, AnonService anon, TelegramClient tg, long adminChat, CancellationToken ct)
+        CallbackQuery cb, AnonService anon, TelegramClient tg, long adminChat, ILogger log, CancellationToken ct)
     {
         // Only buttons pressed inside the admin chat count. Callback data is
         // attacker-controllable in general, so the chat check is the real gate.
         if (adminChat == 0 || cb.Message?.Chat.Id != adminChat)
         {
+            log.LogWarning("Callback rejected: pressed outside the admin chat (tg.admin_chat_id {Configured}).",
+                adminChat == 0 ? "is not configured" : "does not match");
             await tg.AnswerCallbackQueryAsync(cb.Id, "Недоступно.", ct);
             return;
         }
@@ -308,6 +326,7 @@ public static class TelegramWebhookEndpoints
         var parts = (cb.Data ?? "").Split(':');
         if (parts is not ["anon", var action, var publicId])
         {
+            log.LogWarning("Callback ignored: unrecognised callback_data shape.");
             await tg.AnswerCallbackQueryAsync(cb.Id, ct: ct);
             return;
         }
@@ -315,6 +334,7 @@ public static class TelegramWebhookEndpoints
         var row = await anon.FindAsync(publicId, ct);
         if (row is null)
         {
+            log.LogWarning("Callback anon:{Action}:{PublicId} – no such request.", action, publicId);
             await tg.AnswerCallbackQueryAsync(cb.Id, "Запрос не найден.", ct);
             return;
         }
@@ -328,6 +348,7 @@ public static class TelegramWebhookEndpoints
             _ => "",
         };
 
+        log.LogInformation("Callback anon:{Action}:{PublicId} -> {Answer}", action, publicId, answer);
         await tg.AnswerCallbackQueryAsync(cb.Id, answer, ct);
     }
 
@@ -363,7 +384,7 @@ public static class TelegramWebhookEndpoints
     private static object PmButton(string text) => new { text, start_parameter = "search" };
 
     private static async Task HandleInlineQueryAsync(
-        InlineQuery inline, SearchService search, TelegramClient tg, CancellationToken ct)
+        InlineQuery inline, SearchService search, TelegramClient tg, ILogger log, CancellationToken ct)
     {
         var query = inline.Query?.Trim() ?? "";
 
@@ -371,6 +392,7 @@ public static class TelegramWebhookEndpoints
         // cache_time 0 – the next keystroke must re-query, not reuse this answer.
         if (string.IsNullOrWhiteSpace(query))
         {
+            log.LogInformation("Inline query: empty, answered with the prompt button.");
             await tg.AnswerInlineQueryAsync(inline.Id, [], cacheTime: 0,
                 button: PmButton("Поиск по архиву: наберите запрос"), ct: ct);
             return;
@@ -396,6 +418,7 @@ public static class TelegramWebhookEndpoints
                     disable_web_page_preview = false,
                 },
             }], cacheTime: 30, button: PmButton("Не нашлось? Спросите чат анонимно"), ct: ct);
+            log.LogInformation("Inline query «{Query}»: no hits.", query);
             return;
         }
         var results = hits.Select((h, i) => new
@@ -417,11 +440,13 @@ public static class TelegramWebhookEndpoints
             }
         }).ToList();
 
-        await tg.AnswerInlineQueryAsync(inline.Id, results, cacheTime: 60, ct: ct);
+        var sent = await tg.AnswerInlineQueryAsync(inline.Id, results, cacheTime: 60, ct: ct);
+        if (sent.Ok) log.LogInformation("Inline query «{Query}»: {Count} hits.", query, results.Count);
+        else log.LogWarning("Inline query «{Query}»: {Count} hits but answerInlineQuery failed: {Error}", query, results.Count, sent.Error);
     }
 
     private static async Task HandleSearchAsync(
-        Message msg, string text, SearchService search, TelegramClient tg, CancellationToken ct)
+        Message msg, string text, SearchService search, TelegramClient tg, ILogger log, CancellationToken ct)
     {
         var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (parts.Length < 2)
@@ -433,6 +458,7 @@ public static class TelegramWebhookEndpoints
 
         var query = parts[1];
         var hits = await search.SearchAsync(query, limit: 5, ct: ct);
+        log.LogInformation("/search «{Query}»: {Count} hits.", query, hits.Count);
 
         if (hits.Count == 0)
         {
@@ -456,7 +482,7 @@ public static class TelegramWebhookEndpoints
     // ── paste ────────────────────────────────────────────────────────────────
 
     private static async Task HandlePasteWebhookAsync(
-        Message msg, string text, AppDbContext db, IConfiguration cfg, TelegramClient tg, CancellationToken ct)
+        Message msg, string text, AppDbContext db, IConfiguration cfg, TelegramClient tg, ILogger log, CancellationToken ct)
     {
         var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var content = parts.Length >= 2
@@ -465,6 +491,7 @@ public static class TelegramWebhookEndpoints
 
         if (string.IsNullOrWhiteSpace(content))
         {
+            log.LogInformation("/paste rejected: no content in the command and no replied-to text.");
             await tg.SendMessageAsync(msg.Chat.Id,
                 "Отправьте текст для paste:\n\n`/paste ваш код, лог или конфиг`\n\nИли ответьте этой командой на сообщение с текстом.", ct: ct);
             return;
@@ -472,12 +499,14 @@ public static class TelegramWebhookEndpoints
 
         if (content.Length < 10)
         {
+            log.LogInformation("/paste rejected: {Length} chars, below the 10-char minimum.", content.Length);
             await tg.SendMessageAsync(msg.Chat.Id, "Слишком коротко. Минимум 10 символов.", ct: ct);
             return;
         }
 
         if (content.Length > 64 * 1024)
         {
+            log.LogInformation("/paste rejected: {Length} chars, over the 64 KB limit.", content.Length);
             await tg.SendMessageAsync(msg.Chat.Id, "Слишком длинно. Максимум 64 КБ.", ct: ct);
             return;
         }
@@ -499,6 +528,8 @@ public static class TelegramWebhookEndpoints
         });
         await db.SaveChangesAsync(ct);
 
+        log.LogInformation("Paste {PublicId} created from a DM: {Length} chars, language {Language}.",
+            publicId, content.Length, language);
         await tg.SendMessageAsync(msg.Chat.Id,
             $"📋 Paste создан: https://teamleads.kz/p/{publicId}/\n\nЯзык: {LanguageLabel(language)}, автор: {authorName}", ct: ct);
     }
