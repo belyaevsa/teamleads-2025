@@ -72,6 +72,19 @@
                     '<textarea class="cl-input" rows="1" placeholder="Напишите ваш вопрос к этой цитате…" data-ask-input></textarea>' +
                     '<button class="cl-send" type="submit" aria-label="Отправить">↑</button>' +
                 '</form>' +
+                '<div class="ask-done" data-ask-done hidden>' +
+                    '<p class="ask-done-title">Вопрос принят</p>' +
+                    '<p class="ask-done-ticket" data-ask-ticket></p>' +
+                    '<p>Модератор проверит его и опубликует в чате сообщества – анонимно, ' +
+                    'без вашего имени. Ответ ищите там же, в треде к вопросу.</p>' +
+                    '<p class="ask-done-hint">Статус по номеру: напишите ' +
+                        '<a href="https://t.me/temlead_helper_bot" target="_blank" rel="noopener">@temlead_helper_bot</a> ' +
+                        'команду <code data-ask-cmd></code>. Другой связи с запросом у вас нет – в этом и смысл.</p>' +
+                    '<div class="ask-done-actions">' +
+                        '<a class="ask-done-btn" data-ask-chat target="_blank" rel="noopener">Открыть чат сообщества</a>' +
+                        '<button type="button" class="ask-done-close" data-ask-dismiss>Вернуться к чтению</button>' +
+                    '</div>' +
+                '</div>' +
             '</div>';
         document.body.appendChild(overlay);
 
@@ -82,6 +95,13 @@
         const honeypot = overlay.querySelector('[data-ask-hp]');
         const form = overlay.querySelector('.cl-form');
         const sendBtn = overlay.querySelector('.cl-send');
+        const doneEl = overlay.querySelector('[data-ask-done]');
+        const ticketEl = overlay.querySelector('[data-ask-ticket]');
+        const cmdEl = overlay.querySelector('[data-ask-cmd]');
+        const chatLink = overlay.querySelector('[data-ask-chat]');
+
+        // Ссылка на чат приходит из site.Params.telegram через baseof.html.
+        chatLink.href = window.TEAMLEADS_TG || 'https://telegram.me/teamleads_kz';
 
         let currentSelection = '';
 
@@ -153,11 +173,29 @@
             statusEl.className = `ask-status${kind ? ` is-${kind}` : ''}`;
         };
 
+        // Панель живет в двух состояниях: форма и подтверждение. Показываем
+        // ровно одно, иначе после отправки в окне висит пустой инпут.
+        const showForm = () => {
+            form.hidden = false;
+            doneEl.hidden = true;
+            statusEl.hidden = false;
+        };
+
+        const showDone = (publicId) => {
+            form.hidden = true;
+            statusEl.hidden = true;
+            ticketEl.textContent = publicId ? `Номер запроса: ${publicId}` : '';
+            ticketEl.hidden = !publicId;
+            cmdEl.textContent = `/status ${publicId || 'НОМЕР'}`;
+            doneEl.hidden = false;
+        };
+
         const open = (e) => {
             e.preventDefault(); // выделение не должно схлопнуться
             quoteEl.textContent = `«${currentSelection.replace(/\s+/g, ' ').trim()}»`;
             sourceEl.textContent = pageTitle();
             setStatus('');
+            showForm();
             inputEl.value = '';
             inputEl.style.height = 'auto';
             hideTip();
@@ -175,6 +213,7 @@
         tip.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') open(e); });
 
         overlay.querySelector('.cl-close').addEventListener('click', close);
+        overlay.querySelector('[data-ask-dismiss]').addEventListener('click', close);
         overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(); });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !overlay.hidden) close(); });
 
@@ -222,10 +261,11 @@
 
                 if (res.ok) {
                     const data = await res.json().catch(() => ({}));
-                    setStatus(`Отправлено на модерацию${data.publicId ? ` · ${data.publicId}` : ''}`, 'ok');
                     inputEl.value = '';
                     window.getSelection()?.removeAllRanges();
-                    setTimeout(close, 1600);
+                    // Окно не закрываем по таймеру: номер запроса – единственная
+                    // ниточка к вопросу, у человека должно быть время его забрать.
+                    showDone(data.publicId);
                 } else if (res.status === 429) {
                     setStatus('Слишком часто. Подождите немного.', 'error');
                 } else if (res.status === 400) {

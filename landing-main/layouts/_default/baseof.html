@@ -221,6 +221,7 @@
 
     {{- with site.Params.salaryApi }}<script>window.TEAMLEADS_SALARY_API = "{{ . }}";</script>{{ end }}
     {{- with site.Params.anonApi }}<script>window.TEAMLEADS_ANON_API = "{{ . }}";</script>{{ end }}
+    {{- with site.Params.telegram }}<script>window.TEAMLEADS_TG = "{{ . }}";</script>{{ end }}
     <script src="{{ "js/retrieval.js" | relURL }}" defer></script>
     <script src="{{ "js/salary.js" | relURL }}" defer></script>
     <script src="{{ "js/claude-chat.js" | relURL }}" defer></script>
