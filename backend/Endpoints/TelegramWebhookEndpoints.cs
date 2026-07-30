@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
+using TeamleadsBackend.Search;
 using TeamleadsBackend.Security;
 using TeamleadsBackend.Settings;
 using TeamleadsBackend.Telegram;
@@ -25,10 +26,12 @@ public static class TelegramWebhookEndpoints
     private const string StartText = """
         Привет. Я Падаван – бот сообщества «Тимлид не кодит».
 
-        Через меня можно задать вопрос в общий чат анонимно. Это нужно, когда в чате
-        сидят ваши коллеги и руководитель, а спросить хочется по-настоящему.
+        Что я умею:
+        🔍 Поиск по архиву: наберите @temlead_helper_bot и ключевое слово в любом чате (например, @temlead_helper_bot 1-on-1) или отправьте команду /search <запрос>.
 
-        Как это работает:
+        🎭 Анонимные вопросы: через меня можно задать вопрос в общий чат анонимно.
+
+        Как работают анонимные вопросы:
         1. Пишете мне вопрос прямо сюда, одним сообщением.
         2. Админ проверяет его и публикует в чате от моего имени.
         3. Чат обсуждает. Кто прислал – не видит никто, включая админов.
@@ -38,9 +41,8 @@ public static class TelegramWebhookEndpoints
 
         Не верите на слово – проверьте код, он открыт:
         github.com/belyaevsa/teamleads-2025/tree/master/backend
-        Файл Data/AnonRequest.cs – это все, что вообще сохраняется.
 
-        Пишите вопрос. Или заполните форму на teamleads.kz/anon
+        Пишите вопрос или ищите материалы по архиву!
         """;
 
     public static IEndpointRouteBuilder MapTelegramWebhook(this IEndpointRouteBuilder api)
@@ -51,6 +53,7 @@ public static class TelegramWebhookEndpoints
             AnonService anon,
             DilemmaService dilemmas,
             QuestionService questions,
+            SearchService search,
             SettingsService settings,
             TelegramClient tg,
             IOptions<TelegramOptions> options,
@@ -91,8 +94,9 @@ public static class TelegramWebhookEndpoints
                 // and no real chat id is 0, so every admin path is simply inert.
                 var adminChat = await settings.GetLongAsync("tg.admin_chat_id", ct);
 
-                if (update?.CallbackQuery is { } cb) await HandleCallbackAsync(cb, anon, tg, adminChat, ct);
-                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, questions, settings, tg, adminChat, cfg, ct);
+                if (update?.InlineQuery is { } inline) await HandleInlineQueryAsync(inline, search, tg, ct);
+                else if (update?.CallbackQuery is { } cb) await HandleCallbackAsync(cb, anon, tg, adminChat, ct);
+                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, questions, search, settings, tg, adminChat, cfg, ct);
             }
             catch (Exception ex)
             {
@@ -111,7 +115,7 @@ public static class TelegramWebhookEndpoints
     // ── messages ────────────────────────────────────────────────────────────
 
     private static async Task HandleMessageAsync(
-        Message msg, AnonService anon, DilemmaService dilemmas, QuestionService questions,
+        Message msg, AnonService anon, DilemmaService dilemmas, QuestionService questions, SearchService search,
         SettingsService settings, TelegramClient tg,
         long adminChat, IConfiguration cfg, CancellationToken ct)
     {
@@ -185,6 +189,12 @@ public static class TelegramWebhookEndpoints
         if (text.StartsWith("/status", StringComparison.Ordinal))
         {
             await HandleStatusAsync(msg, text, anon, tg, ct);
+            return;
+        }
+
+        if (text.StartsWith("/search", StringComparison.Ordinal) || text.StartsWith("/find", StringComparison.Ordinal))
+        {
+            await HandleSearchAsync(msg, text, search, tg, ct);
             return;
         }
 
@@ -317,6 +327,74 @@ public static class TelegramWebhookEndpoints
     private static bool FixedTimeEquals(string a, string b) =>
         CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(a), Encoding.UTF8.GetBytes(b));
 
+    // ── search ──────────────────────────────────────────────────────────────
+
+    private static async Task HandleInlineQueryAsync(
+        InlineQuery inline, SearchService search, TelegramClient tg, CancellationToken ct)
+    {
+        var query = inline.Query?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            await tg.AnswerInlineQueryAsync(inline.Id, [], ct: ct);
+            return;
+        }
+
+        var hits = await search.SearchAsync(query, limit: 10, ct: ct);
+        var results = hits.Select((h, i) => new
+        {
+            type = "article",
+            // Ids only have to be unique within one answer. Hashing the url added
+            // nothing and Math.Abs(int.MinValue) throws.
+            id = $"s{i}",
+            title = $"{h.Section}: {h.Title}",
+            description = h.Snippet,
+            url = h.Url,
+            // No parse_mode, like every other message this bot sends: the snippet is
+            // raw article prose and will eventually contain a stray _ or * that makes
+            // Telegram reject the whole result with "can't parse entities".
+            input_message_content = new
+            {
+                message_text = $"{h.Section} {h.Title}\n\n{h.Snippet}\n\n🔗 {h.Url}",
+                disable_web_page_preview = false,
+            }
+        }).ToList();
+
+        await tg.AnswerInlineQueryAsync(inline.Id, results, cacheTime: 60, ct: ct);
+    }
+
+    private static async Task HandleSearchAsync(
+        Message msg, string text, SearchService search, TelegramClient tg, CancellationToken ct)
+    {
+        var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length < 2)
+        {
+            await tg.SendMessageAsync(msg.Chat.Id,
+                "Укажите ключевые слова для поиска по архиву.\nПример: /search 1-on-1 или /find бас фактор", ct: ct);
+            return;
+        }
+
+        var query = parts[1];
+        var hits = await search.SearchAsync(query, limit: 5, ct: ct);
+
+        if (hits.Count == 0)
+        {
+            await tg.SendMessageAsync(msg.Chat.Id,
+                $"По запросу «{query}» ничего не найдено в архиве. Попробуйте сформулировать иначе.", ct: ct);
+            return;
+        }
+
+        var lines = new List<string> { $"🔍 Результаты поиска по «{query}»:", "" };
+        foreach (var h in hits)
+        {
+            lines.Add($"{h.Section} {h.Title}");
+            if (!string.IsNullOrWhiteSpace(h.Snippet)) lines.Add($"   {h.Snippet}");
+            lines.Add($"   {h.Url}");
+            lines.Add("");
+        }
+
+        await tg.SendMessageAsync(msg.Chat.Id, string.Join("\n", lines).TrimEnd(), ct: ct);
+    }
+
     // ── payloads ────────────────────────────────────────────────────────────
     // Only the fields we act on. Telegram adds fields constantly; unknown ones
     // are ignored, and nothing here is persisted beyond the hashed author id.
@@ -329,7 +407,13 @@ public static class TelegramWebhookEndpoints
 
     private sealed record Update(
         [property: JsonPropertyName("message")] Message? Message,
-        [property: JsonPropertyName("callback_query")] CallbackQuery? CallbackQuery);
+        [property: JsonPropertyName("callback_query")] CallbackQuery? CallbackQuery,
+        [property: JsonPropertyName("inline_query")] InlineQuery? InlineQuery);
+
+    private sealed record InlineQuery(
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("from")] User? From,
+        [property: JsonPropertyName("query")] string Query);
 
     private sealed record Message(
         [property: JsonPropertyName("message_id")] long MessageId,

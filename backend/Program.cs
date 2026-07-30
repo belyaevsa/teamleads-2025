@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using TeamleadsBackend.BotData;
 using TeamleadsBackend.Data;
 using TeamleadsBackend.Endpoints;
+using TeamleadsBackend.Search;
 using TeamleadsBackend.Security;
 using TeamleadsBackend.Settings;
 using TeamleadsBackend.Telegram;
@@ -104,9 +105,11 @@ builder.Services.AddScoped<AnonService>();
 builder.Services.AddScoped<DilemmaService>();
 builder.Services.AddScoped<QuestionService>();
 
-// Archive feed (/bot-data.json): the bot reads content from the site rather than
-// keeping its own copy. See BotData/BotDataClient.cs for why.
+// Archive feed (/bot-data.json) & search index (/shell-index.json): the bot reads content
+// from the site rather than keeping its own copy. See BotData/BotDataClient.cs and Search/ShellIndexClient.cs.
 builder.Services.AddHttpClient<BotDataClient>(c => c.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddHttpClient<ShellIndexClient>(c => c.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddSingleton<SearchService>();
 builder.Services.AddHostedService<BotScheduler>();
 builder.Services.AddHostedService<OutboxDispatcher>();
 

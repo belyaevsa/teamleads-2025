@@ -41,7 +41,7 @@ URL="${BASE_URL}/api/tg/webhook/${TG_WEBHOOK_SECRET}"
 curl -fsS -X POST "$API/setWebhook" \
   -d "url=${URL}" \
   -d "secret_token=${TG_WEBHOOK_SECRET}" \
-  -d "allowed_updates=[\"message\",\"callback_query\"]" \
+  -d "allowed_updates=[\"message\",\"callback_query\",\"inline_query\"]" \
   -d "drop_pending_updates=true"
 echo
 

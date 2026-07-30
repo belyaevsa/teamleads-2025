@@ -82,12 +82,20 @@ public sealed class TelegramClient(HttpClient http, IOptions<TelegramOptions> op
             .ToArray();
     }
 
+    public Task<Result> AnswerInlineQueryAsync(string inlineQueryId, IEnumerable<object> results, int cacheTime = 300, CancellationToken ct = default) =>
+        CallAsync("answerInlineQuery", new
+        {
+            inline_query_id = inlineQueryId,
+            results = results.ToArray(),
+            cache_time = cacheTime,
+        }, ct);
+
     public Task<Result> SetWebhookAsync(string url, string secretToken, CancellationToken ct = default) =>
         CallAsync("setWebhook", new
         {
             url,
             secret_token = secretToken,
-            allowed_updates = new[] { "message", "callback_query" },
+            allowed_updates = new[] { "message", "callback_query", "inline_query" },
             drop_pending_updates = true,
         }, ct);
 
