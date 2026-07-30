@@ -47,6 +47,14 @@ public sealed class BotScheduler(
     {
         if (!await settings.GetBoolAsync("tg.scheduler.enabled", ct)) return;
 
+        var now = DateTimeOffset.UtcNow.ToOffset(AlmatyOffset);
+
+        await RunDilemmaAsync(now, ct);
+        await RunQuestionAsync(now, ct);
+    }
+
+    private async Task RunDilemmaAsync(DateTimeOffset now, CancellationToken ct)
+    {
         var day = (DayOfWeek)await settings.GetIntAsync("tg.dilemma.dow", ct);
         var hour = await settings.GetIntAsync("tg.dilemma.hour", ct);
         var revealAfter = TimeSpan.FromHours(await settings.GetIntAsync("tg.dilemma.reveal_hours", ct));
@@ -54,7 +62,6 @@ public sealed class BotScheduler(
         using var scope = scopes.CreateScope();
         var dilemmas = scope.ServiceProvider.GetRequiredService<DilemmaService>();
 
-        var now = DateTimeOffset.UtcNow.ToOffset(AlmatyOffset);
         if (now.DayOfWeek == day && now.Hour == hour)
         {
             var result = await dilemmas.PostIfDueAsync(TimeSpan.FromDays(3), ct);
@@ -63,5 +70,18 @@ public sealed class BotScheduler(
 
         var reveal = await dilemmas.FollowUpAsync(revealAfter, ct);
         if (!reveal.StartsWith("Нечего", StringComparison.Ordinal)) log.LogInformation("Scheduled reveal: {Result}", reveal);
+    }
+
+    private async Task RunQuestionAsync(DateTimeOffset now, CancellationToken ct)
+    {
+        var day = (DayOfWeek)await settings.GetIntAsync("tg.question.dow", ct);
+        var hour = await settings.GetIntAsync("tg.question.hour", ct);
+
+        if (now.DayOfWeek != day || now.Hour != hour) return;
+
+        using var scope = scopes.CreateScope();
+        var questions = scope.ServiceProvider.GetRequiredService<QuestionService>();
+        var result = await questions.PostIfDueAsync(TimeSpan.FromDays(3), ct);
+        if (result is not null) log.LogInformation("Scheduled question: {Result}", result);
     }
 }

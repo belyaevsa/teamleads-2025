@@ -50,6 +50,7 @@ public static class TelegramWebhookEndpoints
             HttpRequest request,
             AnonService anon,
             DilemmaService dilemmas,
+            QuestionService questions,
             SettingsService settings,
             TelegramClient tg,
             IOptions<TelegramOptions> options,
@@ -91,7 +92,7 @@ public static class TelegramWebhookEndpoints
                 var adminChat = await settings.GetLongAsync("tg.admin_chat_id", ct);
 
                 if (update?.CallbackQuery is { } cb) await HandleCallbackAsync(cb, anon, tg, adminChat, ct);
-                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, settings, tg, adminChat, cfg, ct);
+                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, questions, settings, tg, adminChat, cfg, ct);
             }
             catch (Exception ex)
             {
@@ -110,7 +111,8 @@ public static class TelegramWebhookEndpoints
     // ── messages ────────────────────────────────────────────────────────────
 
     private static async Task HandleMessageAsync(
-        Message msg, AnonService anon, DilemmaService dilemmas, SettingsService settings, TelegramClient tg,
+        Message msg, AnonService anon, DilemmaService dilemmas, QuestionService questions,
+        SettingsService settings, TelegramClient tg,
         long adminChat, IConfiguration cfg, CancellationToken ct)
     {
         var text = msg.Text?.Trim();
@@ -146,6 +148,11 @@ public static class TelegramWebhookEndpoints
             if (text.StartsWith("/reveal", StringComparison.Ordinal))
             {
                 await tg.SendMessageAsync(adminChat, await dilemmas.FollowUpAsync(TimeSpan.Zero, ct), ct: ct);
+                return;
+            }
+            if (text.StartsWith("/question", StringComparison.Ordinal))
+            {
+                await tg.SendMessageAsync(adminChat, await questions.PostAsync(ct), ct: ct);
                 return;
             }
             if (text.StartsWith("/set", StringComparison.Ordinal))

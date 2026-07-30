@@ -14,7 +14,7 @@ public static class AnonEndpoints
         [property: StringLength(16)] string? Source,
         string? Website);
 
-    private static readonly HashSet<string> AllowedSources = new(StringComparer.OrdinalIgnoreCase) { "form", "shell" };
+    private static readonly HashSet<string> AllowedSources = new(StringComparer.OrdinalIgnoreCase) { "form", "shell", "context" };
 
     public static IEndpointRouteBuilder MapAnon(this IEndpointRouteBuilder api)
     {

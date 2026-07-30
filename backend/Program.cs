@@ -102,6 +102,7 @@ builder.Services.AddSingleton<SettingsService>();   // process-wide 5-minute cac
 builder.Services.AddScoped<Outbox>();
 builder.Services.AddScoped<AnonService>();
 builder.Services.AddScoped<DilemmaService>();
+builder.Services.AddScoped<QuestionService>();
 
 // Archive feed (/bot-data.json): the bot reads content from the site rather than
 // keeping its own copy. See BotData/BotDataClient.cs for why.

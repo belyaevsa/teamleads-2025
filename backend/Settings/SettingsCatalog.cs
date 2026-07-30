@@ -46,6 +46,12 @@ public static class SettingsCatalog
         new("tg.dilemma.reveal_hours", ValueKind.Int, "24",
             "Через сколько часов раскрывать последствия дилеммы.", Min: 1, Max: 168),
 
+        new("tg.question.dow", ValueKind.Int, "4",
+            "День недели для «вопроса недели» (0=воскресенье), время Алматы.", Min: 0, Max: 6),
+
+        new("tg.question.hour", ValueKind.Int, "11",
+            "Час публикации вопроса недели, время Алматы.", Min: 0, Max: 23),
+
         new("anon.max_pending_per_author", ValueKind.Int, "5",
             "Сколько анонимных запросов от одного автора может ждать модерации.", Min: 1, Max: 100),
     ];
