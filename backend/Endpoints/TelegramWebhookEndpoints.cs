@@ -130,8 +130,16 @@ public static class TelegramWebhookEndpoints
         SettingsService settings, TelegramClient tg,
         long adminChat, IConfiguration cfg, ILogger log, CancellationToken ct)
     {
-        var text = msg.Text?.Trim();
-        if (string.IsNullOrEmpty(text)) { log.LogInformation("Message ignored: no text (photo, sticker or service update)."); return; }
+        // Commands are read from text OR caption, so "/paste" typed under a screenshot
+        // works. `plainText` stays text-only: it feeds the anonymous-question path, and
+        // publishing a caption without its attachment would strip half the meaning.
+        var text = msg.Body?.Trim();
+        var plainText = msg.Text?.Trim();
+        if (string.IsNullOrEmpty(text))
+        {
+            log.LogInformation("Message ignored: neither text nor caption (sticker, service update or media without a caption).");
+            return;
+        }
 
         // Command name only – never the arguments, which are the user's content.
         var command = text.StartsWith('/') ? text.Split(' ', 2)[0] : null;
@@ -239,17 +247,28 @@ public static class TelegramWebhookEndpoints
 
         // Code/log detection: a wall of text (300+ chars) with code-like patterns.
         // Suggest paste instead of silently turning it into an anonymous question.
-        if (text.Length >= 300 && LooksLikeCode(text))
+        // An attachment with a caption and no command. We reach this only in a DM, so
+        // answer instead of going quiet: the caption is usable, the attachment is not.
+        if (string.IsNullOrEmpty(plainText))
         {
-            log.LogInformation("DM: {Length} chars look like code, offered /paste instead of an anon question.", text.Length);
+            log.LogInformation("DM: attachment with a {Length}-char caption and no command – offered /paste.", text.Length);
+            await tg.SendMessageAsync(msg.Chat.Id,
+                "Файл я сохранить не могу, а подпись к нему – могу.\n\nОтветьте на свое сообщение с файлом командой /paste, и текст подписи станет ссылкой. Анонимный вопрос принимаю только текстом, без вложений.",
+                replyToMessageId: msg.MessageId, ct: ct);
+            return;
+        }
+
+        if (plainText.Length >= 300 && LooksLikeCode(plainText))
+        {
+            log.LogInformation("DM: {Length} chars look like code, offered /paste instead of an anon question.", plainText.Length);
             await tg.SendMessageAsync(msg.Chat.Id,
                 "Похоже на код, конфиг или лог.\n\nОтправьте /paste чтобы создать ссылку – она будет с вашим именем. Или повторите это же сообщение, если хотите отправить его как анонимный вопрос в чат.", ct: ct);
             return;
         }
 
-        if (text.Length < MinTextLength)
+        if (plainText.Length < MinTextLength)
         {
-            log.LogInformation("DM rejected: {Length} chars, below the {Minimum}-char minimum.", text.Length, MinTextLength);
+            log.LogInformation("DM rejected: {Length} chars, below the {Minimum}-char minimum.", plainText.Length, MinTextLength);
             await tg.SendMessageAsync(msg.Chat.Id,
                 "Слишком коротко. Опишите ситуацию хотя бы парой предложений – чату нужен контекст, чтобы ответить по делу.", ct: ct);
             return;
@@ -258,9 +277,9 @@ public static class TelegramWebhookEndpoints
         // The author's telegram id is hashed here and never stored raw. That is also
         // why we cannot notify them later – see /status below.
         var authorHash = ClientFingerprint.Hash($"tg|{msg.From?.Id}", cfg);
-        var (outcome, row) = await anon.CreateAsync(text, "bot", authorHash, ct);
+        var (outcome, row) = await anon.CreateAsync(plainText, "bot", authorHash, ct);
         // Id and length only. The text itself is the thing we promised not to keep.
-        log.LogInformation("Anon request {Outcome} from a DM: {PublicId}, {Length} chars.", outcome, row.PublicId, text.Length);
+        log.LogInformation("Anon request {Outcome} from a DM: {PublicId}, {Length} chars.", outcome, row.PublicId, plainText.Length);
 
         await tg.SendMessageAsync(msg.Chat.Id, $"""
             Принято. Номер запроса: {row.PublicId}
@@ -495,8 +514,11 @@ public static class TelegramWebhookEndpoints
         // message pastes THAT message. The second form is the one used in the community
         // chat, and it is also why authorship has to follow the content, not the command.
         var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var fromReply = parts.Length < 2 && msg.ReplyToMessage?.Text is not null;
-        var content = fromReply ? msg.ReplyToMessage!.Text : parts.Length >= 2 ? parts[1] : null;
+        // Body, not Text: a screenshot of a stack trace with the trace pasted underneath
+        // keeps that text in `caption`, and that is exactly what people reply to.
+        var replied = msg.ReplyToMessage?.Body;
+        var fromReply = parts.Length < 2 && !string.IsNullOrWhiteSpace(replied);
+        var content = fromReply ? replied : parts.Length >= 2 ? parts[1] : null;
         var author = fromReply ? msg.ReplyToMessage!.From : msg.From;
 
         if (string.IsNullOrWhiteSpace(content))
@@ -509,12 +531,12 @@ public static class TelegramWebhookEndpoints
             log.LogInformation(
                 "/paste rejected in a {ChatType} chat: no inline text; reply_to_message {ReplyState}.",
                 msg.Chat.Type,
-                msg.ReplyToMessage is null ? "absent (privacy mode strips it in groups)"
-                    : msg.ReplyToMessage.Text is null ? "present but carries no text (photo, file or sticker)"
+                msg.ReplyToMessage is null ? "absent (bot must be re-added to the group as an admin)"
+                    : msg.ReplyToMessage.Body is null ? "present but carries neither text nor caption (sticker or bare media)"
                     : "present with text");
 
-            var reason = msg.ReplyToMessage is { Text: null }
-                ? "В том сообщении нет текста – картинку или файл в paste не свернуть."
+            var reason = msg.ReplyToMessage is { Body: null }
+                ? "В том сообщении нет текста – ни подписи, ни сообщения. Стикер или голосовое в paste не свернуть."
                 : isPrivate
                     ? "Отправьте текст сразу командой:\n\n/paste ваш код, лог или конфиг"
                     : "Текст сообщения, на которое вы ответили, до меня не дошел – в группе Telegram отдает мне только саму команду.\n\nПока работает так: /paste и текст одним сообщением. Чтобы ловить ответы на чужие сообщения, у бота нужно выключить privacy mode или сделать его админом чата.";
@@ -652,7 +674,14 @@ public static class TelegramWebhookEndpoints
         [property: JsonPropertyName("chat")] Chat Chat,
         [property: JsonPropertyName("from")] User? From,
         [property: JsonPropertyName("text")] string? Text,
-        [property: JsonPropertyName("reply_to_message")] Message? ReplyToMessage);
+        // A photo, document or video carries its text here, not in `text` – and that
+        // includes any command typed alongside the attachment.
+        [property: JsonPropertyName("caption")] string? Caption,
+        [property: JsonPropertyName("reply_to_message")] Message? ReplyToMessage)
+    {
+        // What a human would call "the text of this message", wherever Telegram put it.
+        public string? Body => string.IsNullOrWhiteSpace(Text) ? Caption : Text;
+    }
 
     private sealed record Chat(
         [property: JsonPropertyName("id")] long Id,
