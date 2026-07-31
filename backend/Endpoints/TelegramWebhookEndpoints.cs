@@ -501,10 +501,25 @@ public static class TelegramWebhookEndpoints
 
         if (string.IsNullOrWhiteSpace(content))
         {
-            log.LogInformation("/paste rejected: no content in the command and no replied-to text.");
-            await tg.SendMessageAsync(msg.Chat.Id,
-                "Отправьте текст для paste:\n\n/paste ваш код, лог или конфиг\n\nИли ответьте этой командой на сообщение с текстом – в ссылку уйдет оно.",
-                replyToMessageId: msg.MessageId, ct: ct);
+            var isPrivate = string.Equals(msg.Chat.Type, "private", StringComparison.Ordinal);
+
+            // Telegram strips reply_to_message from command updates while the bot is in
+            // privacy mode, so "ответьте на простыню" silently does nothing in a group.
+            // Say so rather than repeating the hint the user just followed.
+            log.LogInformation(
+                "/paste rejected in a {ChatType} chat: no inline text; reply_to_message {ReplyState}.",
+                msg.Chat.Type,
+                msg.ReplyToMessage is null ? "absent (privacy mode strips it in groups)"
+                    : msg.ReplyToMessage.Text is null ? "present but carries no text (photo, file or sticker)"
+                    : "present with text");
+
+            var reason = msg.ReplyToMessage is { Text: null }
+                ? "В том сообщении нет текста – картинку или файл в paste не свернуть."
+                : isPrivate
+                    ? "Отправьте текст сразу командой:\n\n/paste ваш код, лог или конфиг"
+                    : "Текст сообщения, на которое вы ответили, до меня не дошел – в группе Telegram отдает мне только саму команду.\n\nПока работает так: /paste и текст одним сообщением. Чтобы ловить ответы на чужие сообщения, у бота нужно выключить privacy mode или сделать его админом чата.";
+
+            await tg.SendMessageAsync(msg.Chat.Id, reason, replyToMessageId: msg.MessageId, ct: ct);
             return;
         }
 
