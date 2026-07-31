@@ -86,7 +86,7 @@ public sealed class Outbox(AppDbContext db, TelegramClient tg, SettingsService s
                 continue;
             }
 
-            var result = await tg.SendMessageAsync(chatId, msg.Text, markup, ct);
+            var result = await tg.SendMessageAsync(chatId, msg.Text, markup, ct: ct);
             msg.Attempts++;
 
             if (result.Ok)

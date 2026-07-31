@@ -16,17 +16,23 @@
 <section class="report-content">
     <div class="container report-container">
 
-        <form class="paste-form" id="paste-form" novalidate data-paste-page>
-            <label class="paste-label" for="paste-content">Код, конфиг или лог</label>
-            <p class="paste-hint">Язык определяется сам – размечать ничего не нужно. Секреты,
-            токены и внутренние адреса лучше вычистить: ссылка открыта всем, у кого она есть.</p>
-            <textarea id="paste-content" class="paste-textarea" rows="16" spellcheck="false"
-                      maxlength="64000" required data-paste-textarea
-                      placeholder="docker run -d --name teamleads-backend \&#10;  --restart unless-stopped \&#10;  -p 127.0.0.1:8080:8080 \&#10;  --env-file backend.env \&#10;  teamleads-backend:latest"></textarea>
+        {{- /* Хром панели повторяет /p/<id>: та же шапка, та же палитра, то же
+               место под код. Разница только в том, что здесь он редактируемый. */ -}}
+        <form class="paste-pane" novalidate data-paste-page>
+            <div class="paste-bar">
+                <span class="paste-bar-id">p/new</span>
+                <span class="paste-bar-lang" data-paste-lang>язык определится сам</span>
+                <span class="paste-bar-meta" data-paste-meta>черновик</span>
+                <div class="paste-bar-actions">
+                    <button type="submit" class="paste-btn paste-btn-primary" data-paste-submit>Создать ссылку</button>
+                </div>
+            </div>
 
-            <div class="paste-form-row">
-                <span class="paste-counter" id="paste-counter" aria-live="polite">0 / 64 000</span>
-                <button type="submit" class="btn btn-primary" data-paste-submit>Создать ссылку</button>
+            <div class="paste-body" data-paste-edit>
+                <label class="paste-hp" for="paste-content">Код, конфиг или лог</label>
+                <textarea id="paste-content" class="paste-textarea" spellcheck="false"
+                          maxlength="64000" required data-paste-textarea
+                          placeholder="docker run -d --name teamleads-backend \&#10;  --restart unless-stopped \&#10;  -p 127.0.0.1:8080:8080 \&#10;  --env-file backend.env \&#10;  teamleads-backend:latest"></textarea>
             </div>
 
             {{- /* Honeypot: hidden from people, irresistible to bots. The backend drops
@@ -36,29 +42,43 @@
                 <input type="text" id="paste-website" name="website" tabindex="-1" autocomplete="off">
             </div>
 
-            <p class="paste-status" id="paste-status" role="status" aria-live="polite"></p>
+            <div class="paste-foot">
+                <span class="paste-status" role="status" aria-live="polite" data-paste-status>⌘/Ctrl+Enter – создать</span>
+                <span class="paste-counter" data-paste-counter>0 / 64 000</span>
+            </div>
         </form>
 
-        <div class="paste-done" hidden data-paste-result>
-            <h2>Ссылка готова</h2>
-            <div class="paste-url-row">
-                <input type="text" class="paste-url" readonly aria-label="Ссылка на paste" data-paste-url>
-                <button type="button" class="btn btn-primary paste-copy" data-paste-copy>Копировать</button>
+        <div class="paste-pane" hidden data-paste-result>
+            <div class="paste-bar">
+                <span class="paste-bar-id" data-paste-shortid>p/</span>
+                <span class="paste-bar-lang" data-paste-donelang>готово</span>
+                <span class="paste-bar-meta">живет 30 дней</span>
+                <div class="paste-bar-actions">
+                    <button type="button" class="paste-btn" data-paste-copy>Копировать</button>
+                    <a class="paste-btn" target="_blank" rel="noopener" data-paste-raw>Raw</a>
+                    <button type="button" class="paste-btn" data-paste-again>+ Новый</button>
+                </div>
             </div>
-            <p class="paste-done-meta">
-                <a href="" target="_blank" rel="noopener" data-paste-open>Открыть</a> ·
-                <a href="" target="_blank" rel="noopener" data-paste-raw>Raw</a> ·
-                живет 30 дней
-            </p>
-            <p><button type="button" class="btn btn-secondary" data-paste-again>Создать еще одну</button></p>
+            <div class="paste-body">
+                <div class="paste-url-row">
+                    <input type="text" class="paste-url" readonly aria-label="Ссылка на paste" data-paste-url>
+                    <a class="paste-btn paste-btn-primary" target="_blank" rel="noopener" data-paste-open>Открыть</a>
+                </div>
+                <p class="paste-done-note">Ссылка открывается у всех, кому вы ее отправите –
+                пароли и внутренние адреса в paste лучше не оставлять.</p>
+            </div>
         </div>
 
         <div class="paste-alt">
             <h2>То же самое, не открывая сайт</h2>
-            <p><strong>В телеграме:</strong> отправьте <code>/paste ваш код</code> боту
+            <p><strong>Прямо в чате сообщества:</strong> если кто-то вывалил в чат простыню кода,
+            ответьте на нее командой <code>/paste</code> – бот свернет ее в ссылку и положит
+            ответом под исходное сообщение. Автором останется тот, кто написал текст, а не тот,
+            кто нажал команду.</p>
+            <p><strong>В личке боту:</strong> отправьте <code>/paste ваш код</code>
             <a href="https://t.me/temlead_helper_bot" target="_blank" rel="noopener">@temlead_helper_bot</a>.
             Если просто пришлете ему простыню длиннее 300 символов, он сам предложит сделать
-            ссылку. Paste из бота живет 7 дней, и рядом с ним видно ваше имя – в отличие от
+            ссылку. Paste из бота живет 7 дней, и рядом с ним видно имя автора – в отличие от
             <a href="/anon/">анонимного вопроса</a>.</p>
             <p class="paste-alt-shell"><strong>В терминале:</strong> в <a href="/shell/">шелл-режиме</a>
             наберите <a href="/shell/?cmd=nano+snippet.sh" class="questions-shell-cmd">nano snippet.sh</a>,

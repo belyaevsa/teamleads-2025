@@ -4630,9 +4630,10 @@ button.topic-node:focus-visible,
 }
 
 /* ============================================================
-   Paste – форма живет по тем же правилам, что и анонимная:
-   те же токены, та же сетка, те же состояния. Своего тут только
-   моноширинное поле и блок с готовой ссылкой.
+   Paste – форма создания. Палитра и хром скопированы со страницы
+   просмотра /p/<id> (PasteEndpoints.PastePageHtml), чтобы создание
+   и чтение выглядели одним сервисом. Тот же прием, что у терминала:
+   темная панель внутри светлой страницы.
    ============================================================ */
 .paste-lede {
     max-width: 46rem;
@@ -4642,129 +4643,129 @@ button.topic-node:focus-visible,
     margin-bottom: var(--space-lg);
 }
 
-.paste-form { margin-bottom: var(--space-3xl); }
+/* Значения продублированы из PastePageHtml – та страница генерится бэкендом
+   и до этих переменных не дотягивается. Меняете здесь – меняйте и там. */
+.paste-pane {
+    --pp-bg: #0d1117;
+    --pp-surface: #161b22;
+    --pp-line: #30363d;
+    --pp-ink: #c9d1d9;
+    --pp-muted: #8b949e;
+    --pp-link: #58a6ff;
+    --pp-btn: #21262d;
 
-.paste-label {
-    display: block;
-    font-weight: 600;
-    color: var(--gray-900);
-    margin-bottom: var(--space-xs);
-}
-
-.paste-hint {
-    font-size: 0.875rem;
-    line-height: 1.55;
-    color: var(--gray-500);
-    margin-bottom: var(--space-md);
-}
-
-.paste-textarea {
-    width: 100%;
-    padding: var(--space-md);
+    margin-bottom: var(--space-xl);
+    background: var(--pp-bg);
+    border: 1px solid var(--pp-line);
+    border-radius: 8px;
+    overflow: hidden;
     font-family: var(--font-mono);
     font-size: 0.875rem;
     line-height: 1.6;
-    color: var(--gray-900);
-    background: var(--white);
-    border: 1px solid var(--gray-300);
-    border-radius: var(--radius-lg);
+    color: var(--pp-ink);
+}
+
+.paste-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 20px;
+    background: var(--pp-surface);
+    border-bottom: 1px solid var(--pp-line);
+    font-size: 0.8125rem;
+}
+
+.paste-bar-id { color: var(--pp-link); font-weight: 600; }
+.paste-bar-lang { padding: 2px 8px; background: var(--pp-line); border-radius: 4px; font-size: 0.75rem; }
+.paste-bar-meta { color: var(--pp-muted); }
+.paste-bar-actions { margin-left: auto; display: flex; gap: 8px; }
+
+.paste-btn {
+    padding: 4px 12px;
+    font-family: inherit;
+    font-size: 0.75rem;
+    color: var(--pp-ink);
+    background: var(--pp-btn);
+    border: 1px solid var(--pp-line);
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.paste-btn:hover { background: var(--pp-line); color: var(--pp-ink); }
+.paste-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.paste-btn-primary { background: #238636; border-color: #2ea043; color: #fff; }
+.paste-btn-primary:hover { background: #2ea043; color: #fff; }
+
+.paste-body { padding: 20px; }
+
+/* Тот же блок, что <pre> на странице просмотра – только редактируемый. */
+.paste-textarea {
+    display: block;
+    width: 100%;
+    min-height: 22rem;
+    padding: 16px;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--pp-ink);
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-line);
+    border-radius: 6px;
     resize: vertical;
     tab-size: 2;
     white-space: pre;
     overflow-wrap: normal;
     overflow-x: auto;
-    transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
-.paste-textarea:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgb(0 175 202 / 0.15);
-}
+.paste-textarea::placeholder { color: #484f58; }
+.paste-textarea:focus { outline: none; border-color: var(--pp-link); }
 
-.paste-form-row {
+.paste-foot {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: var(--space-md);
-    margin-top: var(--space-md);
-}
-
-.paste-counter {
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    color: var(--gray-400);
-}
-
-.paste-counter.is-over { color: #b91c1c; }
-
-/* Honeypot: off-screen rather than display:none – some bots skip hidden fields. */
-.paste-hp {
-    position: absolute;
-    left: -9999px;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-}
-
-.paste-status {
-    margin-top: var(--space-md);
-    font-size: 0.9375rem;
-    color: var(--gray-500);
-    min-height: 1.4em;
-}
-
-.paste-status.is-err { color: #b91c1c; }
-
-.paste-done {
-    padding: var(--space-xl);
-    margin-bottom: var(--space-3xl);
-    background: var(--kz-gold-light);
-    border: 1px solid var(--accent);
-    border-radius: var(--radius-lg);
-}
-
-.paste-done[hidden] { display: none; }
-.paste-done h2 { margin-top: 0; }
-.paste-done p { font-size: 0.9375rem; line-height: 1.6; color: var(--gray-600); }
-
-.paste-url-row {
-    display: flex;
     gap: var(--space-sm);
-    align-items: stretch;
-    margin: var(--space-md) 0 var(--space-sm);
+    padding: 8px 20px 16px;
+    font-size: 0.75rem;
+    color: #484f58;
 }
+
+.paste-status { min-height: 1.2em; }
+.paste-status.is-err { color: #f85149; }
+.paste-status.is-ok { color: #3fb950; }
+.paste-counter { margin-left: auto; }
+.paste-counter.is-over { color: #f85149; }
+
+/* Готовая ссылка занимает место редактора – тот же хром, другое содержимое. */
+.paste-url-row { display: flex; gap: 8px; align-items: stretch; }
 
 .paste-url {
     flex: 1;
     min-width: 0;
-    padding: var(--space-sm) var(--space-md);
-    font-family: var(--font-mono);
-    font-size: 0.9375rem;
-    color: var(--gray-900);
-    background: var(--white);
-    border: 1px solid var(--gray-300);
-    border-radius: var(--radius-lg);
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    color: var(--pp-link);
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-line);
+    border-radius: 6px;
 }
 
-.paste-url:focus { outline: none; border-color: var(--primary); }
-.paste-copy { flex: 0 0 auto; }
-.paste-done-meta { color: var(--gray-500); }
+.paste-url:focus { outline: none; border-color: var(--pp-link); }
+.paste-done-note { margin-top: 12px; color: var(--pp-muted); }
+.paste-done-note a { color: var(--pp-link); text-decoration: none; }
+.paste-done-note a:hover { text-decoration: underline; }
 
-.paste-alt {
-    padding-top: var(--space-xl);
-    border-top: 1px solid var(--gray-200);
-}
+/* Honeypot: off-screen rather than display:none – some bots skip hidden fields. */
+.paste-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
+.paste-alt { padding-top: var(--space-xl); border-top: 1px solid var(--gray-200); }
 .paste-alt h2 { margin-top: 0; }
-
-.paste-alt p {
-    font-size: 0.9375rem;
-    line-height: 1.6;
-    color: var(--gray-600);
-}
-
+.paste-alt p { font-size: 0.9375rem; line-height: 1.6; color: var(--gray-600); }
 .paste-alt-shell { color: var(--gray-500); }
 
 .paste-alt kbd {
@@ -4778,7 +4779,7 @@ button.topic-node:focus-visible,
 }
 
 @media (max-width: 640px) {
-    .paste-form-row { flex-direction: column-reverse; align-items: stretch; }
-    .paste-form-row .btn { width: 100%; }
+    .paste-bar-actions { margin-left: 0; width: 100%; }
     .paste-url-row { flex-direction: column; }
+    .paste-body { padding: 12px; }
 }

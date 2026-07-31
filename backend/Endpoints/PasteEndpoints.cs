@@ -268,9 +268,9 @@ public static class PasteEndpoints
               <span class="paste-lang">{{langLabel}}</span>
               <span class="paste-meta">{{paste.CreatedAt:dd.MM.yyyy HH:mm}}{{author}}{{sourceLabel}}</span>
               <div class="paste-actions">
-                <button class="paste-btn" onclick="copyText()">Copy</button>
+                <button class="paste-btn" onclick="copyText()">Копировать</button>
                 <a class="paste-btn" href="/api/pastes/{{paste.PublicId}}/raw">Raw</a>
-                <a class="paste-btn" href="/paste/">+ New</a>
+                <a class="paste-btn" href="/paste/">+ Новый</a>
               </div>
             </div>
             <div class="paste-body">
@@ -288,7 +288,7 @@ public static class PasteEndpoints
                 navigator.clipboard.writeText(document.querySelector('.paste-body code').textContent).then(function () {
                   var b = document.querySelector('.paste-btn');
                   var t = b.textContent;
-                  b.textContent = 'Copied!';
+                  b.textContent = 'Скопировано';
                   setTimeout(function () { b.textContent = t; }, 1500);
                 });
               }

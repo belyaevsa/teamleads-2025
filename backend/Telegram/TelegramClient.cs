@@ -29,13 +29,20 @@ public sealed class TelegramClient(HttpClient http, IOptions<TelegramOptions> op
     // Text is sent with no parse_mode on purpose: user input must never be
     // interpreted as markup, or a submitter could smuggle in a hidden
     // tg://user?id= mention and deanonymize themselves (or fake a quote).
-    public Task<Result> SendMessageAsync(long chatId, string text, object? replyMarkup = null, CancellationToken ct = default) =>
+    // `replyToMessageId` threads the answer under the message it is about – used by
+    // /paste in the community chat so the link lands on the wall of text it replaces.
+    // allow_sending_without_reply: the original may already be deleted, and a lost
+    // reply target must not turn into a lost answer.
+    public Task<Result> SendMessageAsync(long chatId, string text, object? replyMarkup = null,
+        long? replyToMessageId = null, CancellationToken ct = default) =>
         CallAsync("sendMessage", new
         {
             chat_id = chatId,
             text,
             disable_web_page_preview = true,
             reply_markup = replyMarkup,
+            reply_to_message_id = replyToMessageId,
+            allow_sending_without_reply = replyToMessageId is null ? (bool?)null : true,
         }, ct);
 
     public Task<Result> EditMessageTextAsync(long chatId, long messageId, string text, object? replyMarkup = null, CancellationToken ct = default) =>

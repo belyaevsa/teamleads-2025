@@ -32,7 +32,10 @@ public static class TelegramWebhookEndpoints
         Что я умею:
         🔍 Поиск по архиву: наберите @temlead_helper_bot и ключевое слово в любом чате.
 
-        📋 Paste: отправьте мне код, конфиг или длинный лог командой /paste. Я верну ссылку, которую можно отправить в чат. Если вставите в меня сообщение-простыню длиннее 300 символов, я сам предложу создать paste-ссылку. С пастой будет видно ваше имя – её, в отличие от анонимного вопроса, не нужно модерировать, и она не попадёт в общий чат.
+        📋 Paste: длинный код, конфиг или лог превращаю в короткую ссылку.
+           • здесь, в личке: /paste ваш код – или просто пришлите простыню длиннее 300 символов, я сам предложу;
+           • прямо в общем чате: ответьте на чужую простыню командой /paste – ссылка встанет под ней, автором останется тот, кто ее написал.
+           Paste не модерируется и рядом с ним видно имя автора – этим он и отличается от анонимного вопроса.
 
         🎭 Анонимные вопросы: через меня можно задать вопрос в общий чат анонимно.
 
@@ -152,6 +155,16 @@ public static class TelegramWebhookEndpoints
             return;
         }
 
+        // Answered in ANY chat, like /id. The point of /paste is the community chat:
+        // someone dumps a 200-line log, anyone replies "/paste" and the wall becomes a
+        // link. Privacy mode still applies – the bot only receives slash-commands here,
+        // never ordinary group messages.
+        if (text.StartsWith("/paste", StringComparison.Ordinal))
+        {
+            await HandlePasteWebhookAsync(msg, text, db, tg, log, ct);
+            return;
+        }
+
         // In the admin chat, a reply to an "✏️ Правка XXXX" prompt carries the new text.
         if (adminChat != 0 && msg.Chat.Id == adminChat)
         {
@@ -215,12 +228,6 @@ public static class TelegramWebhookEndpoints
         if (text.StartsWith("/search", StringComparison.Ordinal) || text.StartsWith("/find", StringComparison.Ordinal))
         {
             await HandleSearchAsync(msg, text, search, tg, log, ct);
-            return;
-        }
-
-        if (text.StartsWith("/paste", StringComparison.Ordinal))
-        {
-            await HandlePasteWebhookAsync(msg, text, db, cfg, tg, log, ct);
             return;
         }
 
@@ -482,38 +489,42 @@ public static class TelegramWebhookEndpoints
     // ── paste ────────────────────────────────────────────────────────────────
 
     private static async Task HandlePasteWebhookAsync(
-        Message msg, string text, AppDbContext db, IConfiguration cfg, TelegramClient tg, ILogger log, CancellationToken ct)
+        Message msg, string text, AppDbContext db, TelegramClient tg, ILogger log, CancellationToken ct)
     {
+        // "/paste <текст>" pastes what the sender typed; a bare "/paste" in reply to a
+        // message pastes THAT message. The second form is the one used in the community
+        // chat, and it is also why authorship has to follow the content, not the command.
         var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var content = parts.Length >= 2
-            ? parts[1]
-            : msg.ReplyToMessage?.Text;
+        var fromReply = parts.Length < 2 && msg.ReplyToMessage?.Text is not null;
+        var content = fromReply ? msg.ReplyToMessage!.Text : parts.Length >= 2 ? parts[1] : null;
+        var author = fromReply ? msg.ReplyToMessage!.From : msg.From;
 
         if (string.IsNullOrWhiteSpace(content))
         {
             log.LogInformation("/paste rejected: no content in the command and no replied-to text.");
             await tg.SendMessageAsync(msg.Chat.Id,
-                "Отправьте текст для paste:\n\n`/paste ваш код, лог или конфиг`\n\nИли ответьте этой командой на сообщение с текстом.", ct: ct);
+                "Отправьте текст для paste:\n\n/paste ваш код, лог или конфиг\n\nИли ответьте этой командой на сообщение с текстом – в ссылку уйдет оно.",
+                replyToMessageId: msg.MessageId, ct: ct);
             return;
         }
 
         if (content.Length < 10)
         {
             log.LogInformation("/paste rejected: {Length} chars, below the 10-char minimum.", content.Length);
-            await tg.SendMessageAsync(msg.Chat.Id, "Слишком коротко. Минимум 10 символов.", ct: ct);
+            await tg.SendMessageAsync(msg.Chat.Id, "Слишком коротко. Минимум 10 символов.", replyToMessageId: msg.MessageId, ct: ct);
             return;
         }
 
         if (content.Length > 64 * 1024)
         {
             log.LogInformation("/paste rejected: {Length} chars, over the 64 KB limit.", content.Length);
-            await tg.SendMessageAsync(msg.Chat.Id, "Слишком длинно. Максимум 64 КБ.", ct: ct);
+            await tg.SendMessageAsync(msg.Chat.Id, "Слишком длинно. Максимум 64 КБ.", replyToMessageId: msg.MessageId, ct: ct);
             return;
         }
 
         var language = LanguageDetector.Detect(content);
         var publicId = await GeneratePasteIdAsync(db, ct);
-        var authorName = (msg.From ?? new User(0)).GetDisplayName().Truncate(120);
+        var authorName = (author ?? new User(0)).GetDisplayName().Truncate(120);
 
         db.Pastes.Add(new Paste
         {
@@ -521,17 +532,21 @@ public static class TelegramWebhookEndpoints
             Content = content,
             Language = language,
             AuthorName = authorName,
-            AuthorTgId = msg.From?.Id,
+            AuthorTgId = author?.Id,
             Source = "bot",
             CreatedAt = DateTimeOffset.UtcNow,
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
         });
         await db.SaveChangesAsync(ct);
 
-        log.LogInformation("Paste {PublicId} created from a DM: {Length} chars, language {Language}.",
-            publicId, content.Length, language);
+        log.LogInformation("Paste {PublicId} created from {Scope} ({Mode}): {Length} chars, language {Language}.",
+            publicId, msg.Chat.Type, fromReply ? "reply" : "inline text", content.Length, language);
+
+        // Replying threads the link under the original wall of text, so the chat can
+        // collapse it. In a DM the reply target is simply the command itself.
         await tg.SendMessageAsync(msg.Chat.Id,
-            $"📋 Paste создан: https://teamleads.kz/p/{publicId}/\n\nЯзык: {LanguageLabel(language)}, автор: {authorName}", ct: ct);
+            $"📋 Paste: https://teamleads.kz/p/{publicId}/\n\nЯзык: {LanguageLabel(language)}, автор: {authorName}",
+            replyToMessageId: fromReply ? msg.ReplyToMessage!.MessageId : msg.MessageId, ct: ct);
     }
 
     private static bool LooksLikeCode(string text)
