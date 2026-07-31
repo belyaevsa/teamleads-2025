@@ -186,7 +186,11 @@ public static class PasteEndpoints
         var firstLine = paste.Content.Split('\n', 2)[0].Trim().Truncate(80);
         var snippet = paste.Content.Truncate(200).Replace('\n', ' ').Replace('\r', ' ');
         var langLabel = LanguageLabel(paste.Language);
-        var author = paste.AuthorName is not null ? $" · {WebUtility.HtmlEncode(paste.AuthorName)}" : "";
+        // Wrapped in a tagged span so the Instant View template can select the author
+        // on its own; the surrounding text stays exactly as before.
+        var author = paste.AuthorName is not null
+            ? $""" · <span data-author>{WebUtility.HtmlEncode(paste.AuthorName)}</span>"""
+            : "";
         var sourceLabel = paste.Source switch
         {
             "bot" => " · из Telegram",
@@ -205,6 +209,7 @@ public static class PasteEndpoints
             <meta property="og:description" content="{{WebUtility.HtmlEncode(snippet)}}">
             <meta property="og:url" content="{{BaseUrl}}/p/{{paste.PublicId}}/">
             <meta property="og:type" content="article">
+            <meta property="article:published_time" content="{{paste.CreatedAt:yyyy-MM-ddTHH:mm:sszzz}}">
             <meta property="og:site_name" content="Тимлид не кодит">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" crossorigin="anonymous">
             <style>
@@ -227,8 +232,11 @@ public static class PasteEndpoints
                 flex-wrap: wrap;
                 font-size: 13px;
               }
-              .paste-id { color: #58a6ff; font-weight: 600; }
-              .paste-meta { color: #8b949e; }
+              /* h1 and address are here for Instant View, not for looks – flatten
+                 the user-agent styles they drag in so the bar renders as before. */
+              .paste-id { color: #58a6ff; font-weight: 600; font-size: inherit; }
+              .paste-meta { color: #8b949e; font-style: normal; }
+              .paste-meta time { color: inherit; }
               .paste-lang { background: #30363d; color: #c9d1d9; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
               .paste-actions { margin-left: auto; display: flex; gap: 8px; }
               .paste-btn {
@@ -263,10 +271,11 @@ public static class PasteEndpoints
             </style>
             </head>
             <body>
+            <article>
             <div class="paste-header">
-              <span class="paste-id">p/{{paste.PublicId}}</span>
+              <h1 class="paste-id">p/{{paste.PublicId}}</h1>
               <span class="paste-lang">{{langLabel}}</span>
-              <span class="paste-meta">{{paste.CreatedAt:dd.MM.yyyy HH:mm}}{{author}}{{sourceLabel}}</span>
+              <address class="paste-meta"><time datetime="{{paste.CreatedAt:yyyy-MM-ddTHH:mm:sszzz}}">{{paste.CreatedAt:dd.MM.yyyy HH:mm}}</time>{{author}}{{sourceLabel}}</address>
               <div class="paste-actions">
                 <button class="paste-btn" onclick="copyText()">Копировать</button>
                 <a class="paste-btn" href="/api/pastes/{{paste.PublicId}}/raw">Raw</a>
@@ -276,6 +285,7 @@ public static class PasteEndpoints
             <div class="paste-body">
               <pre><code class="{{cssClass}}">{{escaped}}</code></pre>
             </div>
+            </article>
             <div class="paste-footer">
               <a href="/">Тимлид не кодит</a> ·
               paste-сервис сообщества ·

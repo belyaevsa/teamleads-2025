@@ -57,6 +57,10 @@ jobs:
             # Archive feed: read the landing deploy dir on this host, no network hop.
             printf 'BOT_DATA_PATH=/opt/teamleads.kz/latest/bot-data.json\n'
             printf 'BOT_DATA_URL=https://teamleads.kz/bot-data.json\n'
+            # Instant View for paste links before Telegram approves the template
+            # (backend/paste.instant-view.rules). Empty = post the plain url, which is
+            # also what you want once the template IS approved.
+            printf 'PASTE_IV_RHASH=%s\n' "${{ secrets.PASTE_IV_RHASH }}"
             # Scheduler switch and dilemma slot are NOT written here: they live in the
             # Settings table (seeded on startup, edited via /set). A deploy must not be
             # able to silently revert what someone changed from the admin chat.

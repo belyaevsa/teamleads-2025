@@ -169,7 +169,7 @@ public static class TelegramWebhookEndpoints
         // never ordinary group messages.
         if (text.StartsWith("/paste", StringComparison.Ordinal))
         {
-            await HandlePasteWebhookAsync(msg, text, db, tg, log, ct);
+            await HandlePasteWebhookAsync(msg, text, db, cfg, tg, log, ct);
             return;
         }
 
@@ -508,7 +508,7 @@ public static class TelegramWebhookEndpoints
     // ── paste ────────────────────────────────────────────────────────────────
 
     private static async Task HandlePasteWebhookAsync(
-        Message msg, string text, AppDbContext db, TelegramClient tg, ILogger log, CancellationToken ct)
+        Message msg, string text, AppDbContext db, IConfiguration cfg, TelegramClient tg, ILogger log, CancellationToken ct)
     {
         // "/paste <текст>" pastes what the sender typed; a bare "/paste" in reply to a
         // message pastes THAT message. The second form is the one used in the community
@@ -581,9 +581,11 @@ public static class TelegramWebhookEndpoints
 
         // Replying threads the link under the original wall of text, so the chat can
         // collapse it. In a DM the reply target is simply the command itself.
+        // Preview left on: that card is where the Instant View button lives.
         await tg.SendMessageAsync(msg.Chat.Id,
-            $"📋 Paste: https://teamleads.kz/p/{publicId}/\n\nЯзык: {LanguageLabel(language)}, автор: {authorName}",
-            replyToMessageId: fromReply ? msg.ReplyToMessage!.MessageId : msg.MessageId, ct: ct);
+            $"📋 Paste: {PasteLink(publicId, cfg)}\n\nЯзык: {LanguageLabel(language)}, автор: {authorName}",
+            replyToMessageId: fromReply ? msg.ReplyToMessage!.MessageId : msg.MessageId,
+            disablePreview: false, ct: ct);
     }
 
     private static bool LooksLikeCode(string text)
@@ -648,6 +650,21 @@ public static class TelegramWebhookEndpoints
         "plaintext" => "code",
         _ => "text",
     };
+
+    // A paste url, wrapped for Instant View when PASTE_IV_RHASH is set.
+    //
+    // Telegram only renders IV for a domain once its template is approved. Until then
+    // the editor's rHash makes t.me/iv?url=…&rhash=… work for everyone, so the setting
+    // is a stopgap: clear the env var after approval and the plain url gets IV natively.
+    // Template lives in backend/paste.instant-view.rules.
+    private static string PasteLink(string publicId, IConfiguration cfg)
+    {
+        var url = $"https://teamleads.kz/p/{publicId}/";
+        var rhash = cfg["PASTE_IV_RHASH"];
+        return string.IsNullOrWhiteSpace(rhash)
+            ? url
+            : $"https://t.me/iv?url={Uri.EscapeDataString(url)}&rhash={Uri.EscapeDataString(rhash)}";
+    }
 
     // ── payloads ────────────────────────────────────────────────────────────
     // Only the fields we act on. Telegram adds fields constantly; unknown ones
