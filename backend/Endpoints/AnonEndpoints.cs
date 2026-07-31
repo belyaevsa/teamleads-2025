@@ -21,15 +21,31 @@ public static class AnonEndpoints
         // Public: submit an anonymous question from the site form or the shell.
         // We store a salted hash of the IP (for flood control) and nothing else –
         // no session, no contact, no way back to the author.
-        api.MapPost("/anon", async (AnonInput input, HttpContext http, AnonService anon, IConfiguration cfg, CancellationToken ct) =>
+        api.MapPost("/anon", async (AnonInput input, HttpContext http, AnonService anon, IConfiguration cfg,
+            ILoggerFactory loggerFactory, CancellationToken ct) =>
         {
-            if (!string.IsNullOrEmpty(input.Website)) return Results.Created("/api/anon", null); // bot: pretend success
-            if (Validation.Fails(input, out var errors)) return Results.ValidationProblem(errors);
+            // Id, source and size only. The text is the one thing we promised not to
+            // keep, and a log file is still keeping it.
+            var log = loggerFactory.CreateLogger("Anon");
+
+            if (!string.IsNullOrEmpty(input.Website))
+            {
+                log.LogInformation("Anon request dropped: honeypot filled in (source {Source}).", input.Source ?? "form");
+                return Results.Created("/api/anon", null); // bot: pretend success
+            }
+            if (Validation.Fails(input, out var errors))
+            {
+                log.LogInformation("Anon request rejected: {Length} chars failed validation ({Fields}).",
+                    input.Text?.Length ?? 0, string.Join(", ", errors.Keys));
+                return Results.ValidationProblem(errors);
+            }
 
             var source = input.Source?.Trim().ToLowerInvariant() ?? "form";
             if (!AllowedSources.Contains(source)) source = "form";
 
-            var (_, row) = await anon.CreateAsync(input.Text, source, ClientFingerprint.IpHash(http, cfg), ct);
+            var (outcome, row) = await anon.CreateAsync(input.Text, source, ClientFingerprint.IpHash(http, cfg), ct);
+            log.LogInformation("Anon request {Outcome} from {Source}: {PublicId}, {Length} chars.",
+                outcome, source, row.PublicId, input.Text.Length);
 
             // Throttled submissions land here too, with an id that resolves nowhere.
             // Saying "you are flooding" would just teach a flooder to rotate IPs.

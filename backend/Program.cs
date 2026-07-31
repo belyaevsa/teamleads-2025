@@ -1,5 +1,4 @@
 using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TeamleadsBackend.BotData;
@@ -18,9 +17,9 @@ var builder = WebApplication.CreateBuilder(args);
 // wants it ever appears.
 //
 // Scopes stay OFF in production. They repeat the request path on every line, which
-// is both noise (HttpLogging already reports method/path/status) and a leak: the
+// is both noise (the access log already reports method/path/status) and a leak: the
 // Telegram webhook carries its secret in the path, and a scope prefix would print it
-// on every log line the request produces. See HttpLoggingRedaction for the other half.
+// on every log line the request produces. See Security/AccessLog.cs for the other half.
 builder.Logging.ClearProviders();
 if (string.Equals(builder.Configuration["LOG_FORMAT"], "json", StringComparison.OrdinalIgnoreCase))
 {
@@ -59,18 +58,8 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();   // uniform RFC7807 error bodies
 
-// Structured access log: one line per request with method, path, status, duration.
-builder.Services.AddHttpLogging(o =>
-{
-    o.LoggingFields = HttpLoggingFields.RequestMethod
-                    | HttpLoggingFields.RequestPath
-                    | HttpLoggingFields.ResponseStatusCode
-                    | HttpLoggingFields.Duration;
-    o.CombineLogs = true;
-});
-
-// The webhook secret travels in the request path, so the access log needs redaction.
-builder.Services.AddHttpLoggingInterceptor<HttpLoggingRedaction>();
+// Access logging lives in the AccessLog middleware (failures only) rather than in
+// HttpLogging, which has no way to stay silent on success. See Security/AccessLog.cs.
 
 // Per-client fixed-window limiter for the public POSTs (5/min/IP). The partition
 // key is the real client IP from X-Forwarded-For (see ClientFingerprint).
@@ -128,7 +117,7 @@ var app = builder.Build();
 
 // ── Pipeline ────────────────────────────────────────────────────────────────
 app.UseExceptionHandler();   // unhandled errors -> ProblemDetails (framework logs them at Error)
-app.UseHttpLogging();
+app.UseMiddleware<AccessLog>();
 app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())

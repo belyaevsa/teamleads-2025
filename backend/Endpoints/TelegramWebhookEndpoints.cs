@@ -106,7 +106,7 @@ public static class TelegramWebhookEndpoints
                 if (update?.InlineQuery is { } inline) await HandleInlineQueryAsync(inline, search, tg, log, ct);
                 else if (update?.CallbackQuery is { } cb) await HandleCallbackAsync(cb, anon, tg, adminChat, log, ct);
                 else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, questions, search, db, settings, tg, adminChat, cfg, log, ct);
-                else log.LogInformation("Update ignored: no message, callback or inline_query.");
+                else log.LogInformation("Update ignored: no message, callback or inline_query (edit, poll answer or reaction).");
             }
             catch (Exception ex)
             {
@@ -137,7 +137,7 @@ public static class TelegramWebhookEndpoints
         var plainText = msg.Text?.Trim();
         if (string.IsNullOrEmpty(text))
         {
-            log.LogInformation("Message ignored: neither text nor caption (sticker, service update or media without a caption).");
+            log.LogInformation("Message skipped: neither text nor caption (sticker, voice, service update or bare media).");
             return;
         }
 
@@ -195,7 +195,7 @@ public static class TelegramWebhookEndpoints
             }
             if (text.StartsWith("/set", StringComparison.Ordinal))
             {
-                await HandleSettingsAsync(msg, text, settings, tg, adminChat, ct);
+                await HandleSettingsAsync(msg, text, settings, tg, adminChat, log, ct);
                 return;
             }
 
@@ -216,7 +216,10 @@ public static class TelegramWebhookEndpoints
         // from seeing community chat messages anyway).
         if (!string.Equals(msg.Chat.Type, "private", StringComparison.Ordinal))
         {
-            log.LogInformation("Message ignored: chat type {ChatType} is neither private nor the admin chat.", msg.Chat.Type);
+            // The bot is an admin in the community chat, so Telegram hands it every
+            // message there. This is the only view of how much traffic the bot sits in,
+            // next to how often it is actually used – worth a line each.
+            log.LogInformation("{ChatType}: message seen, no command for me.", msg.Chat.Type);
             return;
         }
 
@@ -295,7 +298,7 @@ public static class TelegramWebhookEndpoints
     // values, `/set <key> <value>` changes one. This is the point of moving settings
     // into the database – turning the bot off is a message, not a deploy.
     private static async Task HandleSettingsAsync(
-        Message msg, string text, SettingsService settings, TelegramClient tg, long adminChat, CancellationToken ct)
+        Message msg, string text, SettingsService settings, TelegramClient tg, long adminChat, ILogger log, CancellationToken ct)
     {
         var parts = text.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -306,11 +309,17 @@ public static class TelegramWebhookEndpoints
                 lines.Add($"{s.key} = {s.value}  ({s.source})\n    {s.Description}");
             lines.Add("");
             lines.Add("Изменить: /set <ключ> <значение>");
+            log.LogInformation("/set listed the settings catalog.");
             await tg.SendMessageAsync(adminChat, string.Join("\n", lines), ct: ct);
             return;
         }
 
         var error = await settings.SetAsync(parts[1], parts[2], msg.From?.Id, ct);
+        if (error is null)
+            log.LogWarning("Setting changed from the admin chat: {Key} = {Value}.", parts[1], parts[2]);
+        else
+            log.LogInformation("Setting {Key} rejected: {Error}", parts[1], error);
+
         await tg.SendMessageAsync(adminChat,
             error ?? $"✅ {parts[1]} = {parts[2]}. Применится в течение 5 минут (кэш настроек).", ct: ct);
     }
@@ -320,6 +329,7 @@ public static class TelegramWebhookEndpoints
         var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (parts.Length < 2)
         {
+            log.LogInformation("/status called without a ticket number.");
             await tg.SendMessageAsync(msg.Chat.Id, "Формат: /status A7F3K2 – номер из ответа на ваш запрос.", ct: ct);
             return;
         }
@@ -328,6 +338,9 @@ public static class TelegramWebhookEndpoints
         // nothing: we cannot check that the asker is the author, and there is no
         // author to check against.
         var row = await anon.FindAsync(parts[1].ToUpperInvariant(), ct);
+        log.LogInformation("/status {PublicId}: {Result}.",
+            parts[1].ToUpperInvariant(), row is null ? "not found" : AnonService.StatusRu(row.Status));
+
         await tg.SendMessageAsync(msg.Chat.Id,
             row is null
                 ? "Запрос с таким номером не найден. Проверьте номер."
@@ -477,6 +490,7 @@ public static class TelegramWebhookEndpoints
         var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (parts.Length < 2)
         {
+            log.LogInformation("/search called without a query.");
             await tg.SendMessageAsync(msg.Chat.Id,
                 "Укажите ключевые слова для поиска по архиву.\nПример: /search 1-on-1 или /find бас фактор", ct: ct);
             return;

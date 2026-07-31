@@ -48,12 +48,26 @@ public static class PasteEndpoints
         app.MapGet("/p/{publicId}", async (
             string publicId,
             AppDbContext db,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
+            var log = loggerFactory.CreateLogger("Paste");
             var paste = await db.Pastes.FirstOrDefaultAsync(p => p.PublicId == publicId, ct);
-            return paste is null
-                ? Results.NotFound()
-                : Results.Content(PastePageHtml(paste), "text/html; charset=utf-8");
+            if (paste is null)
+            {
+                log.LogInformation("Paste {PublicId} requested but not found (expired, or a bad link).", publicId);
+                return Results.NotFound();
+            }
+
+            // The HTML page is how pastes are actually read – the JSON endpoint is not.
+            // Counting only the latter made Views a number about nothing.
+            paste.Views++;
+            await db.SaveChangesAsync(ct);
+
+            log.LogInformation("Paste {PublicId} viewed ({Views} total, language {Language}, source {Source}).",
+                paste.PublicId, paste.Views, paste.Language, paste.Source);
+
+            return Results.Content(PastePageHtml(paste), "text/html; charset=utf-8");
         });
     }
 
@@ -169,9 +183,13 @@ public static class PasteEndpoints
     private static async Task<IResult> GetRawAsync(
         string publicId,
         AppDbContext db,
+        ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
         var paste = await db.Pastes.FirstOrDefaultAsync(p => p.PublicId == publicId, ct);
+        loggerFactory.CreateLogger("Paste").LogInformation(
+            "Paste {PublicId} raw fetch: {Result}.", publicId, paste is null ? "not found" : "served");
+
         return paste is null
             ? Results.NotFound()
             : Results.Text(paste.Content, "text/plain; charset=utf-8");

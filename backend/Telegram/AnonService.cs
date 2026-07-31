@@ -88,12 +88,17 @@ public sealed class AnonService(
         if (row.Status != "pending") return $"Уже {StatusRu(row.Status)}.";
 
         var communityChat = await settings.GetLongAsync("tg.community_chat_id", ct);
-        if (communityChat == 0) return "Не задан tg.community_chat_id.";
+        if (communityChat == 0)
+        {
+            log.LogWarning("Anon {PublicId} cannot be published: tg.community_chat_id is not set.", row.PublicId);
+            return "Не задан tg.community_chat_id.";
+        }
 
         var sent = await tg.SendMessageAsync(communityChat, PublishedText(row), ct: ct);
         if (!sent.Ok)
         {
             // Leave it pending with live buttons so the admin can retry after the fix.
+            log.LogWarning("Anon {PublicId} failed to publish to the community chat: {Error}", row.PublicId, sent.Error);
             await UpdateCardAsync(row, $"{CardText(row)}\n\n⚠️ Ошибка публикации: {sent.Error}", PendingKeyboard(row.PublicId), ct);
             return $"Не отправилось: {sent.Error}";
         }
@@ -104,6 +109,8 @@ public sealed class AnonService(
         row.ModeratedByTgId = byTgId;
         await db.SaveChangesAsync(ct);
 
+        log.LogInformation("Anon {PublicId} published to the community chat as message {MessageId}.", row.PublicId, sent.MessageId);
+
         var link = MessageLink(communityChat, sent.MessageId);
         await UpdateCardAsync(row, $"✅ Опубликовано · {row.PublicId}\n{link}\n\n{row.PublishText}", null, ct);
         return "Опубликовано.";
@@ -113,6 +120,7 @@ public sealed class AnonService(
     {
         if (row.Status != "pending") return $"Уже {StatusRu(row.Status)}.";
 
+        log.LogInformation("Anon {PublicId} rejected by a moderator.", row.PublicId);
         row.Status = "rejected";
         row.ModeratedAt = DateTimeOffset.UtcNow;
         row.ModeratedByTgId = byTgId;
@@ -128,6 +136,7 @@ public sealed class AnonService(
     {
         if (row.Status != "pending") return $"Уже {StatusRu(row.Status)}, правка не применена.";
 
+        log.LogInformation("Anon {PublicId} edited by a moderator: {Length} chars.", row.PublicId, newText.Trim().Length);
         row.EditedText = newText.Trim();
         await db.SaveChangesAsync(ct);
         await UpdateCardAsync(row, CardText(row), PendingKeyboard(row.PublicId), ct);
