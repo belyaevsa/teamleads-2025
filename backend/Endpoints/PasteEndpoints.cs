@@ -221,6 +221,8 @@ public static class PasteEndpoints
                 font-size: 14px;
                 line-height: 1.6;
                 min-height: 100vh;
+                overflow-x: hidden;
+                -webkit-text-size-adjust: 100%;
               }
               .paste-header {
                 display: flex;
@@ -251,6 +253,7 @@ public static class PasteEndpoints
                 text-decoration: none;
               }
               .paste-btn:hover { background: #30363d; }
+              .paste-btn[aria-pressed="true"] { background: #30363d; border-color: #58a6ff; color: #58a6ff; }
               .paste-body { padding: 20px; }
               .paste-body pre {
                 margin: 0;
@@ -258,9 +261,31 @@ public static class PasteEndpoints
                 background: #161b22;
                 border: 1px solid #30363d;
                 border-radius: 6px;
+                /* Code keeps its columns on a wide screen: horizontal scroll lives
+                   inside this box, so the page itself never scrolls sideways. */
+                white-space: pre;
                 overflow-x: auto;
+                tab-size: 2;
               }
               .paste-body code { font-family: inherit; font-size: 13px; }
+
+              /* A phone is too narrow for columns. Wrap by default there – most of
+                 what people paste and then read on a phone is prose, logs or stack
+                 traces, none of which need alignment. `anywhere` covers the long
+                 unbroken tokens (urls, base64, minified json) that break the layout. */
+              @media (max-width: 760px) {
+                .paste-body pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+                .paste-header { padding: 10px 12px; gap: 8px; }
+                .paste-body { padding: 12px; }
+                .paste-body pre { padding: 12px; }
+                .paste-footer { padding: 8px 12px 20px; }
+                .paste-actions { margin-left: 0; width: 100%; }
+              }
+
+              /* The toggle wins over the media query in both directions. */
+              body.wrap .paste-body pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+              body.nowrap .paste-body pre { white-space: pre; overflow-wrap: normal; }
+
               .paste-footer {
                 padding: 8px 20px 20px;
                 font-size: 12px;
@@ -277,6 +302,7 @@ public static class PasteEndpoints
               <span class="paste-lang">{{langLabel}}</span>
               <address class="paste-meta"><time datetime="{{paste.CreatedAt:yyyy-MM-ddTHH:mm:sszzz}}">{{paste.CreatedAt:dd.MM.yyyy HH:mm}}</time>{{author}}{{sourceLabel}}</address>
               <div class="paste-actions">
+                <button class="paste-btn" onclick="toggleWrap(this)" aria-pressed="false" data-wrap>Перенос строк</button>
                 <button class="paste-btn" onclick="copyText()">Копировать</button>
                 <a class="paste-btn" href="/api/pastes/{{paste.PublicId}}/raw">Raw</a>
                 <a class="paste-btn" href="/paste/">+ Новый</a>
@@ -294,9 +320,34 @@ public static class PasteEndpoints
             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" crossorigin="anonymous"></script>
             <script>hljs.highlightAll();</script>
             <script>
+              // Wrapping is width-dependent by default (see the media query); the
+              // toggle pins it and remembers the choice across pastes.
+              (function () {
+                var btn = document.querySelector('[data-wrap]');
+                var saved = null;
+                try { saved = localStorage.getItem('paste-wrap'); } catch (e) {}
+                if (saved) document.body.classList.add(saved);
+                sync();
+
+                function wrapped() {
+                  return getComputedStyle(document.querySelector('.paste-body pre')).whiteSpace === 'pre-wrap';
+                }
+                function sync() { btn.setAttribute('aria-pressed', wrapped() ? 'true' : 'false'); }
+
+                window.toggleWrap = function () {
+                  var next = wrapped() ? 'nowrap' : 'wrap';
+                  document.body.classList.remove('wrap', 'nowrap');
+                  document.body.classList.add(next);
+                  try { localStorage.setItem('paste-wrap', next); } catch (e) {}
+                  sync();
+                };
+                addEventListener('resize', sync);
+              })();
+            </script>
+            <script>
               function copyText() {
                 navigator.clipboard.writeText(document.querySelector('.paste-body code').textContent).then(function () {
-                  var b = document.querySelector('.paste-btn');
+                  var b = document.querySelector('.paste-btn[onclick^="copyText"]');
                   var t = b.textContent;
                   b.textContent = 'Скопировано';
                   setTimeout(function () { b.textContent = t; }, 1500);
