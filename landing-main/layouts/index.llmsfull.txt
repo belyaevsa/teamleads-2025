@@ -1,0 +1,60 @@
+{{- /*
+  /llms-full.txt – весь контент сайта одним файлом.
+
+  Тело каждой страницы берётся из partial "page-text.html" – того же, что кормит
+  shell-index.json. Добавили страницу или раздел – файл обновится сам.
+*/ -}}
+{{- $skip := slice "s" -}}
+{{- $order := slice "events" "insights" "articles" "toolkit" "showcase" "fun" -}}
+{{- $secs := slice -}}
+{{- range $order }}{{ with $.Site.GetPage (printf "/%s" .) }}{{ $secs = $secs | append . }}{{ end }}{{ end -}}
+{{- range site.Sections -}}
+  {{- $s := .Section -}}
+  {{- if and (not (in $order $s)) (not (in $skip $s)) }}{{ $secs = $secs | append . }}{{ end -}}
+{{- end -}}
+{{- $m := site.Params.meetup -}}
+# {{ site.Title }}
+
+> {{ site.Params.description }}
+
+Полный текст всех материалов сайта {{ site.BaseURL }}. Карта разделов – {{ absURL "llms.txt" }}.
+Telegram-чат {{ site.Params.telegramHandle }} ({{ site.Params.telegram }}), {{ site.Params.participantsCount }}+ участников.
+Встречи каждую {{ $m.weekdayAccusative }} в {{ $m.time }} ({{ $m.tzLabel }}).
+Язык материалов – русский.
+{{ range $secs }}
+{{- $sec := . }}
+{{- with .RegularPages.ByDate.Reverse }}
+
+---
+
+# {{ $sec.Title }}
+{{ with $sec.Description }}
+{{ . }}
+{{ end }}
+{{- range . }}
+## {{ .Title }}
+
+URL: {{ .Permalink }}
+{{ with .Date }}Дата: {{ .Format "2006-01-02" }}
+{{ end }}
+{{ partial "page-text.html" (dict "page" . "h" "### ") }}
+{{ end }}
+{{- end }}
+{{- end }}
+{{- $top := slice }}
+{{- range (where site.RegularPages "Section" "") }}
+  {{- if ne .Layout "redirect" }}{{ $top = $top | append . }}{{ end }}
+{{- end }}
+{{- with $top }}
+
+---
+
+# Сервисы и разделы сайта
+{{ range . }}
+## {{ .Title }}
+
+URL: {{ .Permalink }}
+
+{{ partial "page-text.html" (dict "page" . "h" "### ") }}
+{{ end }}
+{{- end }}

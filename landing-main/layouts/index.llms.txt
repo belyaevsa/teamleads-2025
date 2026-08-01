@@ -1,0 +1,61 @@
+{{- /*
+  /llms.txt – карта сайта для LLM-клиентов (llmstxt.org).
+
+  Полностью генерируется из контента: ни одной страницы руками. Разделы идут в
+  порядке $order, любой новый раздел автоматически попадает в конец, кроме $skip.
+  Внутри раздела – от свежих к старым.
+*/ -}}
+{{- $skip := slice "s" -}}
+{{- $order := slice "events" "insights" "articles" "toolkit" "showcase" "fun" -}}
+{{- $secs := slice -}}
+{{- range $order }}{{ with $.Site.GetPage (printf "/%s" .) }}{{ $secs = $secs | append . }}{{ end }}{{ end -}}
+{{- range site.Sections -}}
+  {{- $s := .Section -}}
+  {{- if and (not (in $order $s)) (not (in $skip $s)) }}{{ $secs = $secs | append . }}{{ end -}}
+{{- end -}}
+{{- $m := site.Params.meetup -}}
+# {{ site.Title }}
+
+> {{ site.Params.description }}
+
+Сообщество инженерных руководителей Казахстана: тимлиды, engineering managers, CTO.
+Общение – в Telegram-чате {{ site.Params.telegramHandle }} ({{ site.Params.telegram }}), {{ site.Params.participantsCount }}+ участников.
+Онлайн-встречи – каждую {{ $m.weekdayAccusative }} в {{ $m.time }} ({{ $m.tzLabel }}), подключение по постоянной ссылке {{ absURL "join/" }}.
+Язык всех материалов – русский. Все даты в формате ГГГГ-ММ-ДД.
+
+Что здесь есть: конспекты еженедельных встреч с позициями участников и выводами,
+недельные выжимки дискуссий из чата, статьи, рабочие шаблоны для тимлидов,
+зарплатные данные по рынку Казахстана и проекты участников.
+
+Форматы для машин:
+- {{ absURL "llms-full.txt" }} – полный текст всех страниц одним файлом
+- любая страница в markdown – добавьте `index.md` к её URL, например {{ absURL "toolkit/one-on-one/index.md" }}
+- {{ absURL "shell-index.json" }} – полнотекстовый индекс (url, title, section, body)
+- {{ absURL "bot-data.json" }} – дилеммы симулятора, квизы и бэклог открытых вопросов
+- {{ absURL "index.xml" }} – RSS
+{{ range $secs }}
+{{- $sec := . }}
+{{- with .RegularPages.ByDate.Reverse }}
+## {{ $sec.Title }}
+{{ with $sec.Description }}
+{{ . }}
+{{ end }}
+{{- range . }}
+- [{{ .Title }}]({{ .Permalink }}){{ with .Date }} ({{ .Format "2006-01-02" }}){{ end }}{{ with .Description }}: {{ . }}{{ end }}
+{{- end }}
+{{ end }}
+{{- end }}
+{{- $top := slice }}
+{{- range (where site.RegularPages "Section" "") }}
+  {{- if ne .Layout "redirect" }}{{ $top = $top | append . }}{{ end }}
+{{- end }}
+{{- with $top }}
+## Сервисы и разделы сайта
+{{ range . }}
+- [{{ .Title }}]({{ .Permalink }}){{ with .Description }}: {{ . }}{{ end }}
+{{- end }}
+{{ end }}
+## Optional
+
+- [Как добавить свой проект в витрину](https://github.com/{{ site.Params.githubRepo }}/blob/{{ site.Params.githubBranch }}/landing-main/SHOWCASE.md): инструкция по Pull Request
+- [Исходники сайта](https://github.com/{{ site.Params.githubRepo }}): контент лежит в `landing-main/content`, правки принимаются через PR

@@ -1,0 +1,86 @@
+{{- /*
+  page-text.html – единый плоский текст страницы.
+
+  Один источник правды для всех машиночитаемых выдач: shell-index.json (grep
+  в Shell) и llms-full.txt. Прозаические разделы (articles, showcase, toolkit,
+  fun) отдают .Plain, а data-driven (events, insights) собираются из фронтматтера,
+  потому что их тело в markdown пустое – весь контент лежит в параметрах.
+
+  Вызов:  {{ partial "page-text.html" (dict "page" . "h" "### ") }}
+    page – страница
+    h    – префикс подзаголовка ("" для grep-индекса, "### " для markdown)
+
+  Возвращает строку. Пустые куски отбрасываются.
+*/ -}}
+{{- $p := .page -}}
+{{- $h := .h | default "" -}}
+{{- $parts := slice -}}
+
+{{- with $p.Description }}{{ $parts = $parts | append . }}{{ end -}}
+
+{{- if eq $p.Section "events" -}}
+
+  {{- with $p.Params.mainTopic }}{{ $parts = $parts | append . }}{{ end -}}
+
+  {{- range ($p.Params.topics | default slice) -}}
+    {{- $parts = $parts | append (printf "%s%s\n%s" $h (.title | default "") (.body | default "")) -}}
+  {{- end -}}
+
+  {{- with ($p.Params.takeaways | default slice) -}}
+    {{- $lines := slice -}}
+    {{- range . }}{{ $lines = $lines | append (printf "- %s: %s" (.title | default "") (.body | default "")) }}{{ end -}}
+    {{- $parts = $parts | append (printf "%sВыводы\n%s" $h (delimit $lines "\n")) -}}
+  {{- end -}}
+
+  {{- with $p.Params.opinions -}}
+    {{- $lines := slice -}}
+    {{- range (.rows | default slice) }}{{ $lines = $lines | append (printf "- %s %s" (.question | default "") (delimit (.values | default slice) " / ")) }}{{ end -}}
+    {{- with $lines }}{{ $parts = $parts | append (printf "%sМнения участников\n%s" $h (delimit . "\n")) }}{{ end -}}
+  {{- end -}}
+
+  {{- $open := slice -}}
+  {{- $closed := slice -}}
+  {{- range ($p.Params.nextQuestions | default slice) -}}
+    {{- $q := .question | default "" -}}
+    {{- if .answeredIn -}}
+      {{- $closed = $closed | append (printf "- %s (разобрано на %s)" $q .answeredIn) -}}
+    {{- else -}}
+      {{- $open = $open | append (printf "- %s" $q) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- with $open }}{{ $parts = $parts | append (printf "%sОткрытые вопросы\n%s" $h (delimit . "\n")) }}{{ end -}}
+  {{- with $closed }}{{ $parts = $parts | append (printf "%sВопросы, закрытые позже\n%s" $h (delimit . "\n")) }}{{ end -}}
+
+  {{- with ($p.Params.participants | default slice) -}}
+    {{- $names := slice -}}
+    {{- range . -}}
+      {{- $n := .name | default "" -}}
+      {{- with .role }}{{ $n = printf "%s (%s)" $n . }}{{ end -}}
+      {{- with $n }}{{ $names = $names | append . }}{{ end -}}
+    {{- end -}}
+    {{- with $names }}{{ $parts = $parts | append (printf "Участники: %s" (delimit . ", ")) }}{{ end -}}
+  {{- end -}}
+
+{{- else if eq $p.Section "insights" -}}
+
+  {{- range ($p.Params.topics | default slice) -}}
+    {{- $block := slice (printf "%s%s" $h (.title | default "")) -}}
+    {{- range (.paragraphs | default slice) }}{{ $block = $block | append . }}{{ end -}}
+    {{- range (.quotes | default slice) }}{{ $block = $block | append (printf "> %s" .) }}{{ end -}}
+    {{- range (.links | default slice) }}{{ $block = $block | append (printf "Ссылка: %s – %s" (.title | default "") (.url | default "")) }}{{ end -}}
+    {{- $parts = $parts | append (delimit $block "\n") -}}
+  {{- end -}}
+
+{{- else -}}
+
+  {{- with $p.Params.projectUrl }}{{ $parts = $parts | append (printf "Проект: %s" .) }}{{ end -}}
+  {{- with $p.Params.author }}{{ $parts = $parts | append (printf "Автор: %s" .) }}{{ end -}}
+  {{- $parts = $parts | append $p.Plain -}}
+
+{{- end -}}
+
+{{- with ($p.Params.tags | default slice) }}{{ $parts = $parts | append (printf "Теги: %s" (delimit . ", ")) }}{{ end -}}
+
+{{- $clean := slice -}}
+{{- range $parts }}{{ with (. | chomp) }}{{ $clean = $clean | append . }}{{ end }}{{ end -}}
+{{- return (delimit $clean "\n\n") -}}

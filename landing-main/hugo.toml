@@ -45,9 +45,27 @@ title = "Тимлид не кодит – Сообщество тимлидов 
   isPlainText = true
   notAlternative = true
 
+# llmstxt.org: карта сайта для LLM-клиентов. Генерируется из контента целиком –
+# разделы, страницы и описания подтягиваются сами, руками ничего не ведём.
+[outputFormats.llms]
+  mediaType = "text/plain"
+  baseName = "llms"
+  suffix = "txt"
+  isPlainText = true
+  notAlternative = true
+
+# Тот же контент, но целиком: текст каждой страницы одним файлом. Тело берётся из
+# partial "page-text.html" – общего с shell-index.json.
+[outputFormats.llmsfull]
+  mediaType = "text/plain"
+  baseName = "llms-full"
+  suffix = "txt"
+  isPlainText = true
+  notAlternative = true
+
 [outputs]
   page = ["html", "cat"]
-  home = ["html", "rss", "shellindex", "botdata"]
+  home = ["html", "rss", "shellindex", "botdata", "llms", "llmsfull"]
 
 [params]
   description = "Крупнейшее сообщество тимлидов, инженерных менеджеров и CTO Казахстана: найм, архитектура, процессы и карьера. Зарплаты в IT и отзывы о компаниях."

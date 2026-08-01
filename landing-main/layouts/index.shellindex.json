@@ -1,23 +1,10 @@
-{{- /* Search index for the Shell's grep: one record per content page with plain text. */ -}}
+{{- /* Search index for the Shell's grep: one record per content page with plain text.
+       Тело страницы берётся из partial "page-text.html" – общего с llms-full.txt,
+       чтобы grep и LLM-выдача не расходились. */ -}}
 {{- $secs := slice "events" "articles" "insights" "showcase" "toolkit" -}}
 {{- $idx := slice -}}
 {{- range where site.RegularPages "Section" "in" $secs -}}
-  {{- $b := "" -}}
-  {{- if in (slice "articles" "showcase") .Section -}}
-    {{- $b = .Plain -}}
-  {{- else if eq .Section "events" -}}
-    {{- $parts := slice (.Params.mainTopic | default "") -}}
-    {{- range (.Params.topics | default slice) }}{{ $parts = $parts | append (.title | default "") (.body | default "") }}{{ end -}}
-    {{- range (.Params.takeaways | default slice) }}{{ $parts = $parts | append (.title | default "") (.body | default "") }}{{ end -}}
-    {{- with .Params.opinions }}{{ range (.rows | default slice) }}{{ $parts = $parts | append (.question | default "") }}{{ range (.values | default slice) }}{{ $parts = $parts | append . }}{{ end }}{{ end }}{{ end -}}
-    {{- range (.Params.nextQuestions | default slice) }}{{ $parts = $parts | append (.question | default "") }}{{ end -}}
-    {{- range (.Params.participants | default slice) }}{{ $parts = $parts | append (.name | default "") (.role | default "") }}{{ end -}}
-    {{- $b = delimit $parts " " -}}
-  {{- else if eq .Section "insights" -}}
-    {{- $parts := slice (.Description | default "") -}}
-    {{- range (.Params.topics | default slice) }}{{ $parts = $parts | append (.title | default "") }}{{ range (.paragraphs | default slice) }}{{ $parts = $parts | append . }}{{ end }}{{ range (.quotes | default slice) }}{{ $parts = $parts | append . }}{{ end }}{{ end -}}
-    {{- $b = delimit $parts " " -}}
-  {{- end -}}
+  {{- $b := partial "page-text.html" (dict "page" . "h" "") -}}
   {{- $idx = $idx | append (dict "u" .RelPermalink "n" .File.ContentBaseName "t" .Title "s" .Section "b" ($b | plainify | chomp)) -}}
 {{- end -}}
 {{ $idx | jsonify }}
