@@ -121,6 +121,7 @@
 {{- $insightPages := where (where .Site.RegularPages "Section" "insights") "Params.draft" "ne" true -}}
 {{- $toolkitPages := where (where .Site.RegularPages "Section" "toolkit") "Params.draft" "ne" true -}}
 {{- $showcasePages := where (where .Site.RegularPages "Section" "showcase") "Params.draft" "ne" true -}}
+{{- $agentPages := where (where .Site.RegularPages "Section" "agents") "Params.draft" "ne" true -}}
 {{- $events := where (where .Site.RegularPages "Section" "events") "Params.cardTitle" "!=" nil -}}
 <div class="dock-page">
   <div class="dock-wrap">
@@ -170,6 +171,7 @@
       <a href="/articles/">Статьи <b>{{ len $articlePages }}</b></a>
       <a href="/insights/">Инсайты <b>{{ len $insightPages }}</b></a>
       <a href="/toolkit/">Операционка <b>{{ len $toolkitPages }}</b></a>
+      <a href="/agents/">Рецепты агентов <b>{{ len $agentPages }}</b></a>
       <a href="/showcase/">Проекты <b>{{ len $showcasePages }}</b></a>
     </div>
 

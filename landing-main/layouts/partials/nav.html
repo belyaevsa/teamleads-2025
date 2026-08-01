@@ -10,6 +10,21 @@
         <a href="/articles/" class="nav-link">Статьи</a>
         <a href="/insights/" class="nav-link">Инсайты</a>
         <a href="/showcase/" class="nav-link">Проекты</a>
+        {{- /* Сервисные страницы жили без единой ссылки в шапке: на /paste/, /anon/,
+               /salary/, /toolkit/ и /agents/ можно было попасть только изнутри
+               контента. Пункт «Инструменты» собирает их в одном месте, а шапка
+               остаётся в один ряд. Разметка без JS: раскрытие на CSS. */ -}}
+        <div class="nav-menu">
+            <button class="nav-menu-toggle" type="button" aria-haspopup="true">Инструменты</button>
+            <div class="nav-menu-list">
+                <a href="/toolkit/" class="nav-menu-item">Операционка<span>Шаблоны 1-on-1, ретро, постмортем, найм</span></a>
+                <a href="/agents/" class="nav-menu-item">Рецепты агентов<span>Промпты и скиллы участников</span></a>
+                <a href="/salary/" class="nav-menu-item">Зарплаты<span>Рынок Казахстана по грейдам и ролям</span></a>
+                <a href="/paste/" class="nav-menu-item">Paste<span>Ссылка на код, лог или конфиг за секунду</span></a>
+                <a href="/anon/" class="nav-menu-item">Спросить анонимно<span>Вопрос в чат без имени, через модерацию</span></a>
+                <a href="/questions/" class="nav-menu-item">Темы встреч<span>Бэклог тем, которые ещё не разобрали</span></a>
+            </div>
+        </div>
         <a href="/shell/" class="nav-link">Shell</a>
         <a href="/#about" class="nav-link">О нас</a>
         <button class="nav-search" type="button" aria-label="Поиск" title="Поиск (Ctrl/⌘+K)" data-search-open data-search-source="nav">

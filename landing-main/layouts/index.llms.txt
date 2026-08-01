@@ -6,7 +6,7 @@
   Внутри раздела – от свежих к старым.
 */ -}}
 {{- $skip := slice "s" -}}
-{{- $order := slice "events" "insights" "articles" "toolkit" "showcase" "fun" -}}
+{{- $order := slice "events" "insights" "articles" "toolkit" "agents" "showcase" "fun" -}}
 {{- $secs := slice -}}
 {{- range $order }}{{ with $.Site.GetPage (printf "/%s" .) }}{{ $secs = $secs | append . }}{{ end }}{{ end -}}
 {{- range site.Sections -}}

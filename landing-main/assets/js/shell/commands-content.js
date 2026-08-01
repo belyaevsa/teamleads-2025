@@ -43,6 +43,14 @@ export function makeContentCommands(S) {
       items.forEach(function (it) { var n = el('span'); n.appendChild(el('span', 'accent', '• ')); n.appendChild(linkpad(it.u, it.n, 22)); n.appendChild(el('span', 'dim', it.t)); printNode(n); });
       print(''); print('cat toolkit/<имя> – открыть здесь. /toolkit/ – на сайте.', 'dim');
     },
+    agents: function () {
+      var items = (sections.agents || []).slice().sort(function (a, b) { return (a.n || '').localeCompare(b.n || ''); });
+      if (!items.length) { print('agents: рецепты не загружены', 'err'); return; }
+      print('Рецепты агентов – промпты и скиллы участников сообщества:', 'accent');
+      items.forEach(function (it) { var n = el('span'); n.appendChild(el('span', 'accent', '• ')); n.appendChild(linkpad(it.u, it.n, 22)); n.appendChild(el('span', 'dim', it.t)); printNode(n); });
+      print(''); print('cat agents/<имя> – открыть здесь. /agents/ – на сайте.', 'dim');
+      print('Свой рабочий промпт – скиньте в чат с пометкой «в рецепты».', 'hint');
+    },
     voices: function () {
       if (!VOICES.length) { print('voices: реплики не загружены', 'err'); return; }
       print('Голоса сообщества – реальные реплики из чата, без редактуры:', 'accent');

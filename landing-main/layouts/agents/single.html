@@ -1,0 +1,97 @@
+{{ define "main" }}
+{{- $kinds := dict "skill" "Скилл" "prompt" "Промпт" "subagent" "Субагент" "harness" "Харнесс" "mcp" "MCP-сервер" -}}
+<section class="report-hero">
+    <div class="container">
+        <a href="/agents/" class="report-back">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            Все рецепты
+        </a>
+        <h1 class="report-title">{{ .Title }}</h1>
+        <div class="article-meta">
+            {{- with .Params.kind }}<span class="event-tag">{{ index $kinds . | default . }}</span>{{ end }}
+            {{- range .Params.tools }}<span class="event-tag">{{ . }}</span>{{ end }}
+            {{- with .Params.author }}<span class="showcase-author">{{ . }}</span>{{ end }}
+            {{- with .Params.tested }}<span class="lab-date">проверено: {{ . }}</span>{{ end }}
+        </div>
+        {{ partial "report/share.html" . }}
+    </div>
+</section>
+
+<section class="report-content">
+    <div class="container">
+        <div class="report-layout">
+            <div class="report-container">
+                <div class="toolkit-actions">
+                    <button class="btn btn-secondary" type="button" data-toolkit-copy>Скопировать рецепт</button>
+                    <a class="btn btn-secondary" href="{{ printf "/shell/#cat agents/%s" .File.ContentBaseName | relURL }}">Открыть в Shell</a>
+                    {{- with .Params.sourceUrl }}
+                    <a class="btn btn-secondary" href="{{ . }}" target="_blank" rel="noopener">Исходник →</a>
+                    {{- end }}
+                </div>
+
+                {{- /* Рецепт часто автоматизирует шаблон из операционки – показываем связь в обе стороны. */ -}}
+                {{- with .Params.basedOn }}
+                {{- with $.Site.GetPage (printf "/toolkit/%s" .) }}
+                <p class="lab-p">Основан на шаблоне <a href="{{ .RelPermalink }}">{{ .Title }}</a> из операционки.</p>
+                {{- end }}
+                {{- end }}
+
+                <div class="article-body" data-toolkit-body>{{ .Content }}</div>
+
+                {{- with .Params.tags }}
+                <div class="showcase-tags">
+                    {{- range . }}
+                    <a class="event-tag" href="{{ printf "/tags/%s/" (. | urlize) | relURL }}">{{ . }}</a>
+                    {{- end }}
+                </div>
+                {{- end }}
+
+                {{ partial "report/discuss.html" (dict "ctx" . "text" "Доработали рецепт под себя – пришлите Pull Request?") }}
+                {{ partial "report/bottom-nav.html" (dict "ctx" . "allHref" "/agents/" "allLabel" "Все рецепты") }}
+            </div>
+        </div>
+    </div>
+</section>
+
+{{ partial "footer.html" . }}
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+(function () {
+  var btn = document.querySelector('[data-toolkit-copy]');
+  if (!btn) return;
+  var url = {{ path.Join .RelPermalink "index.md" | jsonify }};
+  btn.addEventListener('click', function () {
+    btn.textContent = 'Копирую…';
+    fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(function (t) {
+        if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t);
+        throw new Error('no clipboard');
+      })
+      .then(function () { btn.textContent = 'Скопировано'; })
+      .catch(function () { btn.textContent = 'Ошибка'; })
+      .then(function () { setTimeout(function () { btn.textContent = 'Скопировать рецепт'; }, 1500); });
+  });
+})();
+</script>
+{{ end }}
+
+{{ define "structured-data" }}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "{{ .Title }}",
+    "description": "{{ .Description }}",
+    "url": "{{ .Permalink }}",
+    "datePublished": "{{ .Date.Format "2006-01-02" }}",
+    {{- with .Params.author }}
+    "author": { "@type": "Person", "name": "{{ . }}" },
+    {{- end }}
+    "isPartOf": { "@type": "WebSite", "name": "{{ .Site.Title }}", "url": "{{ .Site.BaseURL }}" }
+}
+</script>
+{{ end }}

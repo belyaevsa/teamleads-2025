@@ -1,7 +1,7 @@
 {{- /* Search index for the Shell's grep: one record per content page with plain text.
        Тело страницы берётся из partial "page-text.html" – общего с llms-full.txt,
        чтобы grep и LLM-выдача не расходились. */ -}}
-{{- $secs := slice "events" "articles" "insights" "showcase" "toolkit" -}}
+{{- $secs := slice "events" "articles" "insights" "showcase" "toolkit" "agents" -}}
 {{- $idx := slice -}}
 {{- range where site.RegularPages "Section" "in" $secs -}}
   {{- $b := partial "page-text.html" (dict "page" . "h" "") -}}

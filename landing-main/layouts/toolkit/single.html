@@ -24,6 +24,22 @@
                 </div>
                 <div class="article-body" data-toolkit-body>{{ .Content }}</div>
 
+                {{- /* Обратная связка с /agents/: рецепты объявляют шаблон в поле basedOn,
+                       здесь собираем их сами, чтобы страницу шаблона не надо было править
+                       при появлении нового рецепта. */ -}}
+                {{- $base := .File.ContentBaseName -}}
+                {{- $recipes := where (where site.RegularPages "Section" "agents") "Params.basedOn" $base -}}
+                {{- with $recipes }}
+                <div class="insight-discuss">
+                    <p>Этот шаблон умеет вести агент:</p>
+                    <ul>
+                        {{- range . }}
+                        <li><a href="{{ .RelPermalink }}">{{ .Title }}</a> – {{ .Description }}</li>
+                        {{- end }}
+                    </ul>
+                </div>
+                {{- end }}
+
                 {{ partial "report/discuss.html" (dict "ctx" . "text" "Используете шаблон иначе – поделитесь опытом?") }}
                 {{ partial "report/bottom-nav.html" (dict "ctx" . "allHref" "/toolkit/" "allLabel" "Вся операционка") }}
             </div>

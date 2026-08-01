@@ -74,7 +74,10 @@
 {{- else -}}
 
   {{- with $p.Params.projectUrl }}{{ $parts = $parts | append (printf "Проект: %s" .) }}{{ end -}}
+  {{- with $p.Params.sourceUrl }}{{ $parts = $parts | append (printf "Исходник: %s" .) }}{{ end -}}
   {{- with $p.Params.author }}{{ $parts = $parts | append (printf "Автор: %s" .) }}{{ end -}}
+  {{- with $p.Params.tools }}{{ $parts = $parts | append (printf "Инструменты: %s" (delimit . ", ")) }}{{ end -}}
+  {{- with $p.Params.tested }}{{ $parts = $parts | append (printf "Проверено: %s" .) }}{{ end -}}
   {{- $parts = $parts | append $p.Plain -}}
 
 {{- end -}}
