@@ -72,7 +72,7 @@ public sealed class Outbox(AppDbContext db, SettingsService settings, ILogger<Ou
             // same JSON it was serialized from, so the keyboard survives the queue intact.
             IReplyMarkup? markup = msg.ReplyMarkupJson is null
                 ? null
-                //TODO Bad BAD VERY BAD, make a heklper in Libtelebot for union descrimination
+                //TODO Bad BAD VERY BAD, make a helper in libtelebot for union descrimination
                 : JsonSerializer.Deserialize<InlineKeyboardMarkup>(msg.ReplyMarkupJson);
 
             // Late resolution: a message aimed at "the admin chat" goes wherever that

@@ -95,16 +95,11 @@ builder.Services.AddHttpClient<TelegramClient>(c =>
     c.Timeout = TimeSpan.FromSeconds(15);   // the webhook must answer fast; Telegram redelivers otherwise
 });
 
-
 //Telebot telegram client
 builder.Services.AddSingleton<ITelegramClient>(_ =>
-    
     //TODO Remove options and load from cfg directly
     new Telegram(tgOptions.BotToken ?? string.Empty)
-
 );
-
-
 
 builder.Services.AddSingleton<SettingsService>();   // process-wide 5-minute cache
 builder.Services.AddScoped<Outbox>();
