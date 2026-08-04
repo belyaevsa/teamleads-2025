@@ -93,9 +93,17 @@ builder.Services.AddHttpClient<TelegramClient>(c =>
     c.BaseAddress = new Uri(tgOptions.ApiBase);
     c.Timeout = TimeSpan.FromSeconds(15);   // the webhook must answer fast; Telegram redelivers otherwise
 });
+// Bucketlab.Telebot's client. Its transport owns a private static HttpClient hardcoded
+// to api.telegram.org with a 30s timeout, so TG_API_BASE and the 15s timeout configured
+// on the typed client above do not apply to anything routed through it.
+builder.Services.AddSingleton<Telebot.ITelegramClient>(_ =>
+    new Telebot.Telegram(tgOptions.BotToken ?? string.Empty));
+
 // The outbox talks to IChatSender, never to a Bot API library directly. Swapping the
 // client means writing another adapter and changing this one line. See IChatSender.cs.
-builder.Services.AddScoped<IChatSender, BotApiChatSender>();
+// BotApiChatSender (the hand-rolled client) stays available and is still what
+// TelegramClientWireTests pins; this line is the whole switch.
+builder.Services.AddScoped<IChatSender, TelebotChatSender>();
 
 builder.Services.AddSingleton<SettingsService>();   // process-wide 5-minute cache
 builder.Services.AddScoped<Outbox>();
