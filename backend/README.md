@@ -11,9 +11,10 @@ and **submissions** persisted to pgsql with admin-only moderation lists.
 
 - ASP.NET Core Minimal APIs, all routes under `/api`.
 - EF Core + Npgsql; migrations **auto-applied on startup** (with retry).
-- Built-in structured logging (JSON console in Production, readable in Development).
+- Built-in structured logging (simple console; JSON console when `LOG_FORMAT=json`).
 - Built-in rate limiter on the public POSTs; admin endpoints behind an `X-Api-Key`.
-- Packaged with a multi-stage `Dockerfile` and run via `docker run` – **no docker-compose**.
+- Packaged with a multi-stage `Dockerfile` and deployed via `docker run` – **never compose**.
+  Compose exists only as a local dev environment (`compose.yaml`), never in the deploy path.
 
 ## Layout
 
@@ -35,6 +36,10 @@ backend.Tests/            xUnit suite (sibling project, not shipped in the image
   Support/TestHost        in-memory AppDbContext + real SettingsService + wired TelegramClient
   OutboxTests             the drain loop: retries, backoff, expiry, late chat resolution
   TelegramClientWireTests the JSON each Bot API method puts on the wire
+
+compose.yaml              local dev stack (repo root) – db + api + hugo + stub Bot API
+compose.stg.yaml          staging overlay: Production env, built site, feed read off disk
+dev/telegram-stub.py      fake Bot API; logs what the bot tried to send
 ```
 
 ## Tests
@@ -44,7 +49,8 @@ dotnet test backend.Tests/TeamleadsBackend.Tests.csproj
 ```
 
 No database and no secrets: the suite runs against EF Core's in-memory provider and a
-stub `HttpMessageHandler`.
+stub `HttpMessageHandler`. For the landing checks, the full local stack and
+troubleshooting, see **[TESTING.md](../TESTING.md)**.
 
 In CI it runs from two workflows, split by branch and never overlapping:
 
@@ -65,6 +71,54 @@ because that is the part a replacement Bot API package has to reproduce. A swap 
 keeps the C# signatures but changes the payload compiles, deploys, and breaks in
 production. Two tests are marked **BEHAVIOUR THE REPLACEMENT CHANGES** – they pin down
 where the current client and `Bucketlab.Telebot` disagree.
+
+## Local environment
+
+Compose is a **dev tool only** – it is never part of a deploy, which stays `docker run`
+(`run.sh` locally, `deploy-backend.yml` on the host). It exists because the only other
+way to run the backend was to point `backend.env` at the **remote production Postgres**.
+
+```bash
+docker compose up --build          # from the repo root
+docker compose logs -f tg-stub     # transcript of what the bot tried to send
+docker compose down -v             # stop, and wipe the database volume
+```
+
+| Service | Host port | What it is |
+|---------|-----------|------------|
+| `api` | `127.0.0.1:5080` | this project, built from `backend/Dockerfile`; same port as `run.sh` |
+| `db` | `127.0.0.1:55433` | throwaway Postgres 17. **Not** 5432 – that collides with an existing local server |
+| `landing` | `127.0.0.1:1313` | `hugo server`, live reload |
+| `tg-stub` | `127.0.0.1:8081` | fake Bot API (`dev/telegram-stub.py`) |
+
+Migrations auto-apply on startup, so the schema builds itself on first boot; `api` waits
+on the database healthcheck so it doesn't race `initdb` and burn the retry budget.
+
+Every credential in `compose.yaml` is a local throwaway and is committed on purpose.
+Nothing reaches teamleads.kz: the database is a container and `TG_API_BASE` points at the
+stub, so the anon pipeline, the outbox dispatcher and the weekly scheduler all run
+end to end with no BotFather token and no risk of a stray message reaching the community.
+
+To exercise the full anon flow:
+
+```bash
+curl -X PUT localhost:5080/api/settings/tg.admin_chat_id \
+  -H 'X-Api-Key: localdev-admin-key' -H 'Content-Type: application/json' -d '{"value":"-100123"}'
+curl -X POST localhost:5080/api/anon \
+  -H 'Content-Type: application/json' -d '{"text":"проверка","source":"form"}'
+docker compose logs -f tg-stub     # card appears within one 30s dispatcher tick
+```
+
+### Staging variant
+
+```bash
+docker compose -f compose.yaml -f compose.stg.yaml up --build
+```
+
+Production-shaped, still local. `ASPNETCORE_ENVIRONMENT=Production`, the site is **built**
+with `--minify` and served by nginx instead of rendered in memory, and the backend reads
+`bot-data.json` off disk via `BOT_DATA_PATH` the way the host does. Catches the class of
+break that only appears in a real build – minification is its own rendering pass.
 
 ## Endpoints
 

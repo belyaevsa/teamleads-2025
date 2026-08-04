@@ -1,0 +1,61 @@
+# Staging overlay – production-shaped, still entirely local.
+#
+#   docker compose -f compose.yaml -f compose.stg.yaml up --build
+#
+# The point is to catch what Development mode hides. Three things differ on the host
+# and are reproduced here:
+#
+#   1. ASPNETCORE_ENVIRONMENT=Production – no developer exception page, UTC log
+#      timestamps, scopes off, and Program.cs takes its non-development branches.
+#      (Log format is NOT one of the differences: JSON console is gated on
+#      LOG_FORMAT=json, which the deploy workflow never sets, so the host runs the
+#      same simple console format you see here.)
+#   2. The site is BUILT with --minify and served as static files, rather than rendered
+#      in memory by `hugo server`. Minification is its own rendering pass and can fail
+#      on markup that serves fine unminified.
+#   3. The backend reads bot-data.json off DISK via BOT_DATA_PATH, which is what the
+#      real host does, instead of fetching it over HTTP.
+#
+# Still local, still safe: same throwaway database, same stub Bot API. Nothing points
+# at teamleads.kz.
+
+services:
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      BOT_DATA_URL: ""
+      BOT_DATA_PATH: /srv/site/bot-data.json
+    volumes:
+      # Read-only, and shared with the landing service below – the same arrangement as
+      # the host, where both services sit on one machine and the backend reads the
+      # deployed site directory directly.
+      - site:/srv/site:ro
+    depends_on:
+      landing:
+        condition: service_completed_successfully
+
+  landing:
+    # Build once and exit, then serve the output. `service_completed_successfully`
+    # above means the API does not start until bot-data.json actually exists.
+    command: >
+      sh -c "hugo --minify --destination /out && echo 'site built → /out'"
+    volumes:
+      - ./landing-main:/src
+      - site:/out
+    ports: !reset []          # nothing to serve from this container; site-web does it
+    restart: "no"
+
+  # Static file server for the built output. Separate service because the builder above
+  # is a one-shot job, and a container cannot both exit and keep serving.
+  site-web:
+    image: nginx:alpine
+    depends_on:
+      landing:
+        condition: service_completed_successfully
+    volumes:
+      - site:/usr/share/nginx/html:ro
+    ports:
+      - "127.0.0.1:1313:80"   # same host port as dev, so bookmarks keep working
+
+volumes:
+  site:

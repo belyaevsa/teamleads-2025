@@ -1,5 +1,6 @@
 # Multi-stage build: SDK compiles + publishes, runtime image only carries the output.
-# No docker-compose anywhere – this image is run with `docker run` (see run.sh / CI).
+# Deploys never use compose: this image is run with `docker run` (see run.sh / CI).
+# The compose files at the repo root are a local dev environment only.
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
