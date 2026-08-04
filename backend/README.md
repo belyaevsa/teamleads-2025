@@ -29,7 +29,40 @@ backend/
   Security/               ApiKey filter, ClientFingerprint (IP from X-Forwarded-For + salted hash)
   Migrations/             EF Core migrations (committed)
   Dockerfile, run.sh, set-webhook.sh, backend.env.example
+
+backend.Tests/            xUnit suite (sibling project, not shipped in the image)
+  Support/StubBotApi      fake Bot API socket – captures the request body sent to Telegram
+  Support/TestHost        in-memory AppDbContext + real SettingsService + wired TelegramClient
+  OutboxTests             the drain loop: retries, backoff, expiry, late chat resolution
+  TelegramClientWireTests the JSON each Bot API method puts on the wire
 ```
+
+## Tests
+
+```bash
+dotnet test backend.Tests/TeamleadsBackend.Tests.csproj
+```
+
+No database and no secrets: the suite runs against EF Core's in-memory provider and a
+stub `HttpMessageHandler`.
+
+In CI it runs from two workflows, split by branch and never overlapping:
+
+| Workflow | Fires on | Does |
+|----------|----------|------|
+| `test-backend.yml` | push to **any branch but master** | tests only |
+| `deploy-backend.yml` | push to **master** | tests, then swaps the container (`deploy` has `needs: test`) |
+
+Both filter on `backend/**` and `backend.Tests/**`, so landing content changes don't
+trigger them, and both run the suite inside `mcr.microsoft.com/dotnet/sdk:10.0` – the
+image the `Dockerfile` builds with. The self-hosted runner only ever needed Docker, so
+nothing here assumes a .NET SDK on the host.
+
+`TelegramClientWireTests` asserts on the bytes rather than on how the client is called,
+because that is the part a replacement Bot API package has to reproduce. A swap that
+keeps the C# signatures but changes the payload compiles, deploys, and breaks in
+production. Two tests are marked **BEHAVIOUR THE REPLACEMENT CHANGES** – they pin down
+where the current client and `Bucketlab.Telebot` disagree.
 
 ## Endpoints
 
