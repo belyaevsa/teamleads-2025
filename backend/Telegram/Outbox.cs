@@ -2,12 +2,13 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using TeamleadsBackend.Data;
 using TeamleadsBackend.Settings;
+using Telebot;
 
 namespace TeamleadsBackend.Telegram;
 
 // Queue + drain for chat messages the bot owes. See Data/OutboxMessage.cs for what
 // belongs here and what deliberately does not.
-public sealed class Outbox(AppDbContext db, TelegramClient tg, SettingsService settings, ILogger<Outbox> log)
+public sealed class Outbox(AppDbContext db, SettingsService settings, ILogger<Outbox> log, ITelegramClient telegramClient)
 {
     // Backoff per attempt, then give up. Roughly 30s → 2m → 10m → 1h → 6h: fast enough
     // to ride out a blip, slow enough that a genuinely dead chat isn't hammered for days.
@@ -69,9 +70,10 @@ public sealed class Outbox(AppDbContext db, TelegramClient tg, SettingsService s
 
             // Boxed: the client takes object?, and a JsonElement round-trips back to the
             // same JSON it was serialized from, so the keyboard survives the queue intact.
-            object? markup = msg.ReplyMarkupJson is null
+            IReplyMarkup? markup = msg.ReplyMarkupJson is null
                 ? null
-                : JsonSerializer.Deserialize<JsonElement>(msg.ReplyMarkupJson);
+                //TODO Bad BAD VERY BAD, make a heklper in Libtelebot for union descrimination
+                : JsonSerializer.Deserialize<InlineKeyboardMarkup>(msg.ReplyMarkupJson);
 
             // Late resolution: a message aimed at "the admin chat" goes wherever that
             // setting points right now, not where it pointed when it was queued.
@@ -86,10 +88,24 @@ public sealed class Outbox(AppDbContext db, TelegramClient tg, SettingsService s
                 continue;
             }
 
-            var result = await tg.SendMessageAsync(chatId, msg.Text, markup, ct: ct);
+            // Telebot signals failure by throwing TelebotException (protocol/HTTP) rather
+            // than returning a status. Match the previous behaviour: swallow to a retryable
+            // attempt, but let cancellation propagate so shutdown stays clean.
+            Telebot.Models.Message? result = null;
+            string? error = null;
+            try
+            {
+                result = await telegramClient.SendMessageAsync(new(chatId, msg.Text, ReplyMarkup: markup), ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                error = ex.Message;
+                log.LogWarning(ex, "Telegram sendMessage failed for outbox {Id} ({Kind}).", msg.Id, msg.Kind);
+            }
+
             msg.Attempts++;
 
-            if (result.Ok)
+            if (result is not null)
             {
                 msg.Status = "sent";
                 msg.SentAt = DateTimeOffset.UtcNow;
@@ -99,18 +115,18 @@ public sealed class Outbox(AppDbContext db, TelegramClient tg, SettingsService s
                 continue;
             }
 
-            msg.LastError = result.Error;
+            msg.LastError = error;
             if (msg.Attempts >= Backoff.Length)
             {
                 msg.Status = "failed";
                 log.LogError("Outbox {Id} ({Kind}) gave up after {Attempts} attempts: {Error}",
-                    msg.Id, msg.Kind, msg.Attempts, result.Error);
+                    msg.Id, msg.Kind, msg.Attempts, error);
             }
             else
             {
                 msg.NextAttemptAt = DateTimeOffset.UtcNow + Backoff[msg.Attempts - 1];
                 log.LogWarning("Outbox {Id} ({Kind}) attempt {Attempts} failed ({Error}); retrying at {Next:HH:mm}.",
-                    msg.Id, msg.Kind, msg.Attempts, result.Error, msg.NextAttemptAt);
+                    msg.Id, msg.Kind, msg.Attempts, error, msg.NextAttemptAt);
             }
         }
 

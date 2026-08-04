@@ -8,6 +8,7 @@ using TeamleadsBackend.Search;
 using TeamleadsBackend.Security;
 using TeamleadsBackend.Settings;
 using TeamleadsBackend.Telegram;
+using Telebot;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -93,6 +94,18 @@ builder.Services.AddHttpClient<TelegramClient>(c =>
     c.BaseAddress = new Uri(tgOptions.ApiBase);
     c.Timeout = TimeSpan.FromSeconds(15);   // the webhook must answer fast; Telegram redelivers otherwise
 });
+
+
+//Telebot telegram client
+builder.Services.AddSingleton<ITelegramClient>(_ =>
+    
+    //TODO Remove options and load from cfg directly
+    new Telegram(tgOptions.BotToken ?? string.Empty)
+
+);
+
+
+
 builder.Services.AddSingleton<SettingsService>();   // process-wide 5-minute cache
 builder.Services.AddScoped<Outbox>();
 builder.Services.AddScoped<AnonService>();
