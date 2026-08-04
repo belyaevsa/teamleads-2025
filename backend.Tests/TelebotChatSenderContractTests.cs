@@ -39,10 +39,12 @@ public sealed class TelebotChatSenderContractTests : ChatSenderContractTests
         return markup is null ? null : JsonDocument.Parse(markup.ToJson()).RootElement;
     }
 
-    // null, not false: the request type has no preview field, so the adapter cannot even
-    // express the intent. The contract test asserts true and therefore fails – which is
-    // the correct outcome, and the whole reason DisablePreview is on the port.
-    protected override bool? SentDisablePreview(TestHost host) => null;
+    // Bot API 7.0 replaced disable_web_page_preview with a link_preview_options object;
+    // Telebot exposes it as SendMessageRequestParams.LinkPreviewOptions.IsDisabled. The
+    // adapter can now express the intent, so the observation reads that field directly –
+    // null when the adapter sent no options, true/false when it did.
+    protected override bool? SentDisablePreview(TestHost host) =>
+        For(host).Last.LinkPreviewOptions?.IsDisabled;
 
     private sealed class FakeTelegramClient : ITelegramClient
     {
