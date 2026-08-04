@@ -1,0 +1,96 @@
+name: Tests
+
+# Tests only, never a deploy.
+#
+# These are the checks that gate merging into master (see .github/MERGE_POLICY.md).
+on:
+  # No `paths` filter here, deliberately. A required status check that is filtered out
+  # never reports, and GitHub reads "never reported" as "not yet passed" – so a paths
+  # filter on a gating check would leave every unrelated PR permanently unmergeable.
+  # Both jobs are fast; running them unconditionally removes that trap.
+  #
+  # Fork pull requests must run too: PR #12 came from one, and those are exactly the
+  # changes that most need a gate.
+  pull_request:
+
+  # Branch pushes gate nothing, so here a filter is safe and worth having: it keeps
+  # work-in-progress feedback fast. master itself is covered by the deploy workflows.
+  push:
+    branches-ignore: [master]
+    paths:
+      - 'backend/**'
+      - 'backend.Tests/**'
+      - 'landing-main/**'
+      - '.github/workflows/test.yml'
+
+  workflow_dispatch:   # manual run (Actions tab → Run workflow)
+
+# A branch push and its pull_request fire separately. Keying on the head branch rather
+# than github.ref collapses both onto one group, so the duplicate gets cancelled.
+concurrency:
+  group: tests-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+# Both jobs run on GitHub-hosted runners, NOT the self-hosted one used for deploys.
+# That runner sits on the production host, and a pull_request from a fork runs whatever
+# code the fork contains. Neither job needs a secret, so isolation costs nothing.
+jobs:
+  # Job id `backend` is the required check context – see the ruleset.
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same image and command as the gate in deploy-backend.yml – keep them in step.
+      # Running in the SDK container rather than via setup-dotnet pins CI to the exact
+      # toolchain the Dockerfile builds the shipped artifact with.
+      - name: Run backend tests
+        run: |
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp \
+            -e NUGET_PACKAGES=/src/.nuget \
+            -v "$GITHUB_WORKSPACE":/src \
+            -w /src \
+            mcr.microsoft.com/dotnet/sdk:10.0 \
+            dotnet test backend.Tests/TeamleadsBackend.Tests.csproj --nologo -v minimal
+
+  # Job id `landing` is the second required check context.
+  #
+  # The site build IS a test here. Hugo fails hard on a malformed front matter block,
+  # and the insights pages are hand-authored YAML written weekly – week-2026-07-27
+  # failed to build twice on nested double quotes inside a `quotes:` string. Today that
+  # only surfaces when the deploy runs, which is after the merge.
+  landing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive   # themes, if any are ever vendored that way
+
+      - uses: peaceiris/actions-hugo@v3
+        with:
+          # Pin, and pin `extended` – the site uses SCSS, which the non-extended build
+          # cannot compile. Bump this together with whatever the deploy host runs.
+          hugo-version: '0.153.4'
+          extended: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # --minify to match deploy-landing.yml: minification is a rendering pass of its
+      # own and can fail on markup that builds fine unminified.
+      - name: Build site
+        working-directory: landing-main
+        run: hugo --minify
+
+      # Reads public/shell/index.html, so it must follow the build. Proves Hugo actually
+      # ingested scenarios.yaml and that every scenario's `link` resolves to a real page.
+      - name: Validate simulator deck
+        working-directory: landing-main
+        run: node scripts/validate-scenarios.mjs
+
+      - name: Run landing tests
+        working-directory: landing-main
+        run: npm test

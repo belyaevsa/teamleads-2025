@@ -50,13 +50,15 @@ In CI it runs from two workflows, split by branch and never overlapping:
 
 | Workflow | Fires on | Does |
 |----------|----------|------|
-| `test-backend.yml` | push to **any branch but master** | tests only |
+| `test.yml` | **every pull request**, and pushes to any branch but master | tests only, reports the `backend` check |
 | `deploy-backend.yml` | push to **master** | tests, then swaps the container (`deploy` has `needs: test`) |
 
-Both filter on `backend/**` and `backend.Tests/**`, so landing content changes don't
-trigger them, and both run the suite inside `mcr.microsoft.com/dotnet/sdk:10.0` – the
-image the `Dockerfile` builds with. The self-hosted runner only ever needed Docker, so
-nothing here assumes a .NET SDK on the host.
+Both run the suite inside `mcr.microsoft.com/dotnet/sdk:10.0` – the image the
+`Dockerfile` builds with – so nothing assumes a .NET SDK on the runner. The pull-request
+job runs on a GitHub-hosted runner rather than the self-hosted one, because fork code
+must not execute on the production host.
+
+**Merging is gated on that `test` check** – see [`.github/MERGE_POLICY.md`](../.github/MERGE_POLICY.md).
 
 `TelegramClientWireTests` asserts on the bytes rather than on how the client is called,
 because that is the part a replacement Bot API package has to reproduce. A swap that
