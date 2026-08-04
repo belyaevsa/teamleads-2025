@@ -363,11 +363,13 @@ public class OutboxTests
     }
 
     // The loop's half of the promise: it asks for previews off on every message. Whether
-    // an adapter can actually deliver that is checked by
-    // ChatSenderContractTests.Preview_suppression_is_honoured – and Telebot 0.0.5 cannot,
-    // because its SendMessageRequestParams has no preview field at all. That is precisely
-    // the split this port buys: the requirement is stated once here, and each client is
-    // measured against it separately.
+    // an adapter can actually deliver that is checked separately, by
+    // ChatSenderContractTests.Preview_suppression_is_honoured.
+    //
+    // That split has already earned its keep twice on the Telebot adapter: once when
+    // 0.0.5 had no preview field at all, and again when the field existed but the adapter
+    // was not passing it. Both times this test stayed green and the contract test went
+    // red, which is the correct division of labour.
     [Fact]
     public async Task Every_message_asks_for_previews_to_be_suppressed()
     {

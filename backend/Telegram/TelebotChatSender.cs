@@ -18,13 +18,16 @@ public sealed class TelebotChatSender(ITelegramClient client) : IChatSender
 
         try
         {
-            // NOTE: message.DisablePreview cannot be honoured. SendMessageRequestParams
-            // has no preview field – its GetRequestFields emits chat_id, text,
-            // message_thread_id, parse_mode, disable_notification, protect_content,
-            // reply_parameters and reply_markup, and nothing else. Every message sent
-            // through this adapter renders with link previews on.
+            // Passing LinkPreviewOptions is what actually suppresses previews – reading
+            // the field back in a test does not. Telebot only emits link_preview_options
+            // when this argument is non-null, so leaving it off means previews stay on
+            // no matter what DisablePreview says. Needs 0.0.6; 0.0.5 had no such field.
             var sent = await client.SendMessageAsync(
-                new SendMessageRequestParams(message.ChatId, message.Text, ReplyMarkup: markup), ct);
+                new SendMessageRequestParams(
+                    message.ChatId, message.Text,
+                    LinkPreviewOptions: new LinkPreviewOptions(IsDisabled: message.DisablePreview),
+                    ReplyMarkup: markup),
+                ct);
 
             return SendOutcome.Delivered(sent.MessageId);
         }
