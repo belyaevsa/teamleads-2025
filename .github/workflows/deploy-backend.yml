@@ -13,8 +13,9 @@ on:
 
   workflow_dispatch:   # manual re-run (Actions tab → Run workflow)
 
-# Every other branch is covered by test-backend.yml, which runs the same suite and
-# nothing else. This file stays the master-only path: test, then swap the container.
+# Every other branch, and every pull request, is covered by test.yml, which runs the
+# same suite and nothing else. This file is the master-only path: test, then swap the
+# container. Merges into master are gated separately – see .github/MERGE_POLICY.md.
 
 # Don't let two backend deploys race on the same container/env file.
 concurrency:
@@ -24,7 +25,7 @@ concurrency:
 jobs:
   # Gate. The deploy job needs this one, so a red suite stops the container swap.
   # No secrets and no database – in-memory store plus a stub Bot API socket.
-  # Same command as test-backend.yml; keep the two in step.
+  # Same command as the `backend` job in test.yml; keep the two in step.
   test:
     runs-on: self-hosted
     steps:
