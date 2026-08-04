@@ -8,9 +8,13 @@ on:
     branches: [master]
     paths:
       - 'backend/**'
+      - 'backend.Tests/**'
       - '.github/workflows/deploy-backend.yml'
 
   workflow_dispatch:   # manual re-run (Actions tab → Run workflow)
+
+# Every other branch is covered by test-backend.yml, which runs the same suite and
+# nothing else. This file stays the master-only path: test, then swap the container.
 
 # Don't let two backend deploys race on the same container/env file.
 concurrency:
@@ -18,7 +22,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Gate. The deploy job needs this one, so a red suite stops the container swap.
+  # No secrets and no database – in-memory store plus a stub Bot API socket.
+  # Same command as test-backend.yml; keep the two in step.
+  test:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp \
+            -e NUGET_PACKAGES=/src/.nuget \
+            -v "$GITHUB_WORKSPACE":/src \
+            -w /src \
+            mcr.microsoft.com/dotnet/sdk:10.0 \
+            dotnet test backend.Tests/TeamleadsBackend.Tests.csproj --nologo -v minimal
+
   deploy:
+    needs: test
     runs-on: self-hosted          # runner is ON the host → build + docker run locally, no registry/SSH
     env:
       IMAGE: teamleads-backend

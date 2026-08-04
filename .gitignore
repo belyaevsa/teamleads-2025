@@ -15,3 +15,9 @@ landing-main/hugo_stats.json
 .env
 /backend/bin
 /backend/obj
+backend.Tests/obj/
+backend.Tests/bin/
+
+# NuGet cache written by the containerized CI test run (NUGET_PACKAGES=/src/.nuget).
+# Kept inside the workspace so it survives between runs on the self-hosted runner.
+/.nuget/
