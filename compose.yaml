@@ -1,0 +1,95 @@
+# Local dev environment. NOT a deployment mechanism.
+#
+# Production deliberately has no compose anywhere: CI builds the image and swaps the
+# container with `docker run` (see backend/run.sh and .github/workflows/deploy-*.yml),
+# and that stays true. This file exists for one reason – until now the only way to run
+# the backend was to point backend.env at the REMOTE production Postgres. A throwaway
+# local database and a fake Bot API remove that.
+#
+#   docker compose up --build      dev: live-reload site, Development logging
+#   docker compose logs -f tg-stub what the bot tried to send
+#   docker compose down -v         stop and wipe the database
+#
+# Staging-like variant (Production env, minified site): see compose.stg.yaml.
+#
+# Every credential below is a local throwaway and is meant to be in git. Nothing here
+# reaches teamleads.kz: the database is a container, and TG_API_BASE points at the stub.
+
+name: teamleads-local
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: teamleads
+      POSTGRES_USER: teamleads
+      POSTGRES_PASSWORD: localdev
+    ports:
+      # 55433, not 5432: this machine already runs a postgres on the default port, and
+      # a collision here fails the whole `up` with an opaque "address already in use".
+      # Nothing inside the network uses this mapping – it is only so psql or a GUI
+      # client on the host can attach:
+      #   psql postgres://teamleads:localdev@127.0.0.1:55433/teamleads
+      - "127.0.0.1:55433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # api waits on this. Without it the first boot races the database and burns
+      # through the migration retry budget before Postgres finishes initdb.
+      test: ["CMD-SHELL", "pg_isready -U teamleads -d teamleads"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+      tg-stub:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Double underscore maps to the nested key, same as backend.env.example.
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=teamleads;Username=teamleads;Password=localdev"
+      ADMIN_API_KEY: localdev-admin-key
+      IP_HASH_SALT: localdev-salt
+
+      # The bot feature needs both to be non-empty or the webhook 404s. The values are
+      # arbitrary because the stub validates neither.
+      TG_BOT_TOKEN: "000000:LOCALDEVTOKEN"
+      TG_WEBHOOK_SECRET: localdev-webhook-secret
+      TG_API_BASE: "http://tg-stub:8081/"
+
+      # Over HTTP rather than BOT_DATA_PATH: the dev site is served by `hugo server`,
+      # which renders from memory and never writes public/, so there is no file to mount.
+      # compose.stg.yaml switches this to the file, which is what the host really does.
+      BOT_DATA_URL: "http://landing:1313/bot-data.json"
+    ports:
+      - "127.0.0.1:5080:8080"   # same host port as run.sh, so curl commands carry over
+
+  landing:
+    image: hugomods/hugo:exts-0.153.4   # pinned + extended, matching CI and the deploy host
+    working_dir: /src
+    volumes:
+      - ./landing-main:/src
+    # Bind to 0.0.0.0 to be reachable from outside the container; --disableFastRender
+    # because partial rebuilds miss data-file edits, and scenarios.yaml is data.
+    command: >
+      hugo server --bind 0.0.0.0 --port 1313
+      --baseURL http://localhost:1313/ --appendPort=false
+      --disableFastRender --buildDrafts
+    ports:
+      - "127.0.0.1:1313:1313"
+
+  tg-stub:
+    image: python:3.13-alpine
+    volumes:
+      - ./dev/telegram-stub.py:/srv/telegram-stub.py:ro
+    command: ["python", "/srv/telegram-stub.py", "8081"]
+    ports:
+      - "127.0.0.1:8081:8081"   # exposed so you can curl it directly while debugging
+
+volumes:
+  pgdata:

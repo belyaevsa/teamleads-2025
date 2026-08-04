@@ -8,25 +8,34 @@ using TeamleadsBackend.Telegram;
 
 namespace TeamleadsBackend.Tests.Support;
 
-// One isolated database + a real SettingsService + a TelegramClient wired to a stub
-// socket. Everything except the network is the production type: SettingsService is
-// sealed and its 5-minute cache is part of the behaviour under test (a chat id resolved
-// late is the whole point of ChatSetting), so it is constructed for real rather than faked.
+// One isolated database + a real SettingsService, plus both halves of the Telegram seam:
+//
+//   Chat     – a FakeChatSender behind the IChatSender port. This is what Outbox uses,
+//              and it is why the delivery-loop tests do not care which client ships.
+//   Telegram – the concrete TelegramClient over a stub socket, for the tests that assert
+//              on the actual bytes a client puts on the wire.
+//
+// SettingsService is sealed and its 5-minute cache is part of the behaviour under test
+// (a chat id resolved late is the whole point of ChatSetting), so it is constructed for
+// real rather than faked.
 public sealed class TestHost : IDisposable
 {
     private readonly ServiceProvider _provider;
 
     public StubBotApi Api { get; } = new();
+    public FakeChatSender Chat { get; } = new();
     public AppDbContext Db { get; }
     public SettingsService Settings { get; }
     public TelegramClient Telegram { get; }
+
+    private readonly string _dbName;
 
     public TestHost(string? botToken = "TEST:token")
     {
         var services = new ServiceCollection();
 
         // Unique name per host so parallel test classes never share rows.
-        var dbName = $"outbox-{Guid.NewGuid():N}";
+        var dbName = _dbName = $"outbox-{Guid.NewGuid():N}";
         services.AddDbContext<AppDbContext>(o => o
             .UseInMemoryDatabase(dbName)
             // The dispatcher never joins across the graph, and InMemory has no real
@@ -45,7 +54,22 @@ public sealed class TestHost : IDisposable
             NullLogger<TelegramClient>.Instance);
     }
 
-    public Outbox NewOutbox() => new(Db, Telegram, Settings, NullLogger<Outbox>.Instance);
+    // Defaults to the fake port. Pass a real adapter to drive the loop through an actual
+    // client – useful for a smoke test, but the behaviour assertions belong on the fake.
+    public Outbox NewOutbox(IChatSender? sender = null) =>
+        new(Db, sender ?? Chat, Settings, NullLogger<Outbox>.Instance);
+
+    // The production adapter, wired to the stub socket. Same object Program.cs registers.
+    public IChatSender BotApiSender() => new BotApiChatSender(Telegram);
+
+    // A second context over the same store, for asking what was actually PERSISTED
+    // rather than what the tracked entities happen to hold. Db alone cannot tell the
+    // difference: an unsaved mutation is still visible through the context that made it.
+    public AppDbContext NewDbContext() =>
+        new(new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(_dbName)
+            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
+            .Options);
 
     // Writes straight to the table rather than going through SettingsService.SetAsync so
     // a test can seed a value without also asserting the write path.

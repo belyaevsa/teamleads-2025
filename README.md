@@ -25,9 +25,27 @@ Telegram: [@teamleads_kz](https://t.me/teamleads_kz)
 │   ├── data/              # CSV exports, sentiment data
 │   └── hugo-claude/       # Hugo site for 2025 review
 │
+├── backend/               # API + Telegram bot (ASP.NET Core, .NET 10)
+├── backend.Tests/         # xUnit suite for the backend
+├── dev/                   # local-only helpers (stub Telegram Bot API)
+├── compose.yaml           # local dev stack; never used for deploys
+│
 └── 2026/
     └── events-reports/    # Raw meeting reports (markdown)
 ```
+
+## Testing
+
+```bash
+dotnet test backend.Tests/TeamleadsBackend.Tests.csproj
+cd landing-main && hugo --minify && node scripts/validate-scenarios.mjs && npm test
+```
+
+Or run the whole stack locally – API, site, throwaway Postgres and a fake Telegram Bot
+API – with `docker compose up --build`.
+
+Full guide: **[TESTING.md](TESTING.md)**. Merges into `master` are gated on both suites
+passing (see [`.github/MERGE_POLICY.md`](.github/MERGE_POLICY.md)).
 
 ## Landing (teamleads.kz)
 

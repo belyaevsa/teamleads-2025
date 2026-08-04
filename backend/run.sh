@@ -1,5 +1,6 @@
 #!/bin/bash
-# Local launcher – builds the image and (re)runs the container. No docker-compose.
+# Local launcher – builds the image and (re)runs the container against the env file.
+# For a self-contained stack with its own Postgres, use ../compose.yaml instead.
 # Mirrors what the CI workflow does on the server, but reads ./backend.env here.
 set -euo pipefail
 cd "$(dirname "$0")"
