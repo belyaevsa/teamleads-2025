@@ -34,7 +34,9 @@ backend/
 backend.Tests/            xUnit suite (sibling project, not shipped in the image)
   Support/StubBotApi      fake Bot API socket – captures the request body sent to Telegram
   Support/TestHost        in-memory AppDbContext + real SettingsService + wired TelegramClient
-  OutboxTests             the drain loop: retries, backoff, expiry, late chat resolution
+  Support/FakeChatSender  IChatSender that records instead of sending
+  OutboxTests             the drain loop, against the port – names no client at all
+  ChatSenderContractTests what every IChatSender adapter must do; subclass per adapter
   TelegramClientWireTests the JSON each Bot API method puts on the wire
 
 compose.yaml              local dev stack (repo root) – db + api + hugo + stub Bot API
@@ -66,11 +68,30 @@ must not execute on the production host.
 
 **Merging is gated on that `test` check** – see [`.github/MERGE_POLICY.md`](../.github/MERGE_POLICY.md).
 
-`TelegramClientWireTests` asserts on the bytes rather than on how the client is called,
-because that is the part a replacement Bot API package has to reproduce. A swap that
-keeps the C# signatures but changes the payload compiles, deploys, and breaks in
-production. Two tests are marked **BEHAVIOUR THE REPLACEMENT CHANGES** – they pin down
-where the current client and `Bucketlab.Telebot` disagree.
+### Swapping the Telegram client
+
+The outbox talks to **`IChatSender`** (`Telegram/IChatSender.cs`), a port this project
+owns – `SendMessageAsync(ChatMessage, ct)` returning a `SendOutcome`. `Outbox` and
+`OutboxTests` name no Bot API library, so replacing the client cannot break either.
+Before the port existed, a PR swapping the client failed the test project's **compile**,
+because the vendor type was the seam.
+
+To introduce a client:
+
+1. Write an adapter implementing `IChatSender` (see `Telegram/BotApiChatSender.cs`).
+2. Change one line in `Program.cs`: `AddScoped<IChatSender, YourAdapter>()`.
+3. Subclass `ChatSenderContractTests`, returning your adapter from `CreateSender`.
+
+Step 3 is the point. The contract suite is what every adapter must satisfy –
+outcome mapping, an API refusal keeping its reason, a dead socket and a **client timeout**
+both becoming failed outcomes rather than escaping exceptions, keyboards passed as JSON
+objects, and preview suppression honoured. If a case cannot be expressed against your
+client, that is a behaviour change: override it with a comment saying so, don't delete it.
+
+`TelegramClientWireTests` stays client-specific on purpose. It asserts the exact bytes
+the current client puts on the wire, which is the spec a replacement has to reproduce –
+a swap that keeps the C# signatures but changes the payload compiles, deploys, and breaks
+in production.
 
 ## Local environment
 

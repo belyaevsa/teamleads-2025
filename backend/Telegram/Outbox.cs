@@ -7,7 +7,9 @@ namespace TeamleadsBackend.Telegram;
 
 // Queue + drain for chat messages the bot owes. See Data/OutboxMessage.cs for what
 // belongs here and what deliberately does not.
-public sealed class Outbox(AppDbContext db, TelegramClient tg, SettingsService settings, ILogger<Outbox> log)
+// The client behind IChatSender is an adapter concern – see IChatSender.cs. Nothing in
+// this file may name a Bot API library, or swapping one breaks the delivery loop's tests.
+public sealed class Outbox(AppDbContext db, IChatSender sender, SettingsService settings, ILogger<Outbox> log)
 {
     // Backoff per attempt, then give up. Roughly 30s → 2m → 10m → 1h → 6h: fast enough
     // to ride out a blip, slow enough that a genuinely dead chat isn't hammered for days.
@@ -67,12 +69,6 @@ public sealed class Outbox(AppDbContext db, TelegramClient tg, SettingsService s
                 continue;
             }
 
-            // Boxed: the client takes object?, and a JsonElement round-trips back to the
-            // same JSON it was serialized from, so the keyboard survives the queue intact.
-            object? markup = msg.ReplyMarkupJson is null
-                ? null
-                : JsonSerializer.Deserialize<JsonElement>(msg.ReplyMarkupJson);
-
             // Late resolution: a message aimed at "the admin chat" goes wherever that
             // setting points right now, not where it pointed when it was queued.
             var chatId = msg.ChatSetting is null
@@ -86,7 +82,12 @@ public sealed class Outbox(AppDbContext db, TelegramClient tg, SettingsService s
                 continue;
             }
 
-            var result = await tg.SendMessageAsync(chatId, msg.Text, markup, ct: ct);
+            // The stored keyboard JSON is handed over as-is; the adapter maps it into
+            // whatever its client wants. Previews stay suppressed – a moderation card is
+            // mostly links, and with previews on it renders as a wall of cards.
+            var result = await sender.SendMessageAsync(
+                new ChatMessage(chatId, msg.Text, msg.ReplyMarkupJson, DisablePreview: true), ct);
+
             msg.Attempts++;
 
             if (result.Ok)

@@ -93,6 +93,10 @@ builder.Services.AddHttpClient<TelegramClient>(c =>
     c.BaseAddress = new Uri(tgOptions.ApiBase);
     c.Timeout = TimeSpan.FromSeconds(15);   // the webhook must answer fast; Telegram redelivers otherwise
 });
+// The outbox talks to IChatSender, never to a Bot API library directly. Swapping the
+// client means writing another adapter and changing this one line. See IChatSender.cs.
+builder.Services.AddScoped<IChatSender, BotApiChatSender>();
+
 builder.Services.AddSingleton<SettingsService>();   // process-wide 5-minute cache
 builder.Services.AddScoped<Outbox>();
 builder.Services.AddScoped<AnonService>();

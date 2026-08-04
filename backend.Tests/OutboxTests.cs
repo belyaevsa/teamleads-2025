@@ -34,7 +34,7 @@ public class OutboxTests
         using var host = new TestHost();
         var outbox = host.NewOutbox();
         await outbox.EnqueueAsync("notice", chatId: -100500, text: "готово");
-        host.Api.RespondsOk(messageId: 4242);
+        host.Chat.Delivers(4242);
 
         var sent = await outbox.DispatchDueAsync(CancellationToken.None);
 
@@ -44,8 +44,8 @@ public class OutboxTests
         Assert.Equal(1, row.Attempts);
         Assert.NotNull(row.SentAt);
         Assert.Null(row.LastError);
-        Assert.Equal(-100500, host.Api.LastCall.Long("chat_id"));
-        Assert.Equal("готово", host.Api.LastCall.String("text"));
+        Assert.Equal(-100500, host.Chat.Last.ChatId);
+        Assert.Equal("готово", host.Chat.Last.Text);
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class OutboxTests
         var second = await outbox.DispatchDueAsync(CancellationToken.None);
 
         Assert.Equal(0, second);
-        Assert.Single(host.Api.Calls);   // a duplicate in the community chat is worse than a delay
+        Assert.Single(host.Chat.Sent);   // a duplicate in the community chat is worse than a delay
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class OutboxTests
         var sent = await host.NewOutbox().DispatchDueAsync(CancellationToken.None);
 
         Assert.Equal(0, sent);
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Sent);
     }
 
     // ---- retry + backoff ---------------------------------------------------------
@@ -96,7 +96,7 @@ public class OutboxTests
         using var host = new TestHost();
         var outbox = host.NewOutbox();
         await outbox.EnqueueAsync("anon_card", 1, "карточка");
-        host.Api.RespondsError("Bad Request: chat not found");
+        host.Chat.Fails("Bad Request: chat not found");
 
         var sent = await outbox.DispatchDueAsync(CancellationToken.None);
 
@@ -120,7 +120,7 @@ public class OutboxTests
         row.Attempts = attemptsSoFar - 1;
         host.Db.Outbox.Add(row);
         await host.Db.SaveChangesAsync();
-        host.Api.RespondsError("Too Many Requests");
+        host.Chat.Fails("Too Many Requests");
 
         var before = DateTimeOffset.UtcNow;
         await host.NewOutbox().DispatchDueAsync(CancellationToken.None);
@@ -140,7 +140,7 @@ public class OutboxTests
         row.Attempts = Backoff.Length - 1;   // this send is the last one
         host.Db.Outbox.Add(row);
         await host.Db.SaveChangesAsync();
-        host.Api.RespondsError("Forbidden: bot was blocked by the user");
+        host.Chat.Fails("Forbidden: bot was blocked by the user");
 
         await host.NewOutbox().DispatchDueAsync(CancellationToken.None);
 
@@ -160,7 +160,7 @@ public class OutboxTests
 
         await host.NewOutbox().DispatchDueAsync(CancellationToken.None);
 
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Sent);
     }
 
     [Fact]
@@ -172,7 +172,7 @@ public class OutboxTests
         row.LastError = "Bad Gateway";
         host.Db.Outbox.Add(row);
         await host.Db.SaveChangesAsync();
-        host.Api.RespondsOk(messageId: 9);
+        host.Chat.Delivers(9);
 
         await host.NewOutbox().DispatchDueAsync(CancellationToken.None);
 
@@ -181,13 +181,16 @@ public class OutboxTests
         Assert.Null(row.LastError);   // a stale error next to status=sent reads as a bug
     }
 
+    // A dead socket, a rate limit and a bot kicked from the chat all arrive here as the
+    // same thing: a failed outcome carrying a reason. Turning a client's exception into
+    // one is the adapter's job – see ChatSenderContractTests.
     [Fact]
-    public async Task A_transport_exception_is_a_retryable_failure_not_a_crash()
+    public async Task A_transport_failure_is_retryable_not_a_crash()
     {
         using var host = new TestHost();
         var outbox = host.NewOutbox();
         await outbox.EnqueueAsync("notice", 1, "hi");
-        host.Api.Throws(new HttpRequestException("Connection reset by peer"));
+        host.Chat.Fails("Connection reset by peer");
 
         var sent = await outbox.DispatchDueAsync(CancellationToken.None);
 
@@ -205,7 +208,7 @@ public class OutboxTests
         var outbox = host.NewOutbox();
         await outbox.EnqueueAsync("notice", 1, "первое");
         await outbox.EnqueueAsync("notice", 2, "второе");
-        host.Api.RespondsError("chat not found").RespondsOk(messageId: 7);
+        host.Chat.Fails("chat not found").Delivers(7);
 
         var sent = await outbox.DispatchDueAsync(CancellationToken.None);
 
@@ -231,7 +234,7 @@ public class OutboxTests
         Assert.Equal(0, sent);
         Assert.Equal("expired", row.Status);
         Assert.Equal(0, row.Attempts);   // never attempted, so it must not look like a failure
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Sent);
     }
 
     [Fact]
@@ -275,7 +278,7 @@ public class OutboxTests
         await host.SetSettingAsync(AdminChat, "-100222");
         await outbox.DispatchDueAsync(CancellationToken.None);
 
-        Assert.Equal(-100222, host.Api.LastCall.Long("chat_id"));
+        Assert.Equal(-100222, host.Chat.Last.ChatId);
     }
 
     [Fact]
@@ -293,7 +296,7 @@ public class OutboxTests
         // The bot was simply not configured yet. Counting this as an attempt would let a
         // misconfigured deploy exhaust the retry budget and lose the message for good.
         Assert.Equal(0, row.Attempts);
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Sent);
     }
 
     [Fact]
@@ -322,7 +325,7 @@ public class OutboxTests
 
         await outbox.DispatchDueAsync(CancellationToken.None);
 
-        Assert.Equal(-100123, host.Api.LastCall.Long("chat_id"));
+        Assert.Equal(-100123, host.Chat.Last.ChatId);
     }
 
     // ---- reply markup round-trip -------------------------------------------------
@@ -347,9 +350,11 @@ public class OutboxTests
 
         await outbox.DispatchDueAsync(CancellationToken.None);
 
-        // Serialized on the way in, deserialized on the way out, and it must reach the
-        // wire as a JSON object – a keyboard that arrives as a string renders as nothing.
-        var markup = host.Api.LastCall.Json.GetProperty("reply_markup");
+        // Serialized at enqueue, stored in a column, handed to the adapter unchanged.
+        // Whether it reaches the wire as a JSON object rather than a string is the
+        // adapter's promise, checked in ChatSenderContractTests.
+        Assert.NotNull(host.Chat.Last.ReplyMarkupJson);
+        var markup = JsonDocument.Parse(host.Chat.Last.ReplyMarkupJson!).RootElement;
         Assert.Equal(JsonValueKind.Object, markup.ValueKind);
         var buttons = markup.GetProperty("inline_keyboard")[0];
         Assert.Equal(2, buttons.GetArrayLength());
@@ -357,18 +362,14 @@ public class OutboxTests
         Assert.Equal("anon:rej:A7F3K2", buttons[1].GetProperty("callback_data").GetString());
     }
 
-    // BEHAVIOUR THE REPLACEMENT CHANGES – read this one before merging PR #12.
-    //
-    // Telebot 0.0.5's SendMessageRequestParams has no preview field at all: its
-    // GetRequestFields emits chat_id, text, message_thread_id, parse_mode,
-    // disable_notification, protect_content, reply_parameters and reply_markup, and
-    // nothing else. There is no way to pass disable_web_page_preview through it.
-    //
-    // So every outbox message gains link previews after the swap. The anon moderation
-    // card is the one that hurts: it carries the submitted text plus a teamleads.kz/anon
-    // footer, and a submission with three links turns one card into four.
+    // The loop's half of the promise: it asks for previews off on every message. Whether
+    // an adapter can actually deliver that is checked by
+    // ChatSenderContractTests.Preview_suppression_is_honoured – and Telebot 0.0.5 cannot,
+    // because its SendMessageRequestParams has no preview field at all. That is precisely
+    // the split this port buys: the requirement is stated once here, and each client is
+    // measured against it separately.
     [Fact]
-    public async Task Outbox_messages_go_out_with_previews_suppressed()
+    public async Task Every_message_asks_for_previews_to_be_suppressed()
     {
         using var host = new TestHost();
         var outbox = host.NewOutbox();
@@ -376,11 +377,11 @@ public class OutboxTests
 
         await outbox.DispatchDueAsync(CancellationToken.None);
 
-        Assert.True(host.Api.LastCall.Bool("disable_web_page_preview"));
+        Assert.True(host.Chat.Last.DisablePreview);
     }
 
     [Fact]
-    public async Task No_keyboard_means_no_reply_markup_on_the_wire()
+    public async Task No_keyboard_means_nothing_is_handed_to_the_adapter()
     {
         using var host = new TestHost();
         var outbox = host.NewOutbox();
@@ -388,7 +389,7 @@ public class OutboxTests
 
         await outbox.DispatchDueAsync(CancellationToken.None);
 
-        Assert.False(host.Api.LastCall.Has("reply_markup"));
+        Assert.Null(host.Chat.Last.ReplyMarkupJson);
     }
 
     // ---- write-back --------------------------------------------------------------
@@ -406,7 +407,7 @@ public class OutboxTests
 
         var outbox = host.NewOutbox();
         await outbox.EnqueueAsync("anon_card", 1, "карточка", relatedKind: "anon", relatedKey: "A7F3K2");
-        host.Api.RespondsOk(messageId: 555);
+        host.Chat.Delivers(555);
         await outbox.DispatchDueAsync(CancellationToken.None);
 
         // Without this the moderation card can never be edited in place after a decision.
@@ -427,7 +428,7 @@ public class OutboxTests
 
         var outbox = host.NewOutbox();
         await outbox.EnqueueAsync("anon_card", 1, "карточка", relatedKind: "anon", relatedKey: "A7F3K2");
-        host.Api.RespondsError("chat not found");
+        host.Chat.Fails("chat not found");
         await outbox.DispatchDueAsync(CancellationToken.None);
 
         Assert.Null((await host.Db.AnonRequests.SingleAsync()).AdminMessageId);
@@ -439,7 +440,7 @@ public class OutboxTests
         using var host = new TestHost();
         var outbox = host.NewOutbox();
         await outbox.EnqueueAsync("dilemma_reveal", 1, "итоги", relatedKind: "dilemma", relatedKey: "week-1");
-        host.Api.RespondsOk(messageId: 12);
+        host.Chat.Delivers(12);
 
         await outbox.DispatchDueAsync(CancellationToken.None);   // must not throw looking for an anon row
 
@@ -452,7 +453,7 @@ public class OutboxTests
         using var host = new TestHost();
         var outbox = host.NewOutbox();
         await outbox.EnqueueAsync("anon_card", 1, "карточка", relatedKind: "anon", relatedKey: "GONE01");
-        host.Api.RespondsOk(messageId: 9);
+        host.Chat.Delivers(9);
 
         var sent = await outbox.DispatchDueAsync(CancellationToken.None);
 
@@ -476,10 +477,10 @@ public class OutboxTests
         var first = await host.NewOutbox().DispatchDueAsync(CancellationToken.None);
 
         Assert.Equal(20, first);
-        Assert.Equal(20, host.Api.Calls.Count);
+        Assert.Equal(20, host.Chat.Sent.Count);
         // Oldest first, so a backlog cannot starve the message that has waited longest.
-        Assert.Equal("msg-00", host.Api.Calls[0].String("text"));
-        Assert.Equal("msg-19", host.Api.Calls[19].String("text"));
+        Assert.Equal("msg-00", host.Chat.Sent[0].Text);
+        Assert.Equal("msg-19", host.Chat.Sent[19].Text);
 
         var second = await host.NewOutbox().DispatchDueAsync(CancellationToken.None);
         Assert.Equal(5, second);
@@ -491,7 +492,7 @@ public class OutboxTests
         using var host = new TestHost();
 
         Assert.Equal(0, await host.NewOutbox().DispatchDueAsync(CancellationToken.None));
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Sent);
     }
 
     // ---- cancellation ------------------------------------------------------------
@@ -508,42 +509,40 @@ public class OutboxTests
         // The due-query is the first thing that observes the token, so shutdown between
         // ticks costs nothing. OutboxDispatcher catches this and breaks its loop.
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => outbox.DispatchDueAsync(cts.Token));
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Sent);
         Assert.Equal(0, (await host.Db.Outbox.SingleAsync()).Attempts);
     }
 
-    // BEHAVIOUR THE REPLACEMENT CHANGES – read this one before merging PR #12.
-    //
-    // HttpClient reports its own timeout as TaskCanceledException, which derives from
-    // OperationCanceledException, and the client is configured with a 15-second timeout.
-    // Today the catch-all in TelegramClient turns that into an ordinary failed Result:
-    // the message stays pending, gets a backoff, and the rest of the batch still drains.
-    //
-    // PR #12 replaces that with `catch (Exception ex) when (ex is not
-    // OperationCanceledException)`. A slow Telegram is then indistinguishable from a
-    // container shutdown, so a single timed-out send escapes DispatchDueAsync – skipping
-    // the SaveChangesAsync at the end of the loop and discarding the delivery bookkeeping
-    // for every message already sent in that batch. Those get re-sent on the next tick.
+    // The port promises a failed OUTCOME, never an exception – Outbox is not written to
+    // survive one. This pins the blast radius when an adapter breaks that promise, and it
+    // is the reason ChatSenderContractTests exists: DispatchDueAsync calls
+    // SaveChangesAsync once, after the loop, so an escaping exception discards the
+    // bookkeeping for every message already delivered in that batch. They are re-sent on
+    // the next tick, because as far as the database is concerned they never went out.
     [Fact]
-    public async Task An_http_timeout_is_a_retryable_failure_not_a_shutdown()
+    public async Task An_exception_escaping_the_adapter_discards_the_whole_batch()
     {
         using var host = new TestHost();
         var outbox = host.NewOutbox();
         await outbox.EnqueueAsync("notice", 1, "первое");
         await outbox.EnqueueAsync("notice", 2, "второе");
 
-        // Token is NOT cancelled – this is HttpClient giving up on a slow response.
-        host.Api.Throws(new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout of 15 seconds elapsing."))
-                .RespondsOk(messageId: 8);
+        host.Chat.Delivers(8).Throws(new InvalidOperationException("adapter let this escape"));
 
-        var sent = await outbox.DispatchDueAsync(CancellationToken.None);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => outbox.DispatchDueAsync(CancellationToken.None));
 
-        Assert.Equal(1, sent);
-        var rows = await host.Db.Outbox.OrderBy(m => m.Id).ToListAsync();
+        // Both were handed to the adapter, and the first genuinely reached the chat.
+        Assert.Equal(2, host.Chat.Sent.Count);
+
+        // A second context sees what was persisted, not what the tracked entities hold.
+        // The delivered message is still pending: it will go out again, so the reader
+        // gets it twice.
+        using var fresh = host.NewDbContext();
+        var rows = await fresh.Outbox.OrderBy(m => m.Id).ToListAsync();
         Assert.Equal("pending", rows[0].Status);
-        Assert.Equal(1, rows[0].Attempts);
-        Assert.NotNull(rows[0].LastError);
-        Assert.Equal("sent", rows[1].Status);   // the healthy message still went out
+        Assert.Equal(0, rows[0].Attempts);
+        Assert.Equal("pending", rows[1].Status);
     }
 
     // ---- helpers -----------------------------------------------------------------
