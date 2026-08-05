@@ -21,6 +21,12 @@ public sealed class SettingsService(IServiceScopeFactory scopes, ILogger<Setting
     private Dictionary<string, string> _cache = new(StringComparer.OrdinalIgnoreCase);
     private DateTimeOffset _loadedAt = DateTimeOffset.MinValue;
 
+    // Separate from _loadedAt on purpose. Invalidate() rewinds _loadedAt to MinValue to
+    // force a reload, so "_loadedAt is MinValue" means "reload due", NOT "never loaded" –
+    // reading it as the latter made every /set announce itself as a fresh startup and
+    // swallow the before → after line, which is the one worth having.
+    private bool _everLoaded;
+
     public async Task<bool> GetBoolAsync(string key, CancellationToken ct) =>
         bool.TryParse(await GetRawAsync(key, ct), out var v) && v;
 
@@ -81,6 +87,51 @@ public sealed class SettingsService(IServiceScopeFactory scopes, ILogger<Setting
 
     public void Invalidate() => _loadedAt = DateTimeOffset.MinValue;
 
+    // Loads the snapshot ahead of the first reader. Called once from Program.cs so the
+    // startup line below is always in the log at a known point, instead of appearing
+    // whenever some background tick happens to ask for a value first.
+    public Task WarmUpAsync(CancellationToken ct) => EnsureFreshAsync(ct);
+
+    // Says out loud what this process believes, and when that belief changed.
+    //
+    // Written because the belief and the table can differ and nothing showed it: the
+    // snapshot is process-wide with a 5-minute TTL and is only invalidated by a write
+    // that goes THROUGH this service, so a value changed with SQL straight against the
+    // table stays invisible here for up to Ttl. That is a fine trade for a cache – it is
+    // not a fine trade for having to guess which id the bot is actually using, which is
+    // exactly the guess an upgraded supergroup forced.
+    //
+    // Values are safe to print: SettingsCatalog admits no secrets, by construction – see
+    // the comment on Data/Setting.cs.
+    //
+    // Quiet when nothing moved. A line every five minutes forever would be noise, and
+    // noise is how the one line that mattered gets missed.
+    private void LogSnapshot(Dictionary<string, string> fresh)
+    {
+        if (!_everLoaded)
+        {
+            _everLoaded = true;
+            log.LogInformation("Settings loaded: {Count} key(s) from the database, refreshed every {Ttl:g}. {Values}",
+                fresh.Count, Ttl, Render(fresh));
+            return;
+        }
+
+        var changes = fresh
+            .Where(kv => !_cache.TryGetValue(kv.Key, out var old) || old != kv.Value)
+            .Select(kv => _cache.TryGetValue(kv.Key, out var old) ? $"{kv.Key}: {old} → {kv.Value}" : $"{kv.Key} = {kv.Value} (new)")
+            .Concat(_cache.Keys.Where(k => !fresh.ContainsKey(k)).Select(k => $"{k} removed, back to the catalog default"))
+            .ToList();
+
+        if (changes.Count == 0) return;
+
+        log.LogInformation("Settings changed: {Changes}", string.Join("; ", changes));
+    }
+
+    private static string Render(Dictionary<string, string> values) =>
+        values.Count == 0
+            ? "The table is empty – every key is running on its catalog default."
+            : string.Join(", ", values.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}={kv.Value}"));
+
     private async Task EnsureFreshAsync(CancellationToken ct)
     {
         if (DateTimeOffset.UtcNow - _loadedAt < Ttl) return;
@@ -96,8 +147,11 @@ public sealed class SettingsService(IServiceScopeFactory scopes, ILogger<Setting
 
             // Rows for keys since removed from the catalog are ignored rather than
             // deleted: a rollback to the previous image must find its settings intact.
-            _cache = rows.Where(r => SettingsCatalog.Find(r.Key) is not null)
-                         .ToDictionary(r => r.Key, r => r.Value, StringComparer.OrdinalIgnoreCase);
+            var fresh = rows.Where(r => SettingsCatalog.Find(r.Key) is not null)
+                            .ToDictionary(r => r.Key, r => r.Value, StringComparer.OrdinalIgnoreCase);
+
+            LogSnapshot(fresh);
+            _cache = fresh;
             _loadedAt = DateTimeOffset.UtcNow;
         }
         catch (Exception ex)

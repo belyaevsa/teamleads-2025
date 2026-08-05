@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TeamleadsBackend.Data;
@@ -82,6 +83,12 @@ public sealed class TestHost : IDisposable
         await Db.SaveChangesAsync();
         Settings.Invalidate();   // otherwise the 5-minute cache hides the change
     }
+
+    // A second SettingsService over the same store, with a logger the test can read.
+    // `Settings` above stays on NullLogger – the tests that only need values should not
+    // have to care that the service logs at all.
+    public SettingsService NewSettings(ILogger<SettingsService> log) =>
+        new(_provider.GetRequiredService<IServiceScopeFactory>(), log);
 
     public void Dispose()
     {

@@ -157,6 +157,11 @@ PasteEndpoints.MapPastePage(app);
 // `--restart unless-stopped` bring us back, rather than serve with a stale schema.
 await MigrateWithRetryAsync(app);
 
+// After the migrations, so the seeded rows are in the snapshot, and before the first
+// request or background tick, so "what does this process believe?" is answered in the
+// log at boot rather than whenever something happens to ask first.
+await app.Services.GetRequiredService<SettingsService>().WarmUpAsync(CancellationToken.None);
+
 app.Run();
 
 static async Task MigrateWithRetryAsync(WebApplication app)
