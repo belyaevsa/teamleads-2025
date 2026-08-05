@@ -18,14 +18,10 @@ public sealed class TelebotChatSender(ITelegramClient client) : IChatSender
 
         try
         {
-            // Passing LinkPreviewOptions is what actually suppresses previews – reading
-            // the field back in a test does not. Telebot only emits link_preview_options
-            // when this argument is non-null, so leaving it off means previews stay on
-            // no matter what DisablePreview says. Needs 0.0.6; 0.0.5 had no such field.
             var sent = await client.SendMessageAsync(
                 new SendMessageRequestParams(
                     message.ChatId, message.Text,
-                    LinkPreviewOptions: new LinkPreviewOptions(IsDisabled: message.DisablePreview),
+                    LinkPreviewOptions: PreviewOptions(message.DisablePreview),
                     ReplyMarkup: markup),
                 ct);
 
@@ -48,4 +44,25 @@ public sealed class TelebotChatSender(ITelegramClient client) : IChatSender
             return SendOutcome.Failed(ex.Message);
         }
     }
+
+    // Passing LinkPreviewOptions is what actually suppresses previews – reading the field
+    // back in a test does not. Telebot only emits link_preview_options when this argument
+    // is non-null, so leaving it off means previews stay on no matter what DisablePreview
+    // says. Needs 0.0.6; 0.0.5 had no such field.
+    //
+    // Every member is filled in on purpose. Telebot 0.0.6 serializes this object without
+    // ignoring nulls, so the ones left unset go out as `"url":null` and
+    // `"prefer_small_media":null`, and Telegram rejects the whole call with
+    // `Bad Request: field "url" must be of type String` – which is how an entire outbox
+    // message (a moderation card) burned through its retries and failed for good.
+    // Url is empty rather than absent for the same reason: the field is always emitted,
+    // and an empty string is the only null-free value that means "no explicit preview
+    // target". The three prefer_/show_ flags are false, i.e. Telegram's own defaults, and
+    // are moot anyway while is_disabled is true.
+    private static LinkPreviewOptions PreviewOptions(bool disabled) => new(
+        IsDisabled: disabled,
+        Url: "",
+        PreferSmallMedia: false,
+        PreferLargeMedia: false,
+        ShowAboveText: false);
 }
