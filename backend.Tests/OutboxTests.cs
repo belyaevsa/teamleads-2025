@@ -149,6 +149,8 @@ public class OutboxTests
         Assert.Equal("Forbidden: bot was blocked by the user", row.LastError);
     }
 
+    // "Never" means never by the clock: no backoff step ever comes back for it. A process
+    // start does – see the requeue tests below, which are the only way out of "failed".
     [Fact]
     public async Task A_failed_message_is_never_retried()
     {
@@ -545,6 +547,91 @@ public class OutboxTests
         Assert.Equal("pending", rows[0].Status);
         Assert.Equal(0, rows[0].Attempts);
         Assert.Equal("pending", rows[1].Status);
+    }
+
+    // ---- requeue on startup ------------------------------------------------------
+    //
+    // A message that gave up is not lost, it is stuck: the ladder ran out while the reason
+    // was a bug of ours. Outbox 6, an anon moderation card, died on `field "url" must be of
+    // type String` – a malformed payload from our own sender, which retrying could never
+    // fix and a deploy did. RequeueFailedAsync is what makes shipping that fix also deliver
+    // the card, and it runs at process start because that is when the code just changed.
+
+    [Fact]
+    public async Task Startup_puts_a_message_that_gave_up_back_in_the_queue()
+    {
+        using var host = new TestHost();
+        var row = Pending(chatId: 1, text: "🕵️ Анонимный запрос LX9NMC");
+        row.Status = "failed";
+        row.Attempts = Backoff.Length;
+        row.LastError = "HTTP error 400: field \"url\" must be of type String";
+        row.NextAttemptAt = DateTimeOffset.UtcNow.AddHours(6);
+        host.Db.Outbox.Add(row);
+        await host.Db.SaveChangesAsync();
+
+        var before = DateTimeOffset.UtcNow;
+        var revived = await host.NewOutbox().RequeueFailedAsync(CancellationToken.None);
+
+        Assert.Equal(1, revived);
+        Assert.Equal("pending", row.Status);
+        Assert.Equal(0, row.Attempts);                 // the full ladder again, not one last go
+        Assert.InRange(row.NextAttemptAt, before, DateTimeOffset.UtcNow);
+        // Kept on purpose: until the retry lands, this is still why the card is old.
+        Assert.Contains("url", row.LastError);
+    }
+
+    // The point of the whole thing: after a restart the card actually reaches the chat.
+    [Fact]
+    public async Task A_requeued_message_goes_out_on_the_next_tick()
+    {
+        using var host = new TestHost();
+        var row = Pending(chatId: -100500, text: "🕵️ Анонимный запрос LX9NMC");
+        row.Status = "failed";
+        row.Attempts = Backoff.Length;
+        host.Db.Outbox.Add(row);
+        await host.Db.SaveChangesAsync();
+        host.Chat.Delivers(777);
+
+        var outbox = host.NewOutbox();
+        await outbox.RequeueFailedAsync(CancellationToken.None);
+        var sent = await outbox.DispatchDueAsync(CancellationToken.None);
+
+        Assert.Equal(1, sent);
+        Assert.Equal("sent", row.Status);
+        Assert.Equal("🕵️ Анонимный запрос LX9NMC", host.Chat.Last.Text);
+    }
+
+    // Only "failed" comes back. A delivered message must never be sent twice – a duplicate
+    // moderation card is a second set of live buttons for a decision already made – and an
+    // expired one was expired on purpose: its TTL said the content had stopped being worth
+    // delivering, and a restart does not change that.
+    [Theory]
+    [InlineData("sent")]
+    [InlineData("expired")]
+    [InlineData("pending")]
+    public async Task Startup_leaves_every_other_status_alone(string status)
+    {
+        using var host = new TestHost();
+        var row = Pending(chatId: 1);
+        row.Status = status;
+        row.Attempts = 3;
+        host.Db.Outbox.Add(row);
+        await host.Db.SaveChangesAsync();
+
+        var revived = await host.NewOutbox().RequeueFailedAsync(CancellationToken.None);
+
+        Assert.Equal(0, revived);
+        Assert.Equal(status, row.Status);
+        Assert.Equal(3, row.Attempts);
+    }
+
+    [Fact]
+    public async Task Startup_with_nothing_failed_is_a_no_op()
+    {
+        using var host = new TestHost();
+        await host.NewOutbox().EnqueueAsync("notice", 1, "hi");
+
+        Assert.Equal(0, await host.NewOutbox().RequeueFailedAsync(CancellationToken.None));
     }
 
     // ---- helpers -----------------------------------------------------------------

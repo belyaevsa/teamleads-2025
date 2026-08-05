@@ -21,6 +21,8 @@ public sealed class OutboxDispatcher(
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
+        await RequeueFailedAsync(ct);
+
         using var timer = new PeriodicTimer(Tick);
         do
         {
@@ -39,5 +41,21 @@ public sealed class OutboxDispatcher(
             catch (Exception ex) { log.LogError(ex, "Outbox dispatch failed."); }
         }
         while (await timer.WaitForNextTickAsync(ct));
+    }
+
+    // Deliberately outside the Enabled check and ahead of the first tick: reviving a row
+    // is a database write that costs nothing while Telegram is unconfigured, and the
+    // messages it revives are exactly the ones a fresh deploy is most likely to fix.
+    // It never takes the process down – a failure here means old messages stay failed,
+    // which is where they already were.
+    private async Task RequeueFailedAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var scope = scopes.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<Outbox>().RequeueFailedAsync(ct);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { log.LogError(ex, "Outbox requeue on startup failed."); }
     }
 }

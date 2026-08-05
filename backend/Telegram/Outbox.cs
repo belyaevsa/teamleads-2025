@@ -47,6 +47,41 @@ public sealed class Outbox(AppDbContext db, IChatSender sender, SettingsService 
         return row;
     }
 
+    // Puts every message that gave up back in the queue. Returns how many were revived.
+    //
+    // Called once per process start. A restart is the one moment where retrying something
+    // that already exhausted its ladder is worth it rather than futile: the usual reason
+    // this process is starting is that a deploy just changed the code, and the last outage
+    // was our own payload. Outbox 6 – an anon moderation card – died five attempts deep on
+    // `field "url" must be of type String`, a bug in the sender that no amount of further
+    // retrying could have fixed and that shipping the fix does. Without this, the fix goes
+    // live and the card still never arrives.
+    //
+    // Attempts resets so a revived message gets the full backoff ladder again; a genuinely
+    // dead chat therefore costs five more attempts per restart, which is bounded by how
+    // often we deploy. Expired messages stay expired – their TTL said the content stops
+    // being worth delivering, and that is still true.
+    public async Task<int> RequeueFailedAsync(CancellationToken ct)
+    {
+        var failed = await db.Outbox.Where(m => m.Status == "failed").ToListAsync(ct);
+        if (failed.Count == 0) return 0;
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var msg in failed)
+        {
+            msg.Status = "pending";
+            msg.Attempts = 0;
+            msg.NextAttemptAt = now;      // due on the first tick after boot
+            // LastError is left alone: until the retry lands it is still the best
+            // explanation of why this message is old, and the next attempt overwrites it.
+        }
+
+        await db.SaveChangesAsync(ct);
+        log.LogInformation("Outbox requeued {Count} message(s) that had given up: {Ids}.",
+            failed.Count, string.Join(", ", failed.Select(m => $"{m.Id} ({m.Kind})")));
+        return failed.Count;
+    }
+
     // Sends everything that is due. Returns how many went out.
     public async Task<int> DispatchDueAsync(CancellationToken ct)
     {
