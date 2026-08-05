@@ -22,8 +22,11 @@ public sealed class BotApiChatSender(TelegramClient tg) : IChatSender
             message.ChatId, message.Text, markup,
             disablePreview: message.DisablePreview, ct: ct);
 
-        return result.Ok
-            ? SendOutcome.Delivered(result.MessageId)
+        if (result.Ok) return SendOutcome.Delivered(result.MessageId);
+
+        // The client already pulled parameters.migrate_to_chat_id off the response body.
+        return result.MigrateToChatId is { } newChatId
+            ? SendOutcome.Migrated(newChatId, result.Error ?? "chat was upgraded to a supergroup")
             : SendOutcome.Failed(result.Error ?? "unknown");
     }
 }

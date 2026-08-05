@@ -39,11 +39,24 @@ public sealed record ChatMessage(
 // outage, a rate limit or a bot kicked from the chat are all expected conditions here –
 // the outbox turns them into a retry, not a 500. Adapters wrapping a client that throws
 // are responsible for translating; see BotApiChatSender.
-public readonly record struct SendOutcome(bool Ok, long MessageId, string? Error)
+public readonly record struct SendOutcome(bool Ok, long MessageId, string? Error, long? MigrateToChatId = null)
 {
     public static SendOutcome Delivered(long messageId) => new(true, messageId, null);
 
     // Error is non-null by construction: a failure with no reason is undebuggable, and
     // this string is what lands in OutboxMessage.LastError.
     public static SendOutcome Failed(string error) => new(false, 0, error);
+
+    // A failure that carries its own fix: the chat still exists, it just has a new id.
+    //
+    // Telegram assigns a new id when a group is upgraded to a supergroup, and answers
+    // every send to the old one with `parameters.migrate_to_chat_id`. Retrying the old id
+    // can only fail again, so an adapter that flattens this into a plain Failed burns the
+    // whole backoff ladder and loses the message – which is exactly what happened to
+    // outbox 6 (an anon moderation card) the day the admin group was upgraded.
+    //
+    // Modelled as its own outcome rather than a magic string in Error: the delivery loop
+    // has to ACT on it (repoint the destination, retry now), and parsing English out of
+    // an error message to decide that is not a contract.
+    public static SendOutcome Migrated(long newChatId, string error) => new(false, 0, error, newChatId);
 }

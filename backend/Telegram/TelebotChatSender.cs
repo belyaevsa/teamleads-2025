@@ -41,7 +41,40 @@ public sealed class TelebotChatSender(ITelegramClient client) : IChatSender
             // Telebot signals every failure by throwing – protocol errors, HTTP status
             // codes, deserialization problems. The port promises an outcome, so they all
             // become one here.
-            return SendOutcome.Failed(ex.Message);
+            return MigrateToChatIdOf(ex.Message) is { } newChatId
+                ? SendOutcome.Migrated(newChatId, ex.Message)
+                : SendOutcome.Failed(ex.Message);
+        }
+    }
+
+    // Digs parameters.migrate_to_chat_id out of the exception text.
+    //
+    // Telebot's TelebotException carries only a status code and a message, and the message
+    // is the raw response body behind an "HTTP error 400: " prefix – there is no typed
+    // ResponseParameters to read. So the body gets parsed back out of the string here.
+    //
+    // This belongs in the adapter and nowhere else. It is precisely the kind of vendor
+    // quirk the port exists to absorb: Outbox acts on SendOutcome.Migrated and never
+    // learns that one of its clients communicates by throwing formatted English.
+    private static long? MigrateToChatIdOf(string message)
+    {
+        var start = message.IndexOf('{');
+        if (start < 0) return null;
+
+        try
+        {
+            using var body = JsonDocument.Parse(message[start..]);
+            return body.RootElement.TryGetProperty("parameters", out var parameters)
+                && parameters.TryGetProperty("migrate_to_chat_id", out var id)
+                && id.TryGetInt64(out var value)
+                    ? value
+                    : null;
+        }
+        catch (JsonException)
+        {
+            // The message was not a wrapped response body – a transport error, say.
+            // Nothing to migrate to, so it stays an ordinary failure.
+            return null;
         }
     }
 

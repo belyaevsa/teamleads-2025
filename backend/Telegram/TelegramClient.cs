@@ -21,9 +21,11 @@ public sealed class TelegramClient(HttpClient http, IOptions<TelegramOptions> op
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public readonly record struct Result(bool Ok, long MessageId, string? Error)
+    // MigrateToChatId is Telegram's `parameters.migrate_to_chat_id`: the chat was upgraded
+    // to a supergroup and lives under a new id now. See SendOutcome.Migrated.
+    public readonly record struct Result(bool Ok, long MessageId, string? Error, long? MigrateToChatId = null)
     {
-        public static Result Fail(string error) => new(false, 0, error);
+        public static Result Fail(string error, long? migrateToChatId = null) => new(false, 0, error, migrateToChatId);
     }
 
     // Text is sent with no parse_mode on purpose: user input must never be
@@ -83,7 +85,7 @@ public sealed class TelegramClient(HttpClient http, IOptions<TelegramOptions> op
     // Closes a poll and returns the final vote count per option, in option order.
     public async Task<int[]?> StopPollAsync(long chatId, long messageId, CancellationToken ct = default)
     {
-        var (ok, result, _) = await CallJsonAsync("stopPoll", new { chat_id = chatId, message_id = messageId }, ct);
+        var (ok, result, _, _) = await CallJsonAsync("stopPoll", new { chat_id = chatId, message_id = messageId }, ct);
         if (!ok || result is not { ValueKind: JsonValueKind.Object } poll) return null;
         if (!poll.TryGetProperty("options", out var options)) return null;
 
@@ -116,14 +118,14 @@ public sealed class TelegramClient(HttpClient http, IOptions<TelegramOptions> op
 
     private async Task<Result> CallAsync(string method, object payload, CancellationToken ct)
     {
-        var (ok, result, error) = await CallJsonAsync(method, payload, ct);
-        return ok ? new Result(true, MessageIdOf(result), null) : Result.Fail(error ?? "unknown");
+        var (ok, result, error, migrateTo) = await CallJsonAsync(method, payload, ct);
+        return ok ? new Result(true, MessageIdOf(result), null) : Result.Fail(error ?? "unknown", migrateTo);
     }
 
-    private async Task<(bool Ok, JsonElement? Result, string? Error)> CallJsonAsync(string method, object payload, CancellationToken ct)
+    private async Task<(bool Ok, JsonElement? Result, string? Error, long? MigrateToChatId)> CallJsonAsync(string method, object payload, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(_opt.BotToken))
-            return (false, null, "TG_BOT_TOKEN is not configured");
+            return (false, null, "TG_BOT_TOKEN is not configured", null);
 
         try
         {
@@ -134,17 +136,17 @@ public sealed class TelegramClient(HttpClient http, IOptions<TelegramOptions> op
             var body = await resp.Content.ReadFromJsonAsync<ApiResponse>(cancellationToken: ct);
 
             if (body is { Ok: true })
-                return (true, body.Result, null);
+                return (true, body.Result, null, null);
 
             // description is Telegram's human-readable reason ("chat not found", "bot was blocked", …)
             var error = body?.Description ?? $"HTTP {(int)resp.StatusCode}";
             log.LogWarning("Telegram {Method} failed: {Error}", method, error);
-            return (false, null, error);
+            return (false, null, error, MigrateToChatIdOf(body?.Parameters));
         }
         catch (Exception ex)
         {
             log.LogWarning(ex, "Telegram {Method} threw.", method);
-            return (false, null, ex.Message);
+            return (false, null, ex.Message, null);
         }
     }
 
@@ -155,8 +157,21 @@ public sealed class TelegramClient(HttpClient http, IOptions<TelegramOptions> op
             ? id.GetInt64()
             : 0;
 
+    // The chat's new id when a group has been upgraded to a supergroup. Telegram reports
+    // it alongside the refusal instead of just saying no, so the caller can repoint and
+    // carry on – see SendOutcome.Migrated.
+    private static long? MigrateToChatIdOf(JsonElement? parameters) =>
+        parameters is { ValueKind: JsonValueKind.Object } p
+        && p.TryGetProperty("migrate_to_chat_id", out var id)
+        && id.TryGetInt64(out var value)
+            ? value
+            : null;
+
     private sealed record ApiResponse(
         [property: JsonPropertyName("ok")] bool Ok,
         [property: JsonPropertyName("description")] string? Description,
-        [property: JsonPropertyName("result")] JsonElement? Result);
+        [property: JsonPropertyName("result")] JsonElement? Result,
+        // ResponseParameters: migrate_to_chat_id and retry_after. Only the first is acted
+        // on today; the second would be the natural home for honouring a 429's own backoff.
+        [property: JsonPropertyName("parameters")] JsonElement? Parameters);
 }

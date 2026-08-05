@@ -136,6 +136,23 @@ public sealed class Outbox(AppDbContext db, IChatSender sender, SettingsService 
             }
 
             msg.LastError = result.Error;
+
+            // The chat was upgraded to a supergroup and answered with its new id. Follow
+            // it: repoint the destination and make the message due immediately, without
+            // charging the attempt – retrying the old id can only fail again, so counting
+            // it would spend the ladder on a chat that no longer exists. This is the
+            // failure that killed outbox 6 five attempts deep.
+            // `!= chatId` is a loop guard, not paranoia about Telegram: without it, a
+            // response pointing at the id we just used would keep resetting the attempt
+            // count and retry every tick forever.
+            if (result.MigrateToChatId is { } newChatId && newChatId != chatId)
+            {
+                msg.Attempts--;
+                msg.NextAttemptAt = DateTimeOffset.UtcNow;
+                await FollowChatMigrationAsync(msg, chatId, newChatId, ct);
+                continue;
+            }
+
             if (msg.Attempts >= Backoff.Length)
             {
                 msg.Status = "failed";
@@ -152,6 +169,34 @@ public sealed class Outbox(AppDbContext db, IChatSender sender, SettingsService 
 
         if (due.Count > 0) await db.SaveChangesAsync(ct);
         return sent;
+    }
+
+    // Points this message – and, where possible, everything after it – at the chat's new id.
+    //
+    // When the destination came from a setting, the setting itself is rewritten: the whole
+    // point of ChatSetting is that "the admin chat" is a name resolved at send time, and a
+    // supergroup upgrade changes the id behind that name, not the name. Fixing the row
+    // alone would leave every future card, and the reply-to-card edits in AnonService,
+    // aimed at a chat id Telegram has retired.
+    //
+    // Logged at Warning even though it is handled: an id changing under the deployment is
+    // worth seeing in the log once, and it explains the id change in the settings audit.
+    private async Task FollowChatMigrationAsync(OutboxMessage msg, long oldChatId, long newChatId, CancellationToken ct)
+    {
+        if (msg.ChatSetting is { } key)
+        {
+            var error = await settings.SetAsync(key, newChatId.ToString(), null, ct);
+            log.LogWarning(
+                "Outbox {Id} ({Kind}): chat {Old} was upgraded to a supergroup; {Setting} repointed to {New}{Failure}. Retrying on the next tick.",
+                msg.Id, msg.Kind, oldChatId, key, newChatId, error is null ? "" : $" FAILED: {error}");
+        }
+        else
+        {
+            msg.ChatId = newChatId;
+            log.LogWarning(
+                "Outbox {Id} ({Kind}): chat {Old} was upgraded to a supergroup; this message repointed to {New}. Retrying on the next tick.",
+                msg.Id, msg.Kind, oldChatId, newChatId);
+        }
     }
 
     // Write the delivered message id back to whatever this message was about, so later
