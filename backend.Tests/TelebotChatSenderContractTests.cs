@@ -33,6 +33,16 @@ public sealed class TelebotChatSenderContractTests : ChatSenderContractTests
     protected override void GivenTransportFailure(TestHost host, Exception ex) =>
         For(host).Throws(ex);
 
+    // Telebot has no typed ResponseParameters – TelebotException carries a status code and
+    // a message, and the message is the raw body behind an "HTTP error 400: " prefix. This
+    // string is copied from the production log the day the admin group was upgraded, so
+    // the adapter is measured against what the library really hands it.
+    protected override void GivenChatMigrated(TestHost host, long newChatId) =>
+        For(host).Throws(new TelebotException(400,
+            $$$"""
+            HTTP error 400: {"ok":false,"error_code":400,"description":"Bad Request: group chat was upgraded to a supergroup chat","parameters":{"migrate_to_chat_id":{{{newChatId}}}}}
+            """));
+
     protected override JsonElement? SentReplyMarkup(TestHost host)
     {
         var markup = For(host).Last.ReplyMarkup;

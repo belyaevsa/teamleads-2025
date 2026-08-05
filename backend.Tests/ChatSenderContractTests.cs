@@ -13,8 +13,8 @@ namespace TeamleadsBackend.Tests;
 // client translates a timeout into a retry rather than an escaping exception.
 //
 // TO ADD AN ADAPTER: subclass this, return your adapter from CreateSender, and implement
-// the three transport hooks. If a case cannot be expressed against your client, that is
-// a behaviour change – say so in an override with a comment, do not delete the test.
+// the transport hooks. If a case cannot be expressed against your client, that is a
+// behaviour change – say so in an override with a comment, do not delete the test.
 public abstract class ChatSenderContractTests
 {
     protected abstract IChatSender CreateSender(TestHost host);
@@ -27,6 +27,10 @@ public abstract class ChatSenderContractTests
 
     /// Make the next send fail the way a dead or slow socket does.
     protected abstract void GivenTransportFailure(TestHost host, Exception ex);
+
+    /// Make the next send fail the way Telegram refuses a chat that has been upgraded to
+    /// a supergroup: a refusal that carries the chat's new id.
+    protected abstract void GivenChatMigrated(TestHost host, long newChatId);
 
     /// The reply markup the adapter passed on, as JSON – null if it sent none.
     protected abstract JsonElement? SentReplyMarkup(TestHost host);
@@ -97,6 +101,45 @@ public abstract class ChatSenderContractTests
         Assert.NotNull(outcome.Error);
     }
 
+    // A refusal the delivery loop can act on instead of retrying into a wall.
+    //
+    // Telegram gives a group a new id when it is upgraded to a supergroup and answers
+    // sends to the old one with parameters.migrate_to_chat_id. An adapter that flattens
+    // that into a plain failure throws the fix away: every retry uses the same retired id,
+    // the ladder runs out, and the message dies. Outbox 6 – an anon moderation card – did
+    // exactly that, five attempts deep, on the day the admin group was upgraded.
+    //
+    // Each adapter learns this differently (a JSON field, an exception message), which is
+    // the whole reason it is asserted per adapter rather than once in OutboxTests.
+    [Fact]
+    public async Task A_supergroup_upgrade_is_reported_as_a_migration_not_a_plain_failure()
+    {
+        using var host = new TestHost();
+        GivenChatMigrated(host, -1004294696151);
+
+        var outcome = await CreateSender(host).SendMessageAsync(Message(), CancellationToken.None);
+
+        Assert.False(outcome.Ok);
+        Assert.Equal(-1004294696151, outcome.MigrateToChatId);
+        // The reason still reaches OutboxMessage.LastError – a handled failure is still
+        // a failure, and "why is this message old" must stay answerable.
+        Assert.NotNull(outcome.Error);
+    }
+
+    // The flip side: an ordinary refusal must not look like a migration, or the loop would
+    // repoint the admin chat at 0 and every later card would go nowhere.
+    [Fact]
+    public async Task An_ordinary_refusal_carries_no_migration_target()
+    {
+        using var host = new TestHost();
+        GivenApiError(host, "Bad Request: chat not found");
+
+        var outcome = await CreateSender(host).SendMessageAsync(Message(), CancellationToken.None);
+
+        Assert.False(outcome.Ok);
+        Assert.Null(outcome.MigrateToChatId);
+    }
+
     [Fact]
     public async Task A_keyboard_is_passed_on_as_a_json_object_not_a_string()
     {
@@ -154,6 +197,12 @@ public sealed class BotApiChatSenderContractTests : ChatSenderContractTests
 
     protected override void GivenTransportFailure(TestHost host, Exception ex) =>
         host.Api.Throws(ex);
+
+    // The real shape of Telegram's answer, ResponseParameters and all.
+    protected override void GivenChatMigrated(TestHost host, long newChatId) =>
+        host.Api.Responds(System.Net.HttpStatusCode.BadRequest, $$$"""
+            {"ok":false,"error_code":400,"description":"Bad Request: group chat was upgraded to a supergroup chat","parameters":{"migrate_to_chat_id":{{{newChatId}}}}}
+            """);
 
     protected override JsonElement? SentReplyMarkup(TestHost host) =>
         host.Api.LastCall.Json.TryGetProperty("reply_markup", out var m) ? m : null;

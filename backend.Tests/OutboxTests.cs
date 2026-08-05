@@ -549,6 +549,88 @@ public class OutboxTests
         Assert.Equal("pending", rows[1].Status);
     }
 
+    // ---- supergroup migration ----------------------------------------------------
+    //
+    // Telegram gives a group a new id when it is upgraded to a supergroup, and refuses
+    // sends to the old one while naming the replacement. Every retry at the old id is
+    // guaranteed to fail, so the loop follows the new id instead of spending the ladder.
+
+    [Fact]
+    public async Task A_migrated_chat_repoints_the_setting_rather_than_burning_a_retry()
+    {
+        using var host = new TestHost();
+        await host.SetSettingAsync(AdminChat, "-100500");
+        var outbox = host.NewOutbox();
+        await outbox.EnqueueAsync("anon_card", 0, "🕵️ Анонимный запрос LX9NMC", chatSetting: AdminChat);
+        host.Chat.Migrates(-1004294696151);
+
+        await outbox.DispatchDueAsync(CancellationToken.None);
+
+        var row = await host.Db.Outbox.SingleAsync();
+        Assert.Equal("pending", row.Status);
+        // The attempt is not charged: it was spent on an id that no longer exists.
+        Assert.Equal(0, row.Attempts);
+        Assert.InRange(row.NextAttemptAt, DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow);
+        // The name is what moved, so every future card and every card edit follows too.
+        Assert.Equal(-1004294696151, await host.Settings.GetLongAsync(AdminChat, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task A_repointed_message_then_goes_out_to_the_new_chat()
+    {
+        using var host = new TestHost();
+        await host.SetSettingAsync(AdminChat, "-100500");
+        var outbox = host.NewOutbox();
+        await outbox.EnqueueAsync("anon_card", 0, "🕵️ Анонимный запрос LX9NMC", chatSetting: AdminChat);
+        host.Chat.Migrates(-1004294696151).Delivers(4242);
+
+        await outbox.DispatchDueAsync(CancellationToken.None);   // refused, repointed
+        var sent = await outbox.DispatchDueAsync(CancellationToken.None);   // next tick
+
+        Assert.Equal(1, sent);
+        Assert.Equal(-100500, host.Chat.Sent[0].ChatId);          // the retired id, once
+        Assert.Equal(-1004294696151, host.Chat.Sent[1].ChatId);   // and then the new one
+        Assert.Equal("sent", (await host.Db.Outbox.SingleAsync()).Status);
+    }
+
+    // A message addressed to a literal chat id has no setting to rewrite, so the row
+    // itself moves. Nothing else can be inferred – another message to the same id is a
+    // different row and finds out for itself.
+    [Fact]
+    public async Task A_migrated_literal_chat_id_moves_the_message_itself()
+    {
+        using var host = new TestHost();
+        var outbox = host.NewOutbox();
+        await outbox.EnqueueAsync("notice", chatId: -100500, text: "готово");
+        host.Chat.Migrates(-1004294696151);
+
+        await outbox.DispatchDueAsync(CancellationToken.None);
+
+        var row = await host.Db.Outbox.SingleAsync();
+        Assert.Equal(-1004294696151, row.ChatId);
+        Assert.Equal("pending", row.Status);
+        Assert.Equal(0, row.Attempts);
+    }
+
+    // The loop guard. A response naming the id we just used would otherwise reset the
+    // attempt count every tick and retry for ever – a message that can never fail is a
+    // message that can never be given up on.
+    [Fact]
+    public async Task A_migration_pointing_at_the_same_chat_is_treated_as_an_ordinary_failure()
+    {
+        using var host = new TestHost();
+        var outbox = host.NewOutbox();
+        await outbox.EnqueueAsync("notice", chatId: -100500, text: "готово");
+        host.Chat.Migrates(-100500);
+
+        await outbox.DispatchDueAsync(CancellationToken.None);
+
+        var row = await host.Db.Outbox.SingleAsync();
+        Assert.Equal(1, row.Attempts);                        // charged, unlike a real migration
+        Assert.Equal(-100500, row.ChatId);
+        Assert.NotNull(row.LastError);
+    }
+
     // ---- requeue on startup ------------------------------------------------------
     //
     // A message that gave up is not lost, it is stuck: the ladder ran out while the reason

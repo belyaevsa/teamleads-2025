@@ -30,6 +30,14 @@ public sealed class FakeChatSender : IChatSender
         return this;
     }
 
+    // The chat was upgraded to a supergroup: a refusal that names the chat's new id.
+    public FakeChatSender Migrates(long newChatId)
+    {
+        _outcomes.Enqueue(_ => SendOutcome.Migrated(newChatId,
+            "Bad Request: group chat was upgraded to a supergroup chat"));
+        return this;
+    }
+
     // An adapter that lets an exception escape rather than translating it to a failed
     // outcome. The port's contract says it should not, and Outbox is not written to
     // survive it – this is here so a test can pin what actually happens when one does.
