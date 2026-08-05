@@ -1,12 +1,11 @@
 using System.Net;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using TeamleadsBackend.Data;
 using TeamleadsBackend.Search;
+using TeamleadsBackend.Security;
 
 namespace TeamleadsBackend.Endpoints;
 
@@ -15,7 +14,6 @@ public static class PasteEndpoints
     private const string BaseUrl = "https://teamleads.kz";
     private const int MaxContentLength = 64 * 1024;   // 64 KB
     private const int MinContentLength = 10;
-    private const int AuthorHashLength = 64;
 
     private static readonly char[] IdAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ23456789".ToCharArray();
 
@@ -107,12 +105,14 @@ public static class PasteEndpoints
             return Results.BadRequest(new { error = "too_long", detail = $"Максимум {MaxContentLength / 1024} КБ." });
         }
 
-        var source = body?.Source ?? "web";
-        var authorName = body?.AuthorName?.Trim().Truncate(120);
-        var authorTgId = body?.AuthorTgId;
-        var ipHash = authorTgId is not null
-            ? null
-            : Shared.HashIp(request, cfg);
+        // Everything below is derived, never accepted. A public endpoint that takes an
+        // author on trust publishes a paste on this domain under a name its owner never
+        // typed; and the old `author_tg_id` field also switched the ip_hash off, so
+        // supplying one field opted the sender out of the only abuse trail there is.
+        // The bot path sets both from the Telegram update, where they are attested –
+        // see TelegramWebhookEndpoints.HandlePasteWebhookAsync.
+        var source = NormalizeSource(body?.Source);
+        var ipHash = ClientFingerprint.IpHash(request.HttpContext, cfg);
 
         // Honeypot: a form field named "website" must stay empty.
         if (!string.IsNullOrWhiteSpace(body?.Website))
@@ -129,8 +129,8 @@ public static class PasteEndpoints
             PublicId = publicId,
             Content = content,
             Language = language,
-            AuthorName = authorName,
-            AuthorTgId = authorTgId,
+            AuthorName = null,          // anonymous by construction on this path
+            AuthorTgId = null,
             IpHash = ipHash,
             Source = source,
             CreatedAt = DateTimeOffset.UtcNow,
@@ -409,32 +409,26 @@ public static class PasteEndpoints
         return new string(chars);
     }
 
+    // Where a paste says it came from – a label on the page, nothing more. Whitelisted
+    // rather than stored as sent: "bot" makes the page claim a Telegram origin next to an
+    // author name, and only TelegramWebhookEndpoints has a Telegram update to back that
+    // claim up. Anything unrecognised degrades to "web" instead of being rejected: the
+    // shell and the form are the only callers, and a bad label is not worth a 400.
+    public static string NormalizeSource(string? source) =>
+        source?.Trim().ToLowerInvariant() switch
+        {
+            "shell" => "shell",
+            _ => "web",
+        };
+
+    // The public create body. There is deliberately no author field of any kind here:
+    // this endpoint has nothing to authenticate a claim of authorship with, so it does
+    // not accept one. Unknown JSON members (including an "author_name" left over in an
+    // old client, or supplied by an attacker) are ignored by the deserializer.
     private sealed record PasteBody(
         [property: JsonPropertyName("content")] string? Content,
         [property: JsonPropertyName("source")] string? Source,
-        [property: JsonPropertyName("author_name")] string? AuthorName,
-        [property: JsonPropertyName("author_tg_id")] long? AuthorTgId,
         [property: JsonPropertyName("website")] string? Website);
-}
-
-file static class Shared
-{
-    public const string RateLimitPolicy = "paste_post";
-
-    public static string? HashIp(HttpRequest request, IConfiguration cfg)
-    {
-        var ip = request.Headers["X-Forwarded-For"].FirstOrDefault()
-                 ?? request.HttpContext.Connection.RemoteIpAddress?.ToString()
-                 ?? "";
-        if (string.IsNullOrWhiteSpace(ip)) return null;
-
-        var salt = cfg["IP_HASH_SALT"];
-        if (string.IsNullOrWhiteSpace(salt)) return null;
-
-        var input = Encoding.UTF8.GetBytes($"{ip}|{salt}");
-        var hash = SHA256.HashData(input);
-        return Convert.ToHexStringLower(hash);
-    }
 }
 
 file static class StringExtensions
