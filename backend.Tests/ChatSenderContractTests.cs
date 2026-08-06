@@ -38,8 +38,24 @@ public abstract class ChatSenderContractTests
     /// Whether the adapter told the remote service to suppress link previews.
     protected abstract bool? SentDisablePreview(TestHost host);
 
+    /// The last call's fields by their Bot API name, values as raw text (JSON for the
+    /// composite ones). Only names both clients agree on are asserted through this –
+    /// chat_id, message_id, text, question, options, callback_query_id – so it stays a
+    /// statement about the Bot API rather than about one library's spelling.
+    protected abstract IReadOnlyDictionary<string, string> SentFields(TestHost host);
+
+    /// The Bot API method the last call went to.
+    protected abstract string SentMethod(TestHost host);
+
     private static ChatMessage Message(string text = "hi", string? markupJson = null, bool disablePreview = true) =>
         new(-100500, text, markupJson, disablePreview);
+
+    // Both clients JSON-escape Cyrillic on the way out, and one wraps each option in an
+    // object while the other sends bare strings. Decoding is what makes the assertion
+    // about the options rather than about an escaping convention.
+    private static IEnumerable<string> OptionLabels(string optionsJson) =>
+        JsonDocument.Parse(optionsJson).RootElement.EnumerateArray()
+            .Select(o => o.ValueKind == JsonValueKind.Object ? o.GetProperty("text").GetString()! : o.GetString()!);
 
     [Fact]
     public async Task Delivery_reports_ok_and_the_message_id()
@@ -181,6 +197,176 @@ public abstract class ChatSenderContractTests
 
         Assert.True(SentDisablePreview(host));
     }
+
+    [Fact]
+    public async Task A_reply_target_reaches_the_remote_service()
+    {
+        using var host = new TestHost();
+
+        await CreateSender(host).SendMessageAsync(
+            new ChatMessage(-100500, "ссылка", ReplyToMessageId: 50), CancellationToken.None);
+
+        // How each client frames it differs – a flat reply_to_message_id, a nested
+        // reply_parameters – so what is pinned here is that the target is not dropped.
+        // /paste in the community chat is the whole feature: the link has to land under the
+        // wall of text it replaces, not at the bottom of the chat.
+        Assert.Contains("50", string.Join(" ", SentFields(host).Values));
+    }
+
+    // The other half of it, and the half that is silent when it breaks: an adapter that
+    // sends the target but not "send it anyway if the target is gone" turns a reply to a
+    // deleted message into no reply at all.
+    [Fact]
+    public async Task A_reply_survives_a_target_that_has_been_deleted()
+    {
+        using var host = new TestHost();
+
+        await CreateSender(host).SendMessageAsync(
+            new ChatMessage(-100500, "ссылка", ReplyToMessageId: 50), CancellationToken.None);
+
+        Assert.Contains("allow_sending_without_reply", string.Join(" ", SentFields(host).Keys.Concat(SentFields(host).Values)));
+    }
+
+    // ── editing a message in place ──────────────────────────────────────────
+
+    // The moderation card settles by being rewritten: buttons off, decision named, in
+    // place. An adapter that cannot do this leaves the admin chat with a live keyboard
+    // on a request that is already published.
+    [Fact]
+    public async Task An_edit_reaches_the_message_it_names()
+    {
+        using var host = new TestHost();
+
+        var outcome = await CreateSender(host).EditMessageTextAsync(
+            new ChatEdit(-100500, 4242, "✅ Опубликовано"), CancellationToken.None);
+
+        Assert.True(outcome.Ok);
+        Assert.Equal("editMessageText", SentMethod(host));
+        var fields = SentFields(host);
+        Assert.Equal("-100500", fields["chat_id"]);
+        Assert.Equal("4242", fields["message_id"]);
+        Assert.Equal("✅ Опубликовано", fields["text"]);
+        // A null keyboard means "no buttons", not "leave them alone" – a decided card
+        // must not offer a second tap.
+        Assert.Null(SentReplyMarkup(host));
+    }
+
+    [Fact]
+    public async Task An_edit_keeps_a_keyboard_when_one_is_given()
+    {
+        using var host = new TestHost();
+        const string keyboard = """
+            {"inline_keyboard":[[{"text":"✅ Опубликовать","callback_data":"anon:pub:A7F3K2"}]]}
+            """;
+
+        await CreateSender(host).EditMessageTextAsync(
+            new ChatEdit(-100500, 4242, "⚠️ Ошибка публикации", keyboard), CancellationToken.None);
+
+        // The failed-publish card: the reason is written on it and the buttons stay live
+        // so the admin can retry after the fix.
+        var markup = SentReplyMarkup(host);
+        Assert.NotNull(markup);
+        Assert.Equal("anon:pub:A7F3K2",
+            markup!.Value.GetProperty("inline_keyboard")[0][0].GetProperty("callback_data").GetString());
+    }
+
+    [Fact]
+    public async Task An_edit_that_is_refused_becomes_a_failed_outcome()
+    {
+        using var host = new TestHost();
+        GivenApiError(host, "Bad Request: message to edit not found");
+
+        var outcome = await CreateSender(host).EditMessageTextAsync(
+            new ChatEdit(-100500, 4242, "✅ Опубликовано"), CancellationToken.None);
+
+        // The card is a receipt for a decision already recorded. It failing must stay a
+        // returned outcome, or a cosmetic problem becomes a lost publish.
+        Assert.False(outcome.Ok);
+        Assert.NotNull(outcome.Error);
+    }
+
+    // ── polls ───────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task A_poll_carries_its_question_and_every_option()
+    {
+        using var host = new TestHost();
+        GivenDelivers(host, 555);
+
+        var outcome = await CreateSender(host).SendPollAsync(
+            new ChatPoll(-100500, "🎯 Дилемма недели", ["Посадить рядом джуна", "Попросить написать доку"]),
+            CancellationToken.None);
+
+        Assert.True(outcome.Ok);
+        // The reveal a day later closes THIS message to read the tally. An adapter that
+        // loses the id leaves stopPoll aimed at nothing.
+        Assert.Equal(555, outcome.MessageId);
+        Assert.Equal("sendPoll", SentMethod(host));
+
+        var fields = SentFields(host);
+        Assert.Equal("🎯 Дилемма недели", fields["question"]);
+        Assert.Contains("Посадить рядом джуна", OptionLabels(fields["options"]));
+        Assert.Contains("Попросить написать доку", OptionLabels(fields["options"]));
+    }
+
+    [Fact]
+    public async Task A_poll_that_is_refused_becomes_a_failed_outcome()
+    {
+        using var host = new TestHost();
+        GivenApiError(host, "Bad Request: poll must have at least 2 options");
+
+        var outcome = await CreateSender(host).SendPollAsync(
+            new ChatPoll(-100500, "?", ["один"]), CancellationToken.None);
+
+        Assert.False(outcome.Ok);
+        Assert.Contains("2 options", outcome.Error);
+    }
+
+    // ── callback answers ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task A_callback_answer_names_the_query_it_answers()
+    {
+        using var host = new TestHost();
+
+        var outcome = await CreateSender(host).AnswerCallbackAsync(
+            new CallbackAnswer("cb1", "Опубликовано."), CancellationToken.None);
+
+        Assert.True(outcome.Ok);
+        Assert.Equal("answerCallbackQuery", SentMethod(host));
+        var fields = SentFields(host);
+        Assert.Equal("cb1", fields["callback_query_id"]);
+        Assert.Equal("Опубликовано.", fields["text"]);
+    }
+
+    // Some taps have nothing to say beyond "heard you". The call still has to go out –
+    // it is the only thing that stops the spinner on the admin's button.
+    [Fact]
+    public async Task A_callback_answer_with_nothing_to_say_is_still_sent()
+    {
+        using var host = new TestHost();
+
+        var outcome = await CreateSender(host).AnswerCallbackAsync(
+            new CallbackAnswer("cb1"), CancellationToken.None);
+
+        Assert.True(outcome.Ok);
+        Assert.Equal("cb1", SentFields(host)["callback_query_id"]);
+    }
+
+    // Nothing waits on this one, so a failure must not escape into the webhook handler
+    // and take the whole update down with it.
+    [Fact]
+    public async Task A_callback_answer_that_is_refused_becomes_a_failed_outcome()
+    {
+        using var host = new TestHost();
+        GivenApiError(host, "Bad Request: query is too old");
+
+        var outcome = await CreateSender(host).AnswerCallbackAsync(
+            new CallbackAnswer("cb1", "Опубликовано."), CancellationToken.None);
+
+        Assert.False(outcome.Ok);
+        Assert.NotNull(outcome.Error);
+    }
 }
 
 // The adapter in use today: IChatSender over the hand-rolled TelegramClient, driven
@@ -209,4 +395,13 @@ public sealed class BotApiChatSenderContractTests : ChatSenderContractTests
 
     protected override bool? SentDisablePreview(TestHost host) =>
         host.Api.LastCall.Bool("disable_web_page_preview");
+
+    // Straight off the JSON body: a string field's own text, anything else as it was
+    // written, which matches how Telebot renders its fields.
+    protected override IReadOnlyDictionary<string, string> SentFields(TestHost host) =>
+        host.Api.LastCall.Json.EnumerateObject().ToDictionary(
+            p => p.Name,
+            p => p.Value.ValueKind == JsonValueKind.String ? p.Value.GetString()! : p.Value.GetRawText());
+
+    protected override string SentMethod(TestHost host) => host.Api.LastCall.Method;
 }

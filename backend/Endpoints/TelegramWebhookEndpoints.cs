@@ -61,6 +61,10 @@ public static class TelegramWebhookEndpoints
             SearchService search,
             AppDbContext db,
             SettingsService settings,
+            IChatSender chat,
+            // The port covers every message this route sends. One call is left over:
+            // inline query results, which the package behind IChatSender has no method for.
+            // See IChatSender.
             TelegramClient tg,
             IOptions<TelegramOptions> options,
             IConfiguration cfg,
@@ -104,8 +108,8 @@ public static class TelegramWebhookEndpoints
                 // Deliberately never logs message text, telegram ids or usernames:
                 // the anonymity promise has to hold in the log file too.
                 if (update?.InlineQuery is { } inline) await HandleInlineQueryAsync(inline, search, tg, log, ct);
-                else if (update?.CallbackQuery is { } cb) await HandleCallbackAsync(cb, anon, tg, adminChat, log, ct);
-                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, questions, search, db, settings, tg, adminChat, cfg, log, ct);
+                else if (update?.CallbackQuery is { } cb) await HandleCallbackAsync(cb, anon, chat, adminChat, log, ct);
+                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, questions, search, db, settings, chat, adminChat, cfg, log, ct);
                 else log.LogInformation("Update ignored: no message, callback or inline_query (edit, poll answer or reaction).");
             }
             catch (Exception ex)
@@ -122,12 +126,25 @@ public static class TelegramWebhookEndpoints
         return api;
     }
 
+    // Every "say this in that chat" the webhook does, through the port.
+    //
+    // A named helper rather than a `new ChatMessage(...)` at each of the twenty call
+    // sites: the defaults are the contract. Previews off unless a caller says otherwise
+    // (a bot answer full of links must render as one message, not a stack of cards), and
+    // no parse_mode anywhere – half of what this route echoes back is someone else's text,
+    // and text that is interpreted as markup is text that can carry a hidden mention.
+    private static Task<SendOutcome> SayAsync(
+        IChatSender chat, long chatId, string text,
+        long? replyToMessageId = null, bool disablePreview = true, CancellationToken ct = default) =>
+        chat.SendMessageAsync(
+            new ChatMessage(chatId, text, DisablePreview: disablePreview, ReplyToMessageId: replyToMessageId), ct);
+
     // ── messages ────────────────────────────────────────────────────────────
 
     private static async Task HandleMessageAsync(
         Message msg, AnonService anon, DilemmaService dilemmas, QuestionService questions, SearchService search,
         AppDbContext db,
-        SettingsService settings, TelegramClient tg,
+        SettingsService settings, IChatSender chat,
         long adminChat, IConfiguration cfg, ILogger log, CancellationToken ct)
     {
         // Commands are read from text OR caption, so "/paste" typed under a screenshot
@@ -153,7 +170,7 @@ public static class TelegramWebhookEndpoints
         if (text.StartsWith("/id", StringComparison.Ordinal))
         {
             log.LogInformation("/id answered for a {Scope} chat.", scope);
-            await tg.SendMessageAsync(msg.Chat.Id, $"""
+            await SayAsync(chat, msg.Chat.Id, $"""
                 chat_id: {msg.Chat.Id}
                 тип: {msg.Chat.Type}
 
@@ -169,7 +186,7 @@ public static class TelegramWebhookEndpoints
         // never ordinary group messages.
         if (text.StartsWith("/paste", StringComparison.Ordinal))
         {
-            await HandlePasteWebhookAsync(msg, text, db, cfg, tg, log, ct);
+            await HandlePasteWebhookAsync(msg, text, db, cfg, chat, log, ct);
             return;
         }
 
@@ -180,22 +197,22 @@ public static class TelegramWebhookEndpoints
             // so what you test by hand is what fires on Monday.
             if (text.StartsWith("/dilemma", StringComparison.Ordinal))
             {
-                await tg.SendMessageAsync(adminChat, await dilemmas.PostAsync(ct), ct: ct);
+                await SayAsync(chat, adminChat, await dilemmas.PostAsync(ct), ct: ct);
                 return;
             }
             if (text.StartsWith("/reveal", StringComparison.Ordinal))
             {
-                await tg.SendMessageAsync(adminChat, await dilemmas.FollowUpAsync(TimeSpan.Zero, ct), ct: ct);
+                await SayAsync(chat, adminChat, await dilemmas.FollowUpAsync(TimeSpan.Zero, ct), ct: ct);
                 return;
             }
             if (text.StartsWith("/question", StringComparison.Ordinal))
             {
-                await tg.SendMessageAsync(adminChat, await questions.PostAsync(ct), ct: ct);
+                await SayAsync(chat, adminChat, await questions.PostAsync(ct), ct: ct);
                 return;
             }
             if (text.StartsWith("/set", StringComparison.Ordinal))
             {
-                await HandleSettingsAsync(msg, text, settings, tg, adminChat, log, ct);
+                await HandleSettingsAsync(msg, text, settings, chat, adminChat, log, ct);
                 return;
             }
 
@@ -207,7 +224,7 @@ public static class TelegramWebhookEndpoints
                 var reply = target is null
                     ? $"Запрос {publicId} не найден."
                     : await anon.ApplyEditAsync(target, text, ct);
-                await tg.SendMessageAsync(adminChat, reply, ct: ct);
+                await SayAsync(chat, adminChat, reply, ct: ct);
             }
             return;
         }
@@ -226,19 +243,19 @@ public static class TelegramWebhookEndpoints
         if (text.StartsWith("/start", StringComparison.Ordinal) || text.StartsWith("/help", StringComparison.Ordinal))
         {
             log.LogInformation("DM {Command}: sent the help text.", command);
-            await tg.SendMessageAsync(msg.Chat.Id, StartText, ct: ct);
+            await SayAsync(chat, msg.Chat.Id, StartText, ct: ct);
             return;
         }
 
         if (text.StartsWith("/status", StringComparison.Ordinal))
         {
-            await HandleStatusAsync(msg, text, anon, tg, log, ct);
+            await HandleStatusAsync(msg, text, anon, chat, log, ct);
             return;
         }
 
         if (text.StartsWith("/search", StringComparison.Ordinal) || text.StartsWith("/find", StringComparison.Ordinal))
         {
-            await HandleSearchAsync(msg, text, search, tg, log, ct);
+            await HandleSearchAsync(msg, text, search, chat, log, ct);
             return;
         }
 
@@ -255,7 +272,7 @@ public static class TelegramWebhookEndpoints
         if (string.IsNullOrEmpty(plainText))
         {
             log.LogInformation("DM: attachment with a {Length}-char caption and no command – offered /paste.", text.Length);
-            await tg.SendMessageAsync(msg.Chat.Id,
+            await SayAsync(chat, msg.Chat.Id,
                 "Файл я сохранить не могу, а подпись к нему – могу.\n\nОтветьте на свое сообщение с файлом командой /paste, и текст подписи станет ссылкой. Анонимный вопрос принимаю только текстом, без вложений.",
                 replyToMessageId: msg.MessageId, ct: ct);
             return;
@@ -264,7 +281,7 @@ public static class TelegramWebhookEndpoints
         if (plainText.Length >= 300 && LooksLikeCode(plainText))
         {
             log.LogInformation("DM: {Length} chars look like code, offered /paste instead of an anon question.", plainText.Length);
-            await tg.SendMessageAsync(msg.Chat.Id,
+            await SayAsync(chat, msg.Chat.Id,
                 "Похоже на код, конфиг или лог.\n\nОтправьте /paste чтобы создать ссылку – она будет с вашим именем. Или повторите это же сообщение, если хотите отправить его как анонимный вопрос в чат.", ct: ct);
             return;
         }
@@ -272,7 +289,7 @@ public static class TelegramWebhookEndpoints
         if (plainText.Length < MinTextLength)
         {
             log.LogInformation("DM rejected: {Length} chars, below the {Minimum}-char minimum.", plainText.Length, MinTextLength);
-            await tg.SendMessageAsync(msg.Chat.Id,
+            await SayAsync(chat, msg.Chat.Id,
                 "Слишком коротко. Опишите ситуацию хотя бы парой предложений – чату нужен контекст, чтобы ответить по делу.", ct: ct);
             return;
         }
@@ -284,7 +301,7 @@ public static class TelegramWebhookEndpoints
         // Id and length only. The text itself is the thing we promised not to keep.
         log.LogInformation("Anon request {Outcome} from a DM: {PublicId}, {Length} chars.", outcome, row.PublicId, plainText.Length);
 
-        await tg.SendMessageAsync(msg.Chat.Id, $"""
+        await SayAsync(chat, msg.Chat.Id, $"""
             Принято. Номер запроса: {row.PublicId}
 
             Админ проверит и опубликует его в чате анонимно. Я не сохранил ни ваш id,
@@ -298,7 +315,7 @@ public static class TelegramWebhookEndpoints
     // values, `/set <key> <value>` changes one. This is the point of moving settings
     // into the database – turning the bot off is a message, not a deploy.
     private static async Task HandleSettingsAsync(
-        Message msg, string text, SettingsService settings, TelegramClient tg, long adminChat, ILogger log, CancellationToken ct)
+        Message msg, string text, SettingsService settings, IChatSender chat, long adminChat, ILogger log, CancellationToken ct)
     {
         var parts = text.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -310,7 +327,7 @@ public static class TelegramWebhookEndpoints
             lines.Add("");
             lines.Add("Изменить: /set <ключ> <значение>");
             log.LogInformation("/set listed the settings catalog.");
-            await tg.SendMessageAsync(adminChat, string.Join("\n", lines), ct: ct);
+            await SayAsync(chat, adminChat, string.Join("\n", lines), ct: ct);
             return;
         }
 
@@ -320,17 +337,17 @@ public static class TelegramWebhookEndpoints
         else
             log.LogInformation("Setting {Key} rejected: {Error}", parts[1], error);
 
-        await tg.SendMessageAsync(adminChat,
+        await SayAsync(chat, adminChat,
             error ?? $"✅ {parts[1]} = {parts[2]}. Применится в течение 5 минут (кэш настроек).", ct: ct);
     }
 
-    private static async Task HandleStatusAsync(Message msg, string text, AnonService anon, TelegramClient tg, ILogger log, CancellationToken ct)
+    private static async Task HandleStatusAsync(Message msg, string text, AnonService anon, IChatSender chat, ILogger log, CancellationToken ct)
     {
         var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (parts.Length < 2)
         {
             log.LogInformation("/status called without a ticket number.");
-            await tg.SendMessageAsync(msg.Chat.Id, "Формат: /status A7F3K2 – номер из ответа на ваш запрос.", ct: ct);
+            await SayAsync(chat, msg.Chat.Id, "Формат: /status A7F3K2 – номер из ответа на ваш запрос.", ct: ct);
             return;
         }
 
@@ -341,7 +358,7 @@ public static class TelegramWebhookEndpoints
         log.LogInformation("/status {PublicId}: {Result}.",
             parts[1].ToUpperInvariant(), row is null ? "not found" : AnonService.StatusRu(row.Status));
 
-        await tg.SendMessageAsync(msg.Chat.Id,
+        await SayAsync(chat, msg.Chat.Id,
             row is null
                 ? "Запрос с таким номером не найден. Проверьте номер."
                 : $"Запрос {row.PublicId}: {AnonService.StatusRu(row.Status)}.", ct: ct);
@@ -350,7 +367,7 @@ public static class TelegramWebhookEndpoints
     // ── callbacks ───────────────────────────────────────────────────────────
 
     private static async Task HandleCallbackAsync(
-        CallbackQuery cb, AnonService anon, TelegramClient tg, long adminChat, ILogger log, CancellationToken ct)
+        CallbackQuery cb, AnonService anon, IChatSender chat, long adminChat, ILogger log, CancellationToken ct)
     {
         // Only buttons pressed inside the admin chat count. Callback data is
         // attacker-controllable in general, so the chat check is the real gate.
@@ -358,7 +375,7 @@ public static class TelegramWebhookEndpoints
         {
             log.LogWarning("Callback rejected: pressed outside the admin chat (tg.admin_chat_id {Configured}).",
                 adminChat == 0 ? "is not configured" : "does not match");
-            await tg.AnswerCallbackQueryAsync(cb.Id, "Недоступно.", ct);
+            await chat.AnswerCallbackAsync(new CallbackAnswer(cb.Id, "Недоступно."), ct);
             return;
         }
 
@@ -366,7 +383,7 @@ public static class TelegramWebhookEndpoints
         if (parts is not ["anon", var action, var publicId])
         {
             log.LogWarning("Callback ignored: unrecognised callback_data shape.");
-            await tg.AnswerCallbackQueryAsync(cb.Id, ct: ct);
+            await chat.AnswerCallbackAsync(new CallbackAnswer(cb.Id), ct);
             return;
         }
 
@@ -374,7 +391,7 @@ public static class TelegramWebhookEndpoints
         if (row is null)
         {
             log.LogWarning("Callback anon:{Action}:{PublicId} – no such request.", action, publicId);
-            await tg.AnswerCallbackQueryAsync(cb.Id, "Запрос не найден.", ct);
+            await chat.AnswerCallbackAsync(new CallbackAnswer(cb.Id, "Запрос не найден."), ct);
             return;
         }
 
@@ -383,17 +400,17 @@ public static class TelegramWebhookEndpoints
         {
             "pub" => await anon.PublishAsync(row, adminId, ct),
             "rej" => await anon.RejectAsync(row, adminId, ct),
-            "edit" => await PromptEditAsync(row.PublicId, tg, adminChat, ct),
+            "edit" => await PromptEditAsync(row.PublicId, chat, adminChat, ct),
             _ => "",
         };
 
         log.LogInformation("Callback anon:{Action}:{PublicId} -> {Answer}", action, publicId, answer);
-        await tg.AnswerCallbackQueryAsync(cb.Id, answer, ct);
+        await chat.AnswerCallbackAsync(new CallbackAnswer(cb.Id, answer), ct);
     }
 
-    private static async Task<string> PromptEditAsync(string publicId, TelegramClient tg, long adminChat, CancellationToken ct)
+    private static async Task<string> PromptEditAsync(string publicId, IChatSender chat, long adminChat, CancellationToken ct)
     {
-        await tg.SendMessageAsync(adminChat, $"""
+        await SayAsync(chat, adminChat, $"""
             ✏️ Правка {publicId}
             Ответьте на это сообщение новым текстом – он заменит исходный.
             Обычный случай: убрать детали, по которым автора можно вычислить.
@@ -485,13 +502,13 @@ public static class TelegramWebhookEndpoints
     }
 
     private static async Task HandleSearchAsync(
-        Message msg, string text, SearchService search, TelegramClient tg, ILogger log, CancellationToken ct)
+        Message msg, string text, SearchService search, IChatSender chat, ILogger log, CancellationToken ct)
     {
         var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (parts.Length < 2)
         {
             log.LogInformation("/search called without a query.");
-            await tg.SendMessageAsync(msg.Chat.Id,
+            await SayAsync(chat, msg.Chat.Id,
                 "Укажите ключевые слова для поиска по архиву.\nПример: /search 1-on-1 или /find бас фактор", ct: ct);
             return;
         }
@@ -502,7 +519,7 @@ public static class TelegramWebhookEndpoints
 
         if (hits.Count == 0)
         {
-            await tg.SendMessageAsync(msg.Chat.Id,
+            await SayAsync(chat, msg.Chat.Id,
                 $"По запросу «{query}» ничего не найдено в архиве. Попробуйте сформулировать иначе.", ct: ct);
             return;
         }
@@ -516,13 +533,13 @@ public static class TelegramWebhookEndpoints
             lines.Add("");
         }
 
-        await tg.SendMessageAsync(msg.Chat.Id, string.Join("\n", lines).TrimEnd(), ct: ct);
+        await SayAsync(chat, msg.Chat.Id, string.Join("\n", lines).TrimEnd(), ct: ct);
     }
 
     // ── paste ────────────────────────────────────────────────────────────────
 
     private static async Task HandlePasteWebhookAsync(
-        Message msg, string text, AppDbContext db, IConfiguration cfg, TelegramClient tg, ILogger log, CancellationToken ct)
+        Message msg, string text, AppDbContext db, IConfiguration cfg, IChatSender chat, ILogger log, CancellationToken ct)
     {
         // "/paste <текст>" pastes what the sender typed; a bare "/paste" in reply to a
         // message pastes THAT message. The second form is the one used in the community
@@ -555,21 +572,21 @@ public static class TelegramWebhookEndpoints
                     ? "Отправьте текст сразу командой:\n\n/paste ваш код, лог или конфиг"
                     : "Текст сообщения, на которое вы ответили, до меня не дошел – в группе Telegram отдает мне только саму команду.\n\nПока работает так: /paste и текст одним сообщением. Чтобы ловить ответы на чужие сообщения, у бота нужно выключить privacy mode или сделать его админом чата.";
 
-            await tg.SendMessageAsync(msg.Chat.Id, reason, replyToMessageId: msg.MessageId, ct: ct);
+            await SayAsync(chat, msg.Chat.Id, reason, replyToMessageId: msg.MessageId, ct: ct);
             return;
         }
 
         if (content.Length < 10)
         {
             log.LogInformation("/paste rejected: {Length} chars, below the 10-char minimum.", content.Length);
-            await tg.SendMessageAsync(msg.Chat.Id, "Слишком коротко. Минимум 10 символов.", replyToMessageId: msg.MessageId, ct: ct);
+            await SayAsync(chat, msg.Chat.Id, "Слишком коротко. Минимум 10 символов.", replyToMessageId: msg.MessageId, ct: ct);
             return;
         }
 
         if (content.Length > 64 * 1024)
         {
             log.LogInformation("/paste rejected: {Length} chars, over the 64 KB limit.", content.Length);
-            await tg.SendMessageAsync(msg.Chat.Id, "Слишком длинно. Максимум 64 КБ.", replyToMessageId: msg.MessageId, ct: ct);
+            await SayAsync(chat, msg.Chat.Id, "Слишком длинно. Максимум 64 КБ.", replyToMessageId: msg.MessageId, ct: ct);
             return;
         }
 
@@ -596,7 +613,7 @@ public static class TelegramWebhookEndpoints
         // Replying threads the link under the original wall of text, so the chat can
         // collapse it. In a DM the reply target is simply the command itself.
         // Preview left on: that card is where the Instant View button lives.
-        await tg.SendMessageAsync(msg.Chat.Id,
+        await SayAsync(chat, msg.Chat.Id,
             $"📋 Paste: {PasteLink(publicId, cfg)}\n\nЯзык: {LanguageLabel(language)}, автор: {authorName}",
             replyToMessageId: fromReply ? msg.ReplyToMessage!.MessageId : msg.MessageId,
             disablePreview: false, ct: ct);

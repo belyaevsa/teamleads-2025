@@ -93,16 +93,28 @@ builder.Services.AddHttpClient<TelegramClient>(c =>
     c.BaseAddress = new Uri(tgOptions.ApiBase);
     c.Timeout = TimeSpan.FromSeconds(15);   // the webhook must answer fast; Telegram redelivers otherwise
 });
-// Bucketlab.Telebot's client. Its transport owns a private static HttpClient hardcoded
-// to api.telegram.org with a 30s timeout, so TG_API_BASE and the 15s timeout configured
-// on the typed client above do not apply to anything routed through it.
+// Bucketlab.Telebot's client, pointed at the same base address and timeout as the typed
+// client above.
+//
+// Until 0.0.72 there was nowhere to put either: the transport owned a private static
+// HttpClient hardcoded to api.telegram.org with a 30s timeout, so TG_API_BASE did not
+// reach the client that actually ships, and `docker compose up` could not route the bot
+// at dev/telegram-stub.py. DefaultTransportOptions fixes that, and the 15s timeout is the
+// same reasoning as above – the webhook has to answer fast, or Telegram redelivers.
 builder.Services.AddSingleton<Telebot.ITelegramClient>(_ =>
-    new Telebot.Telegram(tgOptions.BotToken ?? string.Empty));
+    new Telebot.Telegram(
+        new Telebot.DefaultTelegramTransport(new Telebot.DefaultTransportOptions
+        {
+            BaseAddress = new Uri(tgOptions.ApiBase),
+            Timeout = TimeSpan.FromSeconds(15),
+        }),
+        tgOptions.BotToken ?? string.Empty));
 
-// The outbox talks to IChatSender, never to a Bot API library directly. Swapping the
-// client means writing another adapter and changing this one line. See IChatSender.cs.
-// BotApiChatSender (the hand-rolled client) stays available and is still what
-// TelegramClientWireTests pins; this line is the whole switch.
+// Everything that can go through the port does, and this is the line that decides which
+// client that is. See IChatSender.cs for the two calls that cannot – stopPoll and
+// answerInlineQuery – and why; they take TelegramClient directly.
+// BotApiChatSender (the hand-rolled client behind the same port) stays available, is what
+// TelegramClientWireTests pins, and is the fallback if this package has to be backed out.
 builder.Services.AddScoped<IChatSender, TelebotChatSender>();
 
 builder.Services.AddSingleton<SettingsService>();   // process-wide 5-minute cache

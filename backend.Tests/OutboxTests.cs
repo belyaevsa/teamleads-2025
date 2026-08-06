@@ -337,17 +337,13 @@ public class OutboxTests
     {
         using var host = new TestHost();
         var outbox = host.NewOutbox();
-        var keyboard = new
-        {
-            inline_keyboard = new[]
-            {
-                new[]
-                {
-                    new { text = "Опубликовать", callback_data = "anon:pub:A7F3K2" },
-                    new { text = "Отклонить", callback_data = "anon:rej:A7F3K2" },
-                },
-            },
-        };
+        // Already JSON at the call site, the way the port takes a keyboard – the queue
+        // stores this string in a column and hands it to the adapter untouched.
+        const string keyboard = """
+            {"inline_keyboard":[[
+                {"text":"Опубликовать","callback_data":"anon:pub:A7F3K2"},
+                {"text":"Отклонить","callback_data":"anon:rej:A7F3K2"}]]}
+            """;
         await outbox.EnqueueAsync("anon_card", 1, "карточка", keyboard);
 
         await outbox.DispatchDueAsync(CancellationToken.None);

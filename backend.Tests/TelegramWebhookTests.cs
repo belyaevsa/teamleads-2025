@@ -82,7 +82,7 @@ public class TelegramWebhookTests
         await using var web = await StartAsync();
 
         Assert.Equal(404, await web.PostAsync(Message("/id"), pathSecret: "wrong"));
-        Assert.Empty(web.Api.Calls);
+        Assert.Empty(web.Host.Chat.Calls);
     }
 
     // The path segment leaks through logs and proxies; the header never does. Both are
@@ -93,7 +93,7 @@ public class TelegramWebhookTests
         await using var web = await StartAsync();
 
         Assert.Equal(404, await web.PostAsync(Message("/id"), headerToken: "wrong"));
-        Assert.Empty(web.Api.Calls);
+        Assert.Empty(web.Host.Chat.Calls);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class TelegramWebhookTests
         await using var web = await StartAsync(new TestHost(botToken: null));
 
         Assert.Equal(404, await web.PostAsync(Message("/id")));
-        Assert.Empty(web.Api.Calls);
+        Assert.Empty(web.Host.Chat.Calls);
     }
 
     // A 500 here would have Telegram redeliver this update forever, so garbage in has
@@ -116,7 +116,7 @@ public class TelegramWebhookTests
         await using var web = await StartAsync();
 
         Assert.Equal(200, await web.PostAsync(body));
-        Assert.Empty(web.Api.Calls);
+        Assert.Empty(web.Host.Chat.Calls);
     }
 
     // ── /id ─────────────────────────────────────────────────────────────────
@@ -131,11 +131,10 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message("/id", chatId: Community, chatType: "supergroup"));
 
-        var call = Assert.Single(web.Api.Calls);
+        var call = Assert.Single(web.Host.Chat.Calls);
         Assert.Equal("sendMessage", call.Method);
-        Assert.Equal(Community, call.Long("chat_id"));
-        Assert.Contains($"chat_id: {Community}", call.String("text"));
-        Assert.False(call.Has("parse_mode"));
+        Assert.Equal(Community, call.ChatId);
+        Assert.Contains($"chat_id: {Community}", call.Text);
     }
 
     // ── DM conversation ─────────────────────────────────────────────────────
@@ -149,12 +148,12 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message(command));
 
-        var call = Assert.Single(web.Api.Calls);
-        Assert.Equal(Dm, call.Long("chat_id"));
-        Assert.Contains("Я Падаван", call.String("text"));
+        var call = Assert.Single(web.Host.Chat.Calls);
+        Assert.Equal(Dm, call.ChatId);
+        Assert.Contains("Я Падаван", call.Text);
         // The text is full of urls and @mentions. Previews stay off or the help message
         // renders as a stack of cards.
-        Assert.True(call.Bool("disable_web_page_preview"));
+        Assert.True(call.DisablePreview);
     }
 
     [Fact]
@@ -163,7 +162,7 @@ public class TelegramWebhookTests
         await using var web = await StartAsync();
 
         Assert.Equal(200, await web.PostAsync(Message("/whoami")));
-        Assert.Empty(web.Api.Calls);
+        Assert.Empty(web.Host.Chat.Calls);
     }
 
     // Privacy mode means the bot is handed group messages but has no business in them.
@@ -174,7 +173,7 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message("просто сообщение в чате", chatId: Community, chatType: "supergroup"));
 
-        Assert.Empty(web.Api.Calls);
+        Assert.Empty(web.Host.Chat.Calls);
     }
 
     [Fact]
@@ -184,14 +183,14 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message("Как убедить бизнес дать время на техдолг, если релиз горит?"));
 
-        var reply = Assert.Single(web.Api.Calls);
+        var reply = Assert.Single(web.Host.Chat.Calls);
         Assert.Equal("sendMessage", reply.Method);
-        Assert.Equal(Dm, reply.Long("chat_id"));
+        Assert.Equal(Dm, reply.ChatId);
 
         var row = Assert.Single(web.Host.NewDbContext().AnonRequests);
         Assert.Equal("bot", row.Source);
-        Assert.Contains(row.PublicId, reply.String("text"));
-        Assert.Contains($"/status {row.PublicId}", reply.String("text"));
+        Assert.Contains(row.PublicId, reply.Text);
+        Assert.Contains($"/status {row.PublicId}", reply.Text);
 
         // The moderation card is queued, not sent: the webhook must answer Telegram fast,
         // and a card is worth delivering however late. Exactly one call went out.
@@ -206,7 +205,7 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message("почему так?"));
 
-        Assert.Contains("Слишком коротко", web.Api.LastCall.String("text"));
+        Assert.Contains("Слишком коротко", web.Host.Chat.LastCall.Text);
         Assert.Empty(web.Host.NewDbContext().AnonRequests);
     }
 
@@ -221,7 +220,7 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message(code));
 
-        Assert.Contains("Похоже на код", web.Api.LastCall.String("text"));
+        Assert.Contains("Похоже на код", web.Host.Chat.LastCall.Text);
         Assert.Empty(web.Host.NewDbContext().AnonRequests);
     }
 
@@ -234,11 +233,12 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message(text: null, caption: "лог из продакшена, посмотрите", messageId: 100));
 
-        var call = Assert.Single(web.Api.Calls);
-        Assert.Contains("Файл я сохранить не могу", call.String("text"));
+        var call = Assert.Single(web.Host.Chat.Calls);
+        Assert.Contains("Файл я сохранить не могу", call.Text);
         // Threaded under the file, so it is obvious which message the bot is talking about.
-        Assert.Equal(100, call.Long("reply_to_message_id"));
-        Assert.True(call.Bool("allow_sending_without_reply"));
+        Assert.Equal(100, call.ReplyToMessageId);
+        // That the reply survives a target that has since been deleted is the adapter's
+        // promise, not this handler's – ChatSenderContractTests checks it per client.
     }
 
     // The flood guard is silent by design: telling someone they were throttled just
@@ -255,8 +255,8 @@ public class TelegramWebhookTests
         await web.PostAsync(Message(text));
         await web.PostAsync(Message(text + " Второй раз, тот же автор."));
 
-        Assert.Equal(2, web.Api.Calls.Count);
-        Assert.All(web.Api.Calls, c => Assert.Contains("Принято", c.String("text")));
+        Assert.Equal(2, web.Host.Chat.Calls.Count);
+        Assert.All(web.Host.Chat.Calls, c => Assert.Contains("Принято", c.Text));
         Assert.Single(web.Host.NewDbContext().Outbox);
         Assert.Single(web.Host.NewDbContext().AnonRequests);
     }
@@ -274,7 +274,7 @@ public class TelegramWebhookTests
         // Lowercase on purpose: people retype the id from memory.
         await web.PostAsync(Message("/status a7f3k2"));
 
-        Assert.Equal("Запрос A7F3K2: опубликовано.", web.Api.LastCall.String("text"));
+        Assert.Equal("Запрос A7F3K2: опубликовано.", web.Host.Chat.LastCall.Text);
     }
 
     [Theory]
@@ -286,7 +286,7 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message(command));
 
-        Assert.Contains(expected, web.Api.LastCall.String("text"));
+        Assert.Contains(expected, web.Host.Chat.LastCall.Text);
     }
 
     // ── /search and inline ──────────────────────────────────────────────────
@@ -303,12 +303,10 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message("/search онбординг"));
 
-        var call = Assert.Single(web.Api.Calls);
-        var text = call.String("text")!;
+        var call = Assert.Single(web.Host.Chat.Calls);
+        var text = call.Text!;
         Assert.Contains("Тимлид не кодит #12", text);
         Assert.Contains("https://teamleads.kz/events/tnk-12/", text);
-        // Snippets are raw article prose and will eventually hold a stray _ or *.
-        Assert.False(call.Has("parse_mode"));
     }
 
     [Theory]
@@ -320,7 +318,7 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message(command));
 
-        Assert.Contains(expected, web.Api.LastCall.String("text"));
+        Assert.Contains(expected, web.Host.Chat.LastCall.Text);
     }
 
     // Nothing typed yet. cache_time 0 because the next keystroke must re-query rather
@@ -332,7 +330,10 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Inline("  "));
 
+        // Asserted on the socket, not the port: answerInlineQuery has no equivalent in
+        // the package behind IChatSender, so this call still goes through TelegramClient.
         var call = Assert.Single(web.Api.Calls);
+        Assert.Empty(web.Host.Chat.Calls);
         Assert.Equal("answerInlineQuery", call.Method);
         Assert.Equal("iq1", call.String("inline_query_id"));
         Assert.Equal(0, call.Long("cache_time"));
@@ -397,19 +398,16 @@ public class TelegramWebhookTests
     public async Task Publish_posts_the_question_settles_the_card_and_stops_the_spinner()
     {
         await using var web = await StartAsync(await WithPendingRequestAsync());
-        web.Api.RespondsOk(messageId: 9001);   // sendMessage to the community chat
-        web.Api.RespondsOk();                  // editMessageText on the card
-        web.Api.RespondsOk();                  // answerCallbackQuery
+        web.Host.Chat.Delivers(9001);   // the question, into the community chat
 
         Assert.Equal(200, await web.PostAsync(Callback("anon:pub:A7F3K2")));
 
-        Assert.Equal(["sendMessage", "editMessageText", "answerCallbackQuery"],
-            web.Api.Calls.Select(c => c.Method));
+        Assert.Equal(["sendMessage", "editMessageText", "answerCallback"], web.Host.Chat.Methods);
 
         // The spinner keeps turning until this call lands, and the admin taps again.
-        var ack = web.Api.Calls[2];
-        Assert.Equal("cb1", ack.String("callback_query_id"));
-        Assert.Equal("Опубликовано.", ack.String("text"));
+        var ack = web.Host.Chat.Calls[2];
+        Assert.Equal("cb1", ack.CallbackQueryId);
+        Assert.Equal("Опубликовано.", ack.Text);
 
         var row = web.Host.NewDbContext().AnonRequests.Single();
         Assert.Equal("published", row.Status);
@@ -423,8 +421,8 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Callback("anon:rej:A7F3K2"));
 
-        Assert.Equal(["editMessageText", "answerCallbackQuery"], web.Api.Calls.Select(c => c.Method));
-        Assert.Equal("Отклонено.", web.Api.LastCall.String("text"));
+        Assert.Equal(["editMessageText", "answerCallback"], web.Host.Chat.Methods);
+        Assert.Equal("Отклонено.", web.Host.Chat.LastCall.Text);
     }
 
     // Callback data is attacker-controllable in general, so the chat the button was
@@ -436,9 +434,9 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Callback("anon:pub:A7F3K2", chatId: Community));
 
-        var call = Assert.Single(web.Api.Calls);
-        Assert.Equal("answerCallbackQuery", call.Method);
-        Assert.Equal("Недоступно.", call.String("text"));
+        var call = Assert.Single(web.Host.Chat.Calls);
+        Assert.Equal("answerCallback", call.Method);
+        Assert.Equal("Недоступно.", call.Text);
         Assert.Equal("pending", web.Host.NewDbContext().AnonRequests.Single().Status);
     }
 
@@ -451,9 +449,9 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Callback(data));
 
-        var call = Assert.Single(web.Api.Calls);
-        Assert.Equal("answerCallbackQuery", call.Method);
-        Assert.Equal(expected, call.String("text"));
+        var call = Assert.Single(web.Host.Chat.Calls);
+        Assert.Equal("answerCallback", call.Method);
+        Assert.Equal(expected, call.Text);
     }
 
     // The edit flow carries its state in the prompt text – no "awaiting reply" column,
@@ -465,19 +463,19 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Callback("anon:edit:A7F3K2"));
 
-        var prompt = web.Api.Calls[0];
+        var prompt = web.Host.Chat.Calls[0];
         Assert.Equal("sendMessage", prompt.Method);
-        Assert.Equal(Admin, prompt.Long("chat_id"));
-        Assert.StartsWith("✏️ Правка A7F3K2", prompt.String("text"));
-        Assert.Equal("Ответьте на сообщение ниже.", web.Api.Calls[1].String("text"));
+        Assert.Equal(Admin, prompt.ChatId);
+        Assert.StartsWith("✏️ Правка A7F3K2", prompt.Text);
+        Assert.Equal("Ответьте на сообщение ниже.", web.Host.Chat.Calls[1].Text);
 
         // Now the admin replies to that prompt with the rewritten text.
-        web.Api.Calls.Clear();
+        web.Host.Chat.Calls.Clear();
         await web.PostAsync(Message("обезличенная версия вопроса", chatId: Admin, chatType: "supergroup",
-            replyTo: MessageBody(prompt.String("text"), Admin, "supergroup", messageId: 4243)));
+            replyTo: MessageBody(prompt.Text, Admin, "supergroup", messageId: 4243)));
 
-        Assert.Equal(["editMessageText", "sendMessage"], web.Api.Calls.Select(c => c.Method));
-        Assert.Contains("обезличенная версия вопроса", web.Api.Calls[0].String("text"));
+        Assert.Equal(["editMessageText", "sendMessage"], web.Host.Chat.Methods);
+        Assert.Contains("обезличенная версия вопроса", web.Host.Chat.Calls[0].Text);
         Assert.Equal("обезличенная версия вопроса", web.Host.NewDbContext().AnonRequests.Single().EditedText);
     }
 
@@ -490,10 +488,10 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message("/set", chatId: Admin, chatType: "supergroup"));
 
-        var call = Assert.Single(web.Api.Calls);
-        Assert.Equal(Admin, call.Long("chat_id"));
-        Assert.Contains("⚙️ Настройки бота", call.String("text"));
-        Assert.Contains("tg.admin_chat_id", call.String("text"));
+        var call = Assert.Single(web.Host.Chat.Calls);
+        Assert.Equal(Admin, call.ChatId);
+        Assert.Contains("⚙️ Настройки бота", call.Text);
+        Assert.Contains("tg.admin_chat_id", call.Text);
     }
 
     [Fact]
@@ -503,7 +501,7 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message("/set tg.scheduler.enabled false", chatId: Admin, chatType: "supergroup"));
 
-        Assert.Contains("✅ tg.scheduler.enabled = false", web.Api.LastCall.String("text"));
+        Assert.Contains("✅ tg.scheduler.enabled = false", web.Host.Chat.LastCall.Text);
         Assert.Equal("false", web.Host.NewDbContext().Settings.Single(s => s.Key == "tg.scheduler.enabled").Value);
     }
 
@@ -514,9 +512,9 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message("/set tg.dilemma.hour полдень", chatId: Admin, chatType: "supergroup"));
 
-        var call = Assert.Single(web.Api.Calls);
-        Assert.Contains("tg.dilemma.hour", call.String("text"));
-        Assert.DoesNotContain("✅", call.String("text"));
+        var call = Assert.Single(web.Host.Chat.Calls);
+        Assert.Contains("tg.dilemma.hour", call.Text);
+        Assert.DoesNotContain("✅", call.Text);
         Assert.DoesNotContain(web.Host.NewDbContext().Settings, s => s.Key == "tg.dilemma.hour");
     }
 
@@ -534,10 +532,10 @@ public class TelegramWebhookTests
 
         // The archive stub is empty here, so nothing is posted – what is pinned is that
         // the outcome comes back as one message to the admin chat rather than silence.
-        var call = Assert.Single(web.Api.Calls);
+        var call = Assert.Single(web.Host.Chat.Calls);
         Assert.Equal("sendMessage", call.Method);
-        Assert.Equal(Admin, call.Long("chat_id"));
-        Assert.False(string.IsNullOrWhiteSpace(call.String("text")));
+        Assert.Equal(Admin, call.ChatId);
+        Assert.False(string.IsNullOrWhiteSpace(call.Text));
     }
 
     // ── /paste ──────────────────────────────────────────────────────────────
@@ -549,13 +547,13 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message("/paste SELECT * FROM outbox WHERE status = 'pending';", messageId: 100));
 
-        var call = Assert.Single(web.Api.Calls);
+        var call = Assert.Single(web.Host.Chat.Calls);
         var paste = web.Host.NewDbContext().Pastes.Single();
-        Assert.Contains($"https://teamleads.kz/p/{paste.PublicId}/", call.String("text"));
+        Assert.Contains($"https://teamleads.kz/p/{paste.PublicId}/", call.Text);
         // The preview card is where Telegram draws the Instant View button – the single
         // place in this bot where previews are deliberately on.
-        Assert.False(call.Bool("disable_web_page_preview"));
-        Assert.Equal(100, call.Long("reply_to_message_id"));
+        Assert.False(call.DisablePreview);
+        Assert.Equal(100, call.ReplyToMessageId);
         Assert.Equal("bot", paste.Source);
     }
 
@@ -570,15 +568,15 @@ public class TelegramWebhookTests
         await web.PostAsync(Message("/paste", chatId: Community, chatType: "supergroup", messageId: 100,
             replyTo: RepliedMessage(wall, messageId: 50, fromId: 555)));
 
-        var call = Assert.Single(web.Api.Calls);
-        Assert.Equal(Community, call.Long("chat_id"));
+        var call = Assert.Single(web.Host.Chat.Calls);
+        Assert.Equal(Community, call.ChatId);
         // 50, not 100: authorship and placement both follow the content, not the command.
-        Assert.Equal(50, call.Long("reply_to_message_id"));
+        Assert.Equal(50, call.ReplyToMessageId);
 
         var paste = web.Host.NewDbContext().Pastes.Single();
         Assert.Equal(555, paste.AuthorTgId);
         Assert.Equal("Ержан", paste.AuthorName);
-        Assert.Contains("автор: Ержан", call.String("text"));
+        Assert.Contains("автор: Ержан", call.Text);
     }
 
     // Telegram strips reply_to_message from command updates while the bot is in privacy
@@ -590,10 +588,10 @@ public class TelegramWebhookTests
         await using var web = await StartAsync();
 
         await web.PostAsync(Message("/paste", chatId: Community, chatType: "supergroup", messageId: 100));
-        Assert.Contains("до меня не дошел", web.Api.LastCall.String("text"));
+        Assert.Contains("до меня не дошел", web.Host.Chat.LastCall.Text);
 
         await web.PostAsync(Message("/paste"));
-        Assert.Contains("/paste ваш код", web.Api.LastCall.String("text"));
+        Assert.Contains("/paste ваш код", web.Host.Chat.LastCall.Text);
 
         Assert.Empty(web.Host.NewDbContext().Pastes);
     }
@@ -605,7 +603,7 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message("/paste ok"));
 
-        Assert.Contains("Слишком коротко", web.Api.LastCall.String("text"));
+        Assert.Contains("Слишком коротко", web.Host.Chat.LastCall.Text);
         Assert.Empty(web.Host.NewDbContext().Pastes);
     }
 
@@ -619,7 +617,7 @@ public class TelegramWebhookTests
 
         await web.PostAsync(Message("/paste SELECT * FROM outbox WHERE status = 'pending';"));
 
-        var text = web.Api.LastCall.String("text")!;
+        var text = web.Host.Chat.LastCall.Text!;
         Assert.Contains("https://t.me/iv?url=", text);
         Assert.Contains("rhash=abc123", text);
     }
@@ -632,9 +630,11 @@ public class TelegramWebhookTests
     public async Task A_dead_bot_api_is_still_answered_200()
     {
         await using var web = await StartAsync();
-        web.Api.Throws(new HttpRequestException("Connection refused"));
+        // An adapter that lets the exception escape rather than translating it – the
+        // worst case, and still not allowed to reach Telegram as a non-200.
+        web.Host.Chat.Throws(new HttpRequestException("Connection refused"));
 
         Assert.Equal(200, await web.PostAsync(Message("/start")));
-        Assert.Single(web.Api.Calls);
+        Assert.Single(web.Host.Chat.Calls);
     }
 }

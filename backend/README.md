@@ -24,7 +24,7 @@ backend/
   appsettings*.json       log levels; empty ConnectionStrings:Default (supplied via env)
   Data/                   AppDbContext, Feedback / Submission / AnonRequest / BotPost / Setting, factory
   Endpoints/              Health / Feedback / Submission / Anon / Settings / Telegram webhook, validation
-  Telegram/               Bot API client, AnonService, DilemmaService, BotScheduler, options
+  Telegram/               IChatSender port + two adapters, AnonService, DilemmaService, BotScheduler
   BotData/                archive feed client (/bot-data.json) + Telegram poll-text limits
   Settings/               runtime settings: closed catalog + 5-minute cached service
   Security/               ApiKey filter, ClientFingerprint (IP from X-Forwarded-For + salted hash)
@@ -36,6 +36,7 @@ backend.Tests/            xUnit suite (sibling project, not shipped in the image
   Support/TestHost        in-memory AppDbContext + real SettingsService + wired TelegramClient
   Support/FakeChatSender  IChatSender that records instead of sending
   Support/StubFeed        the site's own JSON feeds (bot-data.json, shell-index.json)
+  Support/StubTelebot…    a stub ITelegramTransport under the real Telebot client
   Support/WebhookHost     the webhook served for real, Bot API replaced by the stub socket
   OutboxTests             the drain loop, against the port – names no client at all
   ChatSenderContractTests what every IChatSender adapter must do; subclass per adapter
@@ -76,11 +77,31 @@ must not execute on the production host.
 
 ### Swapping the Telegram client
 
-The outbox talks to **`IChatSender`** (`Telegram/IChatSender.cs`), a port this project
-owns – `SendMessageAsync(ChatMessage, ct)` returning a `SendOutcome`. `Outbox` and
-`OutboxTests` name no Bot API library, so replacing the client cannot break either.
-Before the port existed, a PR swapping the client failed the test project's **compile**,
-because the vendor type was the seam.
+Everything that reaches Telegram goes through **`IChatSender`** (`Telegram/IChatSender.cs`),
+a port this project owns: `SendMessageAsync`, `EditMessageTextAsync`, `SendPollAsync`,
+`AnswerCallbackAsync`, each taking one of our own records and returning a `SendOutcome`.
+The outbox, `AnonService`, `DilemmaService`, `QuestionService` and the webhook name no Bot
+API library, so replacing the client cannot break them. Before the port existed, a PR
+swapping the client failed the test project's **compile**, because the vendor type was the
+seam.
+
+**Two calls are not on the port**, and hold `TelegramClient` directly:
+
+| Call | Where | Why |
+|------|-------|-----|
+| `stopPoll` | `DilemmaService.FollowUpAsync` | Bucketlab.Telebot 0.0.72 has no such method |
+| `answerInlineQuery` | `TelegramWebhookEndpoints` | same |
+
+**On nulls, which is the thing to know about this package.** Through 0.0.71 it serialized
+every member of a request object, unset ones included, and Telegram refuses a call carrying
+one: `Bad Request: field "url" must be of type String` is how an anon moderation card
+burned through its whole retry ladder and died. The workaround was to fill each member with
+a null-free stand-in, which worked for `LinkPreviewOptions` and could not work for
+`ReplyParameters` – no value for `quote` is a no-op – so under 0.0.7 a threaded reply was a
+third exception on this list. 0.0.72 omits unset members, which is what brought it back onto
+the port. `TelebotChatSenderContractTests.No_field_of_any_call_reaches_the_wire_holding_a_null`
+sweeps every call shape the port can produce and is what will say if a future version
+regresses.
 
 To introduce a client:
 
@@ -88,11 +109,23 @@ To introduce a client:
 2. Change one line in `Program.cs`: `AddScoped<IChatSender, YourAdapter>()`.
 3. Subclass `ChatSenderContractTests`, returning your adapter from `CreateSender`.
 
-Step 3 is the point. The contract suite is what every adapter must satisfy –
-outcome mapping, an API refusal keeping its reason, a dead socket and a **client timeout**
-both becoming failed outcomes rather than escaping exceptions, keyboards passed as JSON
-objects, and preview suppression honoured. If a case cannot be expressed against your
-client, that is a behaviour change: override it with a comment saying so, don't delete it.
+Step 3 is the point. The contract suite is what every adapter must satisfy, across all
+four methods – outcome mapping, an API refusal keeping its reason, a dead socket and a
+**client timeout** both becoming failed outcomes rather than escaping exceptions, keyboards
+passed as JSON objects, a settled card losing its buttons, a poll carrying every option, a
+callback answer going out even with nothing to say, and preview suppression honoured. If a
+case cannot be expressed against your client, that is a behaviour change: override it with
+a comment saying so, don't delete it.
+
+Both adapters run against a stub socket rather than a mock of the client: `StubBotApi`
+under `TelegramClient`, and for Telebot a stub `ITelegramTransport` under the **real**
+`Telebot.Telegram` (a seam 0.0.7 added – before it, the tests had to fake `ITelegramClient`
+itself and take the library's word for what it would have sent). Request construction is
+exactly where an upgrade breaks, so the library builds the requests it really builds.
+
+0.0.72 also made that transport configurable (`DefaultTransportOptions`), so `TG_API_BASE`
+finally reaches the client that ships – which is what lets `docker compose up` route the
+bot at `dev/telegram-stub.py` instead of at api.telegram.org.
 
 `TelegramClientWireTests` stays client-specific on purpose. It asserts the exact bytes
 the current client puts on the wire, which is the spec a replacement has to reproduce –
@@ -101,10 +134,12 @@ in production.
 
 **The call sites are pinned separately**, because bytes are only half the spec. Four
 files – `AnonServiceTelegramTests`, `DilemmaServiceTelegramTests`,
-`QuestionServiceTelegramTests` and `TelegramWebhookTests` – drive each feature that holds
-a `TelegramClient` and assert on what came out of the stub socket: which method, to which
-chat, in which order, and which calls must **not** happen. That last one is where a swap
-usually goes wrong. A client that reports a refused publish as a success still passes
+`QuestionServiceTelegramTests` and `TelegramWebhookTests` – drive each feature and assert
+on what it asked the **port** for: which method, to which chat, in which order, and which
+calls must **not** happen. Asserting on the port rather than on one client's payload is
+what made 0.0.6 → 0.0.7 → 0.0.72 a green diff each time instead of a rewrite; the two calls
+still on `TelegramClient` are the only ones those files check against the socket. "Which calls
+must not happen" is where a swap usually goes wrong. A client that reports a refused publish as a success still passes
 every wire test, and the admin never sees the "⚠️ Ошибка публикации" card they are
 waiting on; one that returns `0` for a message id leaves `stopPoll` aimed at nothing and
 every dilemma reveal goes out with no tally. Both are green on signatures and payloads

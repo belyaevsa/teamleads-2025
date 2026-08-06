@@ -6,7 +6,7 @@ teamleads.kz. Every command below was run before it was written down.
 The two suites CI gates merges on:
 
 ```bash
-dotnet test backend.Tests/TeamleadsBackend.Tests.csproj          # 186 tests
+dotnet test backend.Tests/TeamleadsBackend.Tests.csproj          # 205 tests
 cd landing-main && hugo --minify && node scripts/validate-scenarios.mjs && npm test
 ```
 
@@ -52,8 +52,10 @@ the delivery loop (retries, backoff, expiry, late chat resolution), and
 `TelegramClientWireTests` asserts on the **bytes** each Bot API method puts on the wire,
 because that is the part a replacement client library has to reproduce. On top of that,
 `AnonServiceTelegramTests`, `DilemmaServiceTelegramTests`, `QuestionServiceTelegramTests`
-and `TelegramWebhookTests` pin every place that holds a `TelegramClient` – which call
-goes out, to which chat, in which order, and which must not go out at all.
+and `TelegramWebhookTests` pin every place that talks to Telegram – which call goes out,
+to which chat, in which order, and which must not go out at all. Those assert against the
+`IChatSender` port, so they survive a client swap; the three calls that cannot go through
+the port (`stopPoll`, `answerInlineQuery`) are checked on the socket.
 
 ## Landing checks
 

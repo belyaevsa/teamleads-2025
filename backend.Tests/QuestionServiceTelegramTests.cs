@@ -41,23 +41,22 @@ public class QuestionServiceTelegramTests
     public async Task The_question_goes_out_as_one_message_with_its_source_link()
     {
         using var host = await HostAsync();
-        host.Api.RespondsOk(messageId: 777);
+        host.Chat.Delivers(777);
 
         var answer = await host.Questions(Archive).PostAsync(default);
 
         Assert.Contains("опубликован", answer);
-        var call = Assert.Single(host.Api.Calls);
+        var call = Assert.Single(host.Chat.Calls);
         Assert.Equal("sendMessage", call.Method);
-        Assert.Equal(Community, call.Long("chat_id"));
+        Assert.Equal(Community, call.ChatId);
 
-        var text = call.String("text")!;
+        var text = call.Text!;
         Assert.StartsWith("❓ Вопрос недели", text);
         Assert.Contains("Как понять, что тимлид перерос свою команду?", text);
         // The link back to the meetup where it was raised is the point: people can read
         // the original discussion before answering.
         Assert.Contains("Из обсуждения: Тимлид не кодит #12 (27.07.2026)", text);
         Assert.Contains("https://teamleads.kz/events/tnk-12/", text);
-        Assert.False(call.Has("parse_mode"));
     }
 
     // Discussion starter, not a quiz: no poll, no keyboard, nothing to press.
@@ -68,16 +67,17 @@ public class QuestionServiceTelegramTests
 
         await host.Questions(Archive).PostAsync(default);
 
-        var call = Assert.Single(host.Api.Calls);
-        Assert.False(call.Has("reply_markup"));
-        Assert.DoesNotContain(host.Api.Calls, c => c.Method == "sendPoll");
+        var call = Assert.Single(host.Chat.Calls);
+        Assert.Equal("sendMessage", call.Method);
+        Assert.Null(call.ReplyMarkupJson);
+        Assert.Null(call.Options);
     }
 
     [Fact]
     public async Task The_post_is_recorded_against_the_message_id_the_send_reported()
     {
         using var host = await HostAsync();
-        host.Api.RespondsOk(messageId: 777);
+        host.Chat.Delivers(777);
 
         await host.Questions(Archive).PostAsync(default);
 
@@ -92,7 +92,7 @@ public class QuestionServiceTelegramTests
     public async Task A_refused_send_records_nothing_so_the_question_comes_round_again()
     {
         using var host = await HostAsync();
-        host.Api.RespondsError("Forbidden: bot is not a member of the supergroup chat");
+        host.Chat.Fails("Forbidden: bot is not a member of the supergroup chat");
 
         var answer = await host.Questions(Archive).PostAsync(default);
 
@@ -114,7 +114,7 @@ public class QuestionServiceTelegramTests
 
         await host.Questions(Archive).PostAsync(default);
 
-        Assert.Contains("Второй вопрос из бэклога.", host.Api.LastCall.String("text"));
+        Assert.Contains("Второй вопрос из бэклога.", host.Chat.LastCall.Text);
         // No url on the second one, so the question text itself is the rotation key.
         Assert.Equal("Второй вопрос из бэклога.", host.NewDbContext().BotPosts.Single(p => p.MessageId != 0).Key);
     }
@@ -129,7 +129,7 @@ public class QuestionServiceTelegramTests
         await host.Db.SaveChangesAsync();
 
         Assert.Null(await host.Questions(Archive).PostIfDueAsync(TimeSpan.FromDays(3), default));
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public class QuestionServiceTelegramTests
         using var host = await HostAsync(community: false);
 
         Assert.Equal("Не задан tg.community_chat_id.", await host.Questions(Archive).PostAsync(default));
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
     }
 
     [Fact]
@@ -149,6 +149,6 @@ public class QuestionServiceTelegramTests
         var answer = await host.Questions("""{"scenarios":[],"quizzes":[],"questions":[]}""").PostAsync(default);
 
         Assert.Equal("Архив недоступен или нет вопросов.", answer);
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
     }
 }

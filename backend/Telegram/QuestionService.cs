@@ -19,7 +19,7 @@ namespace TeamleadsBackend.Telegram;
 public sealed class QuestionService(
     AppDbContext db,
     BotDataClient archive,
-    TelegramClient tg,
+    IChatSender chat,
     SettingsService settings,
     IOptions<TelegramOptions> options,
     ILogger<QuestionService> log)
@@ -50,7 +50,7 @@ public sealed class QuestionService(
         var question = PickNext(data.Questions, used);
         if (question is null) return "Все вопросы уже были опубликованы.";
 
-        var sent = await tg.SendMessageAsync(communityChat, FormatQuestion(question), ct: ct);
+        var sent = await chat.SendMessageAsync(new ChatMessage(communityChat, FormatQuestion(question)), ct);
         if (!sent.Ok) return $"Не отправилось: {sent.Error}";
 
         db.BotPosts.Add(new BotPost

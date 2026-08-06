@@ -47,32 +47,32 @@ public class DilemmaServiceTelegramTests
     public async Task A_dilemma_goes_out_as_an_anonymous_poll_carrying_every_option()
     {
         using var host = await HostAsync();
-        host.Api.RespondsOk(messageId: 555);
+        host.Chat.Delivers(555);
 
         var answer = await host.Dilemmas(Archive).PostAsync(default);
 
         Assert.Equal("Дилемма handover опубликована.", answer);
-        var call = Assert.Single(host.Api.Calls);
+        var call = Assert.Single(host.Chat.Calls);
         Assert.Equal("sendPoll", call.Method);
-        Assert.Equal(Community, call.Long("chat_id"));
-        Assert.Contains("🎯 Дилемма недели", call.String("question"));
-        Assert.Contains("Разработчик уходит через две недели", call.String("question"));
+        Assert.Equal(Community, call.ChatId);
+        Assert.Contains("🎯 Дилемма недели", call.Text);
+        Assert.Contains("Разработчик уходит через две недели", call.Text);
 
-        var options = call.Json.GetProperty("options").EnumerateArray().Select(o => o.GetString()).ToArray();
-        Assert.Equal<IEnumerable<string?>>(["Посадить рядом джуна", "Попросить написать доку"], options);
+        Assert.Equal<IEnumerable<string>>(["Посадить рядом джуна", "Попросить написать доку"], call.Options!);
 
-        // A vote that is not anonymous is a vote nobody casts in a chat full of colleagues.
-        Assert.True(call.Bool("is_anonymous"));
-        // No "correct" answer exists here, so it must stay a plain poll rather than a quiz –
-        // a quiz would have Telegram announce a winner the scenario never picked.
-        Assert.Equal("regular", call.String("type"));
+        // Anonymity and "not a quiz" are not asserted here because they are no longer
+        // assertable: ChatPoll cannot express a correct answer or a named vote, so no
+        // adapter can send one. That is the stronger version of the old check – it used
+        // to read is_anonymous=true off the payload, which only proved this one client
+        // remembered to set it. Whether each adapter puts that on the wire is
+        // ChatSenderContractTests' job.
     }
 
     [Fact]
     public async Task The_post_is_recorded_against_the_message_id_the_send_reported()
     {
         using var host = await HostAsync();
-        host.Api.RespondsOk(messageId: 555);
+        host.Chat.Delivers(555);
 
         await host.Dilemmas(Archive).PostAsync(default);
 
@@ -93,7 +93,7 @@ public class DilemmaServiceTelegramTests
     public async Task A_refused_poll_records_nothing_and_reports_the_reason()
     {
         using var host = await HostAsync();
-        host.Api.RespondsError("Bad Request: chat not found");
+        host.Chat.Fails("Bad Request: chat not found");
 
         var answer = await host.Dilemmas(Archive).PostAsync(default);
 
@@ -111,7 +111,7 @@ public class DilemmaServiceTelegramTests
         var answer = await host.Dilemmas(Archive).PostAsync(default);
 
         Assert.Equal("Все дилеммы уже были опубликованы.", answer);
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public class DilemmaServiceTelegramTests
         using var host = await HostAsync(community: false);
 
         Assert.Equal("Не задан tg.community_chat_id.", await host.Dilemmas(Archive).PostAsync(default));
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
     }
 
     [Fact]
@@ -130,7 +130,7 @@ public class DilemmaServiceTelegramTests
         await host.SetSettingAsync("tg.community_chat_id", Community.ToString());
 
         Assert.Equal("Telegram не сконфигурирован.", await host.Dilemmas(Archive).PostAsync(default));
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
     }
 
     // Telegram accepts 2-10 options and refuses the call outright otherwise. Catching it
@@ -153,7 +153,7 @@ public class DilemmaServiceTelegramTests
         var answer = await host.Dilemmas(oneOption).PostAsync(default);
 
         Assert.StartsWith("Сценарий handover не влезает в опрос", answer);
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
     }
 
     // ── the reveal ──────────────────────────────────────────────────────────
@@ -163,14 +163,14 @@ public class DilemmaServiceTelegramTests
     // that JSON is how a test passes while the real round trip deserializes to nulls.
     private static async Task<BotPost> PostedYesterdayAsync(TestHost host)
     {
-        host.Api.RespondsOk(messageId: 555);
+        host.Chat.Delivers(555);
         await host.Dilemmas(Archive).PostAsync(default);
 
         var post = host.Db.BotPosts.Single();
         post.PostedAt = DateTimeOffset.UtcNow.AddDays(-1);
         await host.Db.SaveChangesAsync();
 
-        host.Api.Calls.Clear();   // the reveal's assertions start from an empty call log
+        host.Chat.Calls.Clear();   // the reveal's assertions start from an empty call log
         return post;
     }
 
@@ -180,28 +180,29 @@ public class DilemmaServiceTelegramTests
         using var host = await HostAsync();
         await PostedYesterdayAsync(host);
         host.Api.RespondsOk(rawResult: """{"options":[{"voter_count":3},{"voter_count":1}]}""");   // stopPoll
-        host.Api.RespondsOk(messageId: 556);                                                        // sendMessage
+        host.Chat.Delivers(556);                                                        // sendMessage
 
         var answer = await host.Dilemmas(Archive).FollowUpAsync(TimeSpan.FromHours(20), default);
 
         Assert.Equal("Раскрыта дилемма handover.", answer);
-        Assert.Equal(2, host.Api.Calls.Count);
 
-        var stop = host.Api.Calls[0];
+        // stopPoll is the one call in this service still on the concrete client – the
+        // package behind the port has no method for it – so it is asserted on the socket.
+        var stop = Assert.Single(host.Api.Calls);
         Assert.Equal("stopPoll", stop.Method);
         Assert.Equal(Community, stop.Long("chat_id"));
         Assert.Equal(555, stop.Long("message_id"));
 
-        var reveal = host.Api.Calls[1];
+        var reveal = Assert.Single(host.Chat.Calls);
         Assert.Equal("sendMessage", reveal.Method);
-        Assert.Equal(Community, reveal.Long("chat_id"));
+        Assert.Equal(Community, reveal.ChatId);
         // 3 of 4 votes and 1 of 4. The percentages are the whole reason stopPoll is called;
         // a client that loses the counts turns the reveal into a text the chat has read.
-        Assert.Contains("чат: 75%", reveal.String("text"));
-        Assert.Contains("чат: 25%", reveal.String("text"));
-        Assert.Contains("Дорого, но знание остается.", reveal.String("text"));
-        Assert.Contains("💡 Передача – это процесс", reveal.String("text"));
-        Assert.Contains("https://teamleads.kz/events/handover/", reveal.String("text"));
+        Assert.Contains("чат: 75%", reveal.Text);
+        Assert.Contains("чат: 25%", reveal.Text);
+        Assert.Contains("Дорого, но знание остается.", reveal.Text);
+        Assert.Contains("💡 Передача – это процесс", reveal.Text);
+        Assert.Contains("https://teamleads.kz/events/handover/", reveal.Text);
     }
 
     // stopPoll fails on a poll someone already closed by hand, or a deleted message. The
@@ -211,16 +212,16 @@ public class DilemmaServiceTelegramTests
     {
         using var host = await HostAsync();
         await PostedYesterdayAsync(host);
-        host.Api.RespondsError("Bad Request: poll has already been closed");
-        host.Api.RespondsOk(messageId: 556);
+        host.Api.RespondsError("Bad Request: poll has already been closed");   // stopPoll
+        host.Chat.Delivers(556);
 
         var answer = await host.Dilemmas(Archive).FollowUpAsync(TimeSpan.FromHours(20), default);
 
         Assert.Equal("Раскрыта дилемма handover.", answer);
-        var reveal = host.Api.Calls[1];
-        Assert.DoesNotContain("чат:", reveal.String("text"));
+        var reveal = Assert.Single(host.Chat.Calls);
+        Assert.DoesNotContain("чат:", reveal.Text);
         // The site's own votes are a separate source and survive a lost tally.
-        Assert.Contains("сайт: 61%", reveal.String("text"));
+        Assert.Contains("сайт: 61%", reveal.Text);
         Assert.NotNull(host.NewDbContext().BotPosts.Single().FollowedUpAt);
     }
 
@@ -232,7 +233,7 @@ public class DilemmaServiceTelegramTests
         using var host = await HostAsync();
         await PostedYesterdayAsync(host);
         host.Api.RespondsOk(rawResult: """{"options":[{"voter_count":3},{"voter_count":1}]}""");
-        host.Api.RespondsError("Bad Request: have no rights to send a message");
+        host.Chat.Fails("Bad Request: have no rights to send a message");
 
         var answer = await host.Dilemmas(Archive).FollowUpAsync(TimeSpan.FromHours(20), default);
 
@@ -247,7 +248,7 @@ public class DilemmaServiceTelegramTests
         await PostedYesterdayAsync(host);
 
         Assert.Equal("Нечего раскрывать.", await host.Dilemmas(Archive).FollowUpAsync(TimeSpan.FromDays(7), default));
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
     }
 
     [Fact]
@@ -259,7 +260,7 @@ public class DilemmaServiceTelegramTests
         await host.Db.SaveChangesAsync();
 
         Assert.Equal("Нечего раскрывать.", await host.Dilemmas(Archive).FollowUpAsync(TimeSpan.Zero, default));
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
     }
 
     // Nothing to say, so nothing is sent – and the post is settled anyway rather than
@@ -274,7 +275,7 @@ public class DilemmaServiceTelegramTests
 
         Assert.Equal("Снимок сценария потерян, пропускаем.",
             await host.Dilemmas(Archive).FollowUpAsync(TimeSpan.Zero, default));
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
         Assert.NotNull(host.NewDbContext().BotPosts.Single().FollowedUpAt);
     }
 }

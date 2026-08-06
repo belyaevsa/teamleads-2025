@@ -1,3 +1,4 @@
+using System.Text.Json;
 using TeamleadsBackend.Telegram;
 
 namespace TeamleadsBackend.Tests.Support;
@@ -5,8 +6,12 @@ namespace TeamleadsBackend.Tests.Support;
 // An IChatSender that records instead of sending.
 //
 // This is why OutboxTests survives a client swap: the delivery loop is tested against
-// the port, so the tests never name TelegramClient, Telebot, or anything else. Whether
-// a given adapter honours the port is a separate question, answered by
+// the port, so the tests never name TelegramClient, Telebot, or anything else. The same
+// now goes for the services – AnonService, DilemmaService, QuestionService and the
+// webhook all hold the port, and their tests assert on what was asked for rather than on
+// the bytes one particular package would have produced.
+//
+// Whether a given adapter honours the port is a separate question, answered by
 // ChatSenderContractTests.
 public sealed class FakeChatSender : IChatSender
 {
@@ -15,6 +20,35 @@ public sealed class FakeChatSender : IChatSender
 
     public List<ChatMessage> Sent { get; } = [];
     public ChatMessage Last => Sent.Count > 0 ? Sent[^1] : throw new InvalidOperationException("Nothing was sent.");
+
+    // Every call through the port, in order, whatever its kind. "Which calls, in which
+    // order, and which ones never happened" is most of what a call site owes Telegram,
+    // and none of it is visible in a per-method list.
+    public List<PortCall> Calls { get; } = [];
+
+    public PortCall LastCall => Calls.Count > 0 ? Calls[^1] : throw new InvalidOperationException("Nothing was called.");
+
+    public IEnumerable<string> Methods => Calls.Select(c => c.Method);
+
+    public sealed record PortCall(
+        string Method,
+        long ChatId = 0,
+        string? Text = null,
+        string? ReplyMarkupJson = null,
+        bool? DisablePreview = null,
+        long? ReplyToMessageId = null,
+        long? MessageId = null,
+        IReadOnlyList<string>? Options = null,
+        string? CallbackQueryId = null)
+    {
+        // The keyboard as JSON, for the assertions that care which buttons a card carries.
+        // Null when none was sent – which is itself the assertion on a settled card.
+        public JsonElement? Markup =>
+            ReplyMarkupJson is null ? null : JsonDocument.Parse(ReplyMarkupJson).RootElement;
+
+        public JsonElement Button(int index) =>
+            Markup!.Value.GetProperty("inline_keyboard")[0][index];
+    }
 
     // Queued one per call, so a test can script "first fails, second succeeds" to prove
     // one dead message does not block the rest of a batch.
@@ -50,9 +84,36 @@ public sealed class FakeChatSender : IChatSender
     public Task<SendOutcome> SendMessageAsync(ChatMessage message, CancellationToken ct)
     {
         Sent.Add(message);
+        Calls.Add(new PortCall("sendMessage", message.ChatId, message.Text, message.ReplyMarkupJson,
+            message.DisablePreview, message.ReplyToMessageId));
+        return Task.FromResult(Next(message));
+    }
 
-        // Default to success, so a test asserting only on what was sent needs no setup.
+    public Task<SendOutcome> EditMessageTextAsync(ChatEdit edit, CancellationToken ct)
+    {
+        Calls.Add(new PortCall("editMessageText", edit.ChatId, edit.Text, edit.ReplyMarkupJson,
+            MessageId: edit.MessageId));
+        return Task.FromResult(Next(new ChatMessage(edit.ChatId, edit.Text)));
+    }
+
+    public Task<SendOutcome> SendPollAsync(ChatPoll poll, CancellationToken ct)
+    {
+        Calls.Add(new PortCall("sendPoll", poll.ChatId, poll.Question, Options: poll.Options));
+        return Task.FromResult(Next(new ChatMessage(poll.ChatId, poll.Question)));
+    }
+
+    public Task<SendOutcome> AnswerCallbackAsync(CallbackAnswer answer, CancellationToken ct)
+    {
+        Calls.Add(new PortCall("answerCallback", Text: answer.Text, CallbackQueryId: answer.CallbackQueryId));
+        return Task.FromResult(Next(new ChatMessage(0, answer.Text ?? "")));
+    }
+
+    // Default to success, so a test asserting only on what was sent needs no setup. The
+    // queue is shared across all four methods on purpose: a test scripting "the publish
+    // fails" should not have to know how many card edits follow it.
+    private SendOutcome Next(ChatMessage message)
+    {
         var next = _outcomes.Count > 0 ? _outcomes.Dequeue() : (_ => SendOutcome.Delivered(_nextMessageId++));
-        return Task.FromResult(next(message));
+        return next(message);
     }
 }

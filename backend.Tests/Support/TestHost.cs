@@ -63,23 +63,27 @@ public sealed class TestHost : IDisposable
             NullLogger<TelegramClient>.Instance);
     }
 
-    // ── the services that call TelegramClient ────────────────────────────────
+    // ── the services that talk to Telegram ───────────────────────────────────
     // Each is built by hand rather than resolved from a container: the point of these
-    // tests is which client the service holds, and a container would hide that behind a
-    // registration the test never states.
+    // tests is what the service asks Telegram for, and a container would hide the seam
+    // behind a registration the test never states.
+    //
+    // They take `Chat`, the port. DilemmaService also takes the concrete client, because
+    // stopPoll has no equivalent in the package behind the port – it is the one call in
+    // the app still asserted against the stub socket rather than against the port.
 
     public const string WebhookSecret = "s3cret";
 
     public AnonService Anon(Outbox? outbox = null) =>
-        new(Db, Telegram, outbox ?? NewOutbox(), Settings, Options.Create(TgOptions),
+        new(Db, Chat, outbox ?? NewOutbox(), Settings, Options.Create(TgOptions),
             NullLogger<AnonService>.Instance);
 
     public DilemmaService Dilemmas(string archiveJson) =>
-        new(Db, Archive(archiveJson), Telegram, Settings, Options.Create(TgOptions),
+        new(Db, Archive(archiveJson), Chat, Telegram, Settings, Options.Create(TgOptions),
             NullLogger<DilemmaService>.Instance);
 
     public QuestionService Questions(string archiveJson) =>
-        new(Db, Archive(archiveJson), Telegram, Settings, Options.Create(TgOptions),
+        new(Db, Archive(archiveJson), Chat, Settings, Options.Create(TgOptions),
             NullLogger<QuestionService>.Instance);
 
     // The archive feed and the search index are read over HTTP with a 15-minute cache;

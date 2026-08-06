@@ -22,8 +22,13 @@ public sealed class Outbox(AppDbContext db, IChatSender sender, SettingsService 
         TimeSpan.FromHours(6),
     ];
 
+    // The keyboard arrives already serialized, the same way the port takes it. It was an
+    // object here once, serialized on the way into the column – but the card is also
+    // edited in place after a decision, and that path never touches the queue. One JSON
+    // representation for both is what keeps the two renderings of the same keyboard from
+    // drifting apart.
     public async Task<OutboxMessage> EnqueueAsync(
-        string kind, long chatId, string text, object? replyMarkup = null,
+        string kind, long chatId, string text, string? replyMarkupJson = null,
         string? relatedKind = null, string? relatedKey = null,
         TimeSpan? expiresIn = null, string? chatSetting = null, CancellationToken ct = default)
     {
@@ -34,7 +39,7 @@ public sealed class Outbox(AppDbContext db, IChatSender sender, SettingsService 
             ChatId = chatId,
             ChatSetting = chatSetting,
             Text = text,
-            ReplyMarkupJson = replyMarkup is null ? null : JsonSerializer.Serialize(replyMarkup),
+            ReplyMarkupJson = replyMarkupJson,
             RelatedKind = relatedKind,
             RelatedKey = relatedKey,
             Status = "pending",

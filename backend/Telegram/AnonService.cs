@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TeamleadsBackend.Data;
@@ -11,7 +12,7 @@ namespace TeamleadsBackend.Telegram;
 // form, shell) and the bot webhook (DM), so both sources behave identically.
 public sealed class AnonService(
     AppDbContext db,
-    TelegramClient tg,
+    IChatSender chat,
     Outbox outbox,
     SettingsService settings,
     IOptions<TelegramOptions> options,
@@ -94,7 +95,7 @@ public sealed class AnonService(
             return "Не задан tg.community_chat_id.";
         }
 
-        var sent = await tg.SendMessageAsync(communityChat, PublishedText(row), ct: ct);
+        var sent = await chat.SendMessageAsync(new ChatMessage(communityChat, PublishedText(row)), ct);
         if (!sent.Ok)
         {
             // Leave it pending with live buttons so the admin can retry after the fix.
@@ -143,12 +144,12 @@ public sealed class AnonService(
         return "Правка сохранена. Проверьте карточку и жмите «Опубликовать».";
     }
 
-    private async Task UpdateCardAsync(AnonRequest row, string text, object? keyboard, CancellationToken ct)
+    private async Task UpdateCardAsync(AnonRequest row, string text, string? keyboardJson, CancellationToken ct)
     {
         if (row.AdminMessageId is not { } messageId) return;
         var adminChat = await settings.GetLongAsync("tg.admin_chat_id", ct);
         if (adminChat == 0) return;
-        await tg.EditMessageTextAsync(adminChat, messageId, text, keyboard, ct);
+        await chat.EditMessageTextAsync(new ChatEdit(adminChat, messageId, text, keyboardJson), ct);
     }
 
     // ── rendering ───────────────────────────────────────────────────────────
@@ -173,7 +174,11 @@ public sealed class AnonService(
         Прислано анонимно · @temlead_helper_bot · teamleads.kz/anon
         """;
 
-    private static object PendingKeyboard(string publicId) => new
+    // Serialized here rather than handed over as an object: JSON is the port's currency
+    // for keyboards, because the outbox has to store one in a column anyway and every
+    // adapter deserializes it into whatever shape its client wants. One representation,
+    // whether the card is queued or edited in place.
+    private static string PendingKeyboard(string publicId) => JsonSerializer.Serialize(new
     {
         inline_keyboard = new[]
         {
@@ -184,7 +189,7 @@ public sealed class AnonService(
                 new { text = "🚫 Отклонить",    callback_data = $"anon:rej:{publicId}" },
             },
         },
-    };
+    });
 
     // Deep link to a message in a supergroup: the -100 prefix is dropped in t.me/c/ links.
     private static string MessageLink(long chatId, long messageId)

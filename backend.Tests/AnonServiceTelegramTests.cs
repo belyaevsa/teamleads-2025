@@ -56,7 +56,7 @@ public class AnonServiceTelegramTests
 
         await host.Anon().CreateAsync("Как отпустить микроменеджмент, не потеряв контроль?", "form", null, default);
 
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
         var queued = Assert.Single(host.Db.Outbox);
         Assert.Equal("anon_card", queued.Kind);
         // Destination resolved at send time, so a card queued while the setting is wrong
@@ -72,34 +72,32 @@ public class AnonServiceTelegramTests
     {
         using var host = await HostAsync();
         var row = await PendingAsync(host);
-        host.Api.RespondsOk(messageId: 9001);   // sendMessage
-        host.Api.RespondsOk();                  // editMessageText
+        host.Chat.Delivers(9001);   // sendMessage
+        host.Chat.Delivers(0);                  // editMessageText
 
         var answer = await host.Anon().PublishAsync(row, byTgId: 555, default);
 
         Assert.Equal("Опубликовано.", answer);
-        Assert.Equal(2, host.Api.Calls.Count);
+        Assert.Equal(2, host.Chat.Calls.Count);
 
         // Order matters: publish first, settle after. A card marked published on top of a
         // send that never happened is the one failure the admin cannot see.
-        var publish = host.Api.Calls[0];
+        var publish = host.Chat.Calls[0];
         Assert.Equal("sendMessage", publish.Method);
-        Assert.Equal(Community, publish.Long("chat_id"));
-        Assert.Contains("Как отпустить микроменеджмент?", publish.String("text"));
-        // Same rule as everywhere else: the text is a stranger's, so it is never markup.
-        Assert.False(publish.Has("parse_mode"));
+        Assert.Equal(Community, publish.ChatId);
+        Assert.Contains("Как отпустить микроменеджмент?", publish.Text);
         // The published question carries no keyboard – the buttons belong to the card.
-        Assert.False(publish.Has("reply_markup"));
+        Assert.Null(publish.ReplyMarkupJson);
 
-        var settle = host.Api.Calls[1];
+        var settle = host.Chat.Calls[1];
         Assert.Equal("editMessageText", settle.Method);
-        Assert.Equal(Admin, settle.Long("chat_id"));
-        Assert.Equal(4242, settle.Long("message_id"));
-        Assert.Contains("✅ Опубликовано", settle.String("text"));
+        Assert.Equal(Admin, settle.ChatId);
+        Assert.Equal(4242, settle.MessageId);
+        Assert.Contains("✅ Опубликовано", settle.Text);
         // A deep link to the published message: -100 dropped, as t.me/c/ wants it.
-        Assert.Contains($"https://t.me/c/1234567890/9001", settle.String("text"));
+        Assert.Contains($"https://t.me/c/1234567890/9001", settle.Text);
         // Buttons gone: the decision is made, and a second tap must not be offered.
-        Assert.False(settle.Has("reply_markup"));
+        Assert.Null(settle.ReplyMarkupJson);
     }
 
     [Fact]
@@ -107,7 +105,7 @@ public class AnonServiceTelegramTests
     {
         using var host = await HostAsync();
         var row = await PendingAsync(host);
-        host.Api.RespondsOk(messageId: 9001);
+        host.Chat.Delivers(9001);
 
         await host.Anon().PublishAsync(row, byTgId: 555, default);
 
@@ -129,11 +127,11 @@ public class AnonServiceTelegramTests
 
         await host.Anon().PublishAsync(row, byTgId: 555, default);
 
-        var publish = host.Api.Calls[0];
-        Assert.Contains("обезличенный текст", publish.String("text"));
+        var publish = host.Chat.Calls[0];
+        Assert.Contains("обезличенный текст", publish.Text);
         // The whole point of the edit is stripping identifying details. Publishing the
         // original alongside it would defeat it.
-        Assert.DoesNotContain("исходный текст", publish.String("text"));
+        Assert.DoesNotContain("исходный текст", publish.Text);
     }
 
     // A refused publish keeps the request alive with its buttons, so the admin can fix
@@ -144,17 +142,17 @@ public class AnonServiceTelegramTests
     {
         using var host = await HostAsync();
         var row = await PendingAsync(host);
-        host.Api.RespondsError("Forbidden: bot was kicked from the supergroup chat");
+        host.Chat.Fails("Forbidden: bot was kicked from the supergroup chat");
 
         var answer = await host.Anon().PublishAsync(row, byTgId: 555, default);
 
         Assert.Contains("bot was kicked", answer);
 
-        var card = host.Api.Calls[1];
+        var card = host.Chat.Calls[1];
         Assert.Equal("editMessageText", card.Method);
-        Assert.Contains("⚠️ Ошибка публикации", card.String("text"));
-        Assert.Contains("bot was kicked", card.String("text"));
-        Assert.True(card.Has("reply_markup"));   // retry has to stay one tap away
+        Assert.Contains("⚠️ Ошибка публикации", card.Text);
+        Assert.Contains("bot was kicked", card.Text);
+        Assert.NotNull(card.ReplyMarkupJson);   // retry has to stay one tap away
 
         using var db = host.NewDbContext();
         var stored = db.AnonRequests.Single();
@@ -169,7 +167,7 @@ public class AnonServiceTelegramTests
     {
         using var host = await HostAsync();
         var row = await PendingAsync(host);
-        host.Api.Throws(new HttpRequestException("Connection reset by peer"));
+        host.Chat.Fails("Connection reset by peer");
 
         var answer = await host.Anon().PublishAsync(row, byTgId: 555, default);
 
@@ -187,7 +185,7 @@ public class AnonServiceTelegramTests
 
         Assert.Equal("Не задан tg.community_chat_id.", answer);
         // Not even the card update: there is nothing to report yet, and 0 is not a chat.
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
     }
 
     // Telegram delivers a double tap as two updates, and an admin who does not see the
@@ -204,7 +202,7 @@ public class AnonServiceTelegramTests
         Assert.StartsWith("Уже ", await anon.PublishAsync(row, 555, default));
         Assert.StartsWith("Уже ", await anon.RejectAsync(row, 555, default));
 
-        Assert.Empty(host.Api.Calls);
+        Assert.Empty(host.Chat.Calls);
     }
 
     // ── rejecting and editing ───────────────────────────────────────────────
@@ -218,11 +216,11 @@ public class AnonServiceTelegramTests
         var answer = await host.Anon().RejectAsync(row, byTgId: 555, default);
 
         Assert.Equal("Отклонено.", answer);
-        var call = Assert.Single(host.Api.Calls);
+        var call = Assert.Single(host.Chat.Calls);
         Assert.Equal("editMessageText", call.Method);
-        Assert.Equal(Admin, call.Long("chat_id"));
-        Assert.Contains("🚫 Отклонено", call.String("text"));
-        Assert.False(call.Has("reply_markup"));
+        Assert.Equal(Admin, call.ChatId);
+        Assert.Contains("🚫 Отклонено", call.Text);
+        Assert.Null(call.ReplyMarkupJson);
     }
 
     [Fact]
@@ -233,14 +231,13 @@ public class AnonServiceTelegramTests
 
         await host.Anon().ApplyEditAsync(row, "  обезличенная версия  ", default);
 
-        var call = Assert.Single(host.Api.Calls);
+        var call = Assert.Single(host.Chat.Calls);
         Assert.Equal("editMessageText", call.Method);
-        Assert.Contains("обезличенная версия", call.String("text"));
-        Assert.Contains("(текст отредактирован админом)", call.String("text"));
+        Assert.Contains("обезличенная версия", call.Text);
+        Assert.Contains("(текст отредактирован админом)", call.Text);
         // Still pending, so the three buttons have to come back – an edit is not a decision.
-        var buttons = call.Json.GetProperty("reply_markup").GetProperty("inline_keyboard")[0];
-        Assert.Equal(3, buttons.GetArrayLength());
-        Assert.Equal("anon:pub:A7F3K2", buttons[0].GetProperty("callback_data").GetString());
+        Assert.Equal(3, call.Markup!.Value.GetProperty("inline_keyboard")[0].GetArrayLength());
+        Assert.Equal("anon:pub:A7F3K2", call.Button(0).GetProperty("callback_data").GetString());
     }
 
     // ── the card that is not there yet ──────────────────────────────────────
@@ -257,7 +254,7 @@ public class AnonServiceTelegramTests
         var answer = await host.Anon().PublishAsync(row, byTgId: 555, default);
 
         Assert.Equal("Опубликовано.", answer);
-        var call = Assert.Single(host.Api.Calls);
+        var call = Assert.Single(host.Chat.Calls);
         Assert.Equal("sendMessage", call.Method);
     }
 
@@ -270,9 +267,9 @@ public class AnonServiceTelegramTests
         await host.Anon().PublishAsync(row, byTgId: 555, default);
 
         // Published anyway – the question is the deliverable, the card is the receipt.
-        var call = Assert.Single(host.Api.Calls);
+        var call = Assert.Single(host.Chat.Calls);
         Assert.Equal("sendMessage", call.Method);
-        Assert.Equal(Community, call.Long("chat_id"));
+        Assert.Equal(Community, call.ChatId);
     }
 
     // The card edit is best-effort: it is a receipt for a decision that is already
@@ -283,8 +280,8 @@ public class AnonServiceTelegramTests
     {
         using var host = await HostAsync();
         var row = await PendingAsync(host);
-        host.Api.RespondsOk(messageId: 9001);                              // sendMessage
-        host.Api.RespondsError("Bad Request: message to edit not found");  // editMessageText
+        host.Chat.Delivers(9001);                              // sendMessage
+        host.Chat.Fails("Bad Request: message to edit not found");  // editMessageText
 
         var answer = await host.Anon().PublishAsync(row, byTgId: 555, default);
 
