@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using TeamleadsBackend.BotData;
 using TeamleadsBackend.Data;
+using TeamleadsBackend.Search;
 using TeamleadsBackend.Settings;
 using TeamleadsBackend.Telegram;
 
@@ -29,6 +32,10 @@ public sealed class TestHost : IDisposable
     public SettingsService Settings { get; }
     public TelegramClient Telegram { get; }
 
+    // The same options object the services under test read. Enabled is derived from the
+    // token, so `new TestHost(botToken: null)` is how a test says "bot not configured".
+    public TelegramOptions TgOptions { get; }
+
     private readonly string _dbName;
 
     public TestHost(string? botToken = "TEST:token")
@@ -49,11 +56,48 @@ public sealed class TestHost : IDisposable
             _provider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<SettingsService>.Instance);
 
+        TgOptions = new TelegramOptions { BotToken = botToken, WebhookSecret = WebhookSecret };
         Telegram = new TelegramClient(
             new HttpClient(Api) { BaseAddress = new Uri("https://api.telegram.org/") },
-            Options.Create(new TelegramOptions { BotToken = botToken, WebhookSecret = "s" }),
+            Options.Create(TgOptions),
             NullLogger<TelegramClient>.Instance);
     }
+
+    // ── the services that call TelegramClient ────────────────────────────────
+    // Each is built by hand rather than resolved from a container: the point of these
+    // tests is which client the service holds, and a container would hide that behind a
+    // registration the test never states.
+
+    public const string WebhookSecret = "s3cret";
+
+    public AnonService Anon(Outbox? outbox = null) =>
+        new(Db, Telegram, outbox ?? NewOutbox(), Settings, Options.Create(TgOptions),
+            NullLogger<AnonService>.Instance);
+
+    public DilemmaService Dilemmas(string archiveJson) =>
+        new(Db, Archive(archiveJson), Telegram, Settings, Options.Create(TgOptions),
+            NullLogger<DilemmaService>.Instance);
+
+    public QuestionService Questions(string archiveJson) =>
+        new(Db, Archive(archiveJson), Telegram, Settings, Options.Create(TgOptions),
+            NullLogger<QuestionService>.Instance);
+
+    // The archive feed and the search index are read over HTTP with a 15-minute cache;
+    // a stub handler that answers every request with the same body is the whole fake.
+    public static BotDataClient Archive(string json) =>
+        new(new HttpClient(new StubFeed(json)), Config(), NullLogger<BotDataClient>.Instance);
+
+    public static SearchService Search(string indexJson) =>
+        new(new ShellIndexClient(new HttpClient(new StubFeed(indexJson)), Config(),
+            NullLogger<ShellIndexClient>.Instance));
+
+    // BOT_DATA_PATH stays unset so both feed clients take the HTTP branch and hit the
+    // stub. PASTE_IV_RHASH likewise: an unwrapped paste url is the simpler assertion,
+    // and the Instant View wrapper has its own test.
+    public static IConfiguration Config(params (string Key, string Value)[] values) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(values.Select(v => new KeyValuePair<string, string?>(v.Key, v.Value)))
+            .Build();
 
     // Defaults to the fake port. Pass a real adapter to drive the loop through an actual
     // client – useful for a smoke test, but the behaviour assertions belong on the fake.

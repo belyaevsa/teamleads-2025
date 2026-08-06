@@ -6,7 +6,7 @@ teamleads.kz. Every command below was run before it was written down.
 The two suites CI gates merges on:
 
 ```bash
-dotnet test backend.Tests/TeamleadsBackend.Tests.csproj          # 56 tests
+dotnet test backend.Tests/TeamleadsBackend.Tests.csproj          # 186 tests
 cd landing-main && hugo --minify && node scripts/validate-scenarios.mjs && npm test
 ```
 
@@ -23,8 +23,10 @@ dotnet test backend.Tests/TeamleadsBackend.Tests.csproj
 ```
 
 No database and no secrets: EF Core's in-memory provider plus a stub
-`HttpMessageHandler` standing in for the Telegram Bot API. Runs in about a third of a
-second, so there is no reason not to run it before every push.
+`HttpMessageHandler` standing in for the Telegram Bot API. The webhook tests do start a
+real Kestrel on `127.0.0.1:0` – nothing leaves the loopback, and the Bot API behind it is
+still the stub. Runs in about two seconds, so there is no reason not to run it before
+every push.
 
 To reproduce CI byte for byte – same SDK image the `Dockerfile` builds the shipped
 artifact with, no host .NET required:
@@ -48,7 +50,10 @@ What is covered, and why it is shaped that way, is in
 [`backend/README.md`](backend/README.md#tests). The short version: `OutboxTests` covers
 the delivery loop (retries, backoff, expiry, late chat resolution), and
 `TelegramClientWireTests` asserts on the **bytes** each Bot API method puts on the wire,
-because that is the part a replacement client library has to reproduce.
+because that is the part a replacement client library has to reproduce. On top of that,
+`AnonServiceTelegramTests`, `DilemmaServiceTelegramTests`, `QuestionServiceTelegramTests`
+and `TelegramWebhookTests` pin every place that holds a `TelegramClient` – which call
+goes out, to which chat, in which order, and which must not go out at all.
 
 ## Landing checks
 

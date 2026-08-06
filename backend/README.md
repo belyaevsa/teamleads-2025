@@ -35,9 +35,15 @@ backend.Tests/            xUnit suite (sibling project, not shipped in the image
   Support/StubBotApi      fake Bot API socket – captures the request body sent to Telegram
   Support/TestHost        in-memory AppDbContext + real SettingsService + wired TelegramClient
   Support/FakeChatSender  IChatSender that records instead of sending
+  Support/StubFeed        the site's own JSON feeds (bot-data.json, shell-index.json)
+  Support/WebhookHost     the webhook served for real, Bot API replaced by the stub socket
   OutboxTests             the drain loop, against the port – names no client at all
   ChatSenderContractTests what every IChatSender adapter must do; subclass per adapter
   TelegramClientWireTests the JSON each Bot API method puts on the wire
+  AnonServiceTelegram…    which calls the moderation flow makes, and which it must not
+  DilemmaServiceTelegram… sendPoll / stopPoll / the reveal that renders the tally
+  QuestionServiceTelegram… the weekly question: one message, recorded on what was sent
+  TelegramWebhookTests    every call the webhook makes, driven by a real update over HTTP
 
 compose.yaml              local dev stack (repo root) – db + api + hugo + stub Bot API
 compose.stg.yaml          staging overlay: Production env, built site, feed read off disk
@@ -92,6 +98,22 @@ client, that is a behaviour change: override it with a comment saying so, don't 
 the current client puts on the wire, which is the spec a replacement has to reproduce –
 a swap that keeps the C# signatures but changes the payload compiles, deploys, and breaks
 in production.
+
+**The call sites are pinned separately**, because bytes are only half the spec. Four
+files – `AnonServiceTelegramTests`, `DilemmaServiceTelegramTests`,
+`QuestionServiceTelegramTests` and `TelegramWebhookTests` – drive each feature that holds
+a `TelegramClient` and assert on what came out of the stub socket: which method, to which
+chat, in which order, and which calls must **not** happen. That last one is where a swap
+usually goes wrong. A client that reports a refused publish as a success still passes
+every wire test, and the admin never sees the "⚠️ Ошибка публикации" card they are
+waiting on; one that returns `0` for a message id leaves `stopPoll` aimed at nothing and
+every dilemma reveal goes out with no tally. Both are green on signatures and payloads
+alike, and both are caught here.
+
+`TelegramWebhookTests` posts real updates over a real socket, because the webhook's
+handlers are private statics inside a minimal-API lambda and there is no seam to fake.
+`Support/WebhookHost` maps `MapTelegramWebhook` onto the same object graph `Program.cs`
+builds, minus the Postgres connection string it demands at line one.
 
 ## Local environment
 
