@@ -133,6 +133,19 @@ public class PastePageRenderTests
         Assert.Contains("paste-theme", page);
     }
 
+    // On a 2400px monitor a full-bleed page puts the reader's eyes at the far left of
+    // the desk. The bars keep their full-width background; only the contents are pulled
+    // into one centred column.
+    [Fact]
+    public void Wide_screens_get_a_centred_column_instead_of_full_bleed_text()
+    {
+        var page = Page("select 1 from dual");
+
+        Assert.Contains("--measure: 1160px;", page);
+        Assert.Contains("max(20px, (100% - var(--measure)) / 2)", page);
+        Assert.Contains("margin-inline: auto", page);
+    }
+
     [Fact]
     public void The_viewport_is_declared_so_phones_do_not_get_the_desktop_layout()
     {

@@ -324,6 +324,11 @@ public static class PasteEndpoints
                 --hl-tag: #7ee787;
               }
 
+              /* One centred column on a wide screen. The bars keep their full-width
+                 background – only their contents are pulled in – so the page still
+                 reads as a page and not as a card floating in an empty desktop. */
+              :root { --measure: 1160px; }
+
               * { box-sizing: border-box; margin: 0; padding: 0; }
               [hidden] { display: none !important; }
               body {
@@ -342,7 +347,7 @@ public static class PasteEndpoints
                 display: flex;
                 align-items: center;
                 gap: 12px;
-                padding: 10px 20px;
+                padding: 10px max(20px, (100% - var(--measure)) / 2);
                 background: var(--panel);
                 border-bottom: 1px solid var(--border);
                 flex-wrap: wrap;
@@ -372,7 +377,7 @@ public static class PasteEndpoints
               .paste-btn[aria-pressed="true"] { background: var(--btn-hover); border-color: var(--accent); color: var(--accent); }
               .paste-theme { min-width: 34px; text-align: center; }
 
-              .paste-body { padding: 20px; }
+              .paste-body { padding: 20px max(20px, (100% - var(--measure)) / 2); }
               .paste-body pre {
                 margin: 0;
                 padding: 16px;
@@ -389,7 +394,9 @@ public static class PasteEndpoints
 
               /* A rendered markdown paste is read, not scanned, so it gets prose
                  measure and prose spacing instead of the full-bleed code slab. */
-              .paste-md { max-width: 46rem; overflow-wrap: break-word; }
+              /* Prose wants a narrower column than code, and it sits in the middle
+                 of the centred one rather than hugging its left edge. */
+              .paste-md { max-width: 46rem; margin-inline: auto; overflow-wrap: break-word; }
               .paste-md > * + * { margin-top: 1em; }
               .paste-md h1, .paste-md h2, .paste-md h3, .paste-md h4 { line-height: 1.3; margin-top: 1.6em; }
               .paste-md h1 { font-size: 1.7em; }
@@ -427,6 +434,7 @@ public static class PasteEndpoints
                 .paste-body pre { white-space: pre-wrap; overflow-wrap: anywhere; }
                 .paste-header { padding: 10px 12px; gap: 8px; }
                 .paste-body { padding: 12px; }
+                .paste-source { margin-top: 12px; }
                 .paste-body pre { padding: 12px; }
                 .paste-footer { padding: 8px 12px 20px; }
                 /* Thumb-sized targets, and the row is allowed to take the full width
@@ -442,7 +450,7 @@ public static class PasteEndpoints
               body.nowrap .paste-body pre { white-space: pre; overflow-wrap: normal; }
 
               .paste-footer {
-                padding: 8px 20px 20px;
+                padding: 8px max(20px, (100% - var(--measure)) / 2) 20px;
                 font-size: 12px;
                 color: var(--muted);
               }
