@@ -8,7 +8,7 @@ namespace TeamleadsBackend.Search;
 // and falls back to a "code vs prose" heuristic when nothing matches.
 //
 // Returns a highlight.js language class name: "go", "python", "json", "yaml",
-// "sql", "rust", "bash", "plaintext" (undetermined code), or "text" (prose).
+// "sql", "rust", "bash", "markdown", "plaintext" (undetermined code), or "text" (prose).
 public static partial class LanguageDetector
 {
     public static string Detect(string content)
@@ -44,6 +44,12 @@ public static partial class LanguageDetector
             && !Regex.IsMatch(sample, @"\bfunc\b|\bclass\b|\bdef\b|\bimport\b|\bpackage\b")
             && CountMatches(sample, @"^[\w.-]+:\s", RegexOptions.Multiline) >= 3)
             return "yaml";
+
+        // Markdown. Deliberately after JSON and YAML – a config file with "# comment"
+        // and "- item" lines looks a little like a document, and misreading one as prose
+        // is worse than missing a heading. Deliberately before the language rules below,
+        // so a README full of ```bash fences is a document and not a shell script.
+        if (LooksLikeMarkdown(sample)) return "markdown";
 
         // SQL
         if (Regex.IsMatch(sample, @"\b(SELECT|INSERT\s+INTO|UPDATE\s+\w+|DELETE\s+FROM|CREATE\s+TABLE|ALTER\s+TABLE|DROP\s+TABLE)\b",
@@ -89,6 +95,28 @@ public static partial class LanguageDetector
             return "json";
 
         return "text";
+    }
+
+    // Markdown has no keyword to look for – only punctuation that also occurs in prose
+    // and in config files. So: count independent signals and ask for two. A fenced code
+    // block or a pipe table is specific enough to count on its own, because neither
+    // shows up by accident in anything else people paste here.
+    private static bool LooksLikeMarkdown(string sample)
+    {
+        if (Regex.IsMatch(sample, @"^```", RegexOptions.Multiline)) return true;
+        if (Regex.IsMatch(sample, @"^\|.*\|\s*$", RegexOptions.Multiline)
+            && Regex.IsMatch(sample, @"^\|?[\s:|-]*-{3,}[\s:|-]*$", RegexOptions.Multiline))
+            return true;
+
+        var signals = 0;
+        // "# Заголовок", not a bare "#" and not a "#!" shebang or a "#tag".
+        if (Regex.IsMatch(sample, @"^#{1,6} \S", RegexOptions.Multiline)) signals++;
+        if (Regex.IsMatch(sample, @"^\s*([-*+]|\d+\.) \S", RegexOptions.Multiline)) signals++;
+        if (Regex.IsMatch(sample, @"!?\[[^\]\n]+\]\([^)\n]+\)")) signals++;
+        if (Regex.IsMatch(sample, @"\*\*\S[^*\n]*\S\*\*|__\S[^_\n]*\S__")) signals++;
+        if (Regex.IsMatch(sample, @"^> \S", RegexOptions.Multiline)) signals++;
+
+        return signals >= 2;
     }
 
     private static int CountMatches(string input, string pattern, RegexOptions options = RegexOptions.None)
