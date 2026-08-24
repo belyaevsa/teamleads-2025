@@ -4,7 +4,7 @@ using Telebot.Models;
 
 namespace TeamleadsBackend.Telegram;
 
-// IChatSender over Bucketlab.Telebot 0.0.72 – the client in use today.
+// IChatSender over Bucketlab.Telebot 0.0.75 – the client in use today.
 //
 // Everything that makes this package different from the hand-rolled client is contained
 // here: it signals failure by throwing, it has no typed ResponseParameters, and its
@@ -15,8 +15,10 @@ namespace TeamleadsBackend.Telegram;
 // moderation card and the button spinner, with sendPoll alongside them. 0.0.72 stopped
 // serializing unset members as explicit nulls, which is what made a threaded reply safe to
 // send – under 0.0.7 reply_parameters went out with seven nulls in it and Telegram refuses
-// a request holding one. What is still out of reach: stopPoll and answerInlineQuery, which
-// the package has no method for at all. See IChatSender.
+// a request holding one. 0.0.75 grew stopPoll, taking the dilemma reveal's tally off
+// TelegramClient. What is still out of reach: answerInlineQuery, which the package has no
+// method for at all (getFile and DownloadFileAsync arrived in the same 0.0.75 and stay
+// unused – nothing in this app reads files back). See IChatSender.
 public sealed class TelebotChatSender(ITelegramClient client) : IChatSender
 {
     public Task<SendOutcome> SendMessageAsync(ChatMessage message, CancellationToken ct) =>
@@ -29,8 +31,8 @@ public sealed class TelebotChatSender(ITelegramClient client) : IChatSender
                     ReplyParameters: ReplyTo(message.ReplyToMessageId),
                     ReplyMarkup: Markup(message.ReplyMarkupJson)),
                 ct);
-            return sent.MessageId;
-        }, ct);
+            return SendOutcome.Delivered(sent.MessageId);
+        }, SendFailed, ct);
 
     public Task<SendOutcome> EditMessageTextAsync(ChatEdit edit, CancellationToken ct) =>
         CallAsync(async () =>
@@ -45,8 +47,8 @@ public sealed class TelebotChatSender(ITelegramClient client) : IChatSender
                     LinkPreviewOptions: PreviewOptions(true),
                     ReplyMarkup: Markup(edit.ReplyMarkupJson)),
                 ct);
-            return edited.MessageId;
-        }, ct);
+            return SendOutcome.Delivered(edited.MessageId);
+        }, SendFailed, ct);
 
     // Telebot's sendPoll takes the chat, the question and the options and nothing else.
     // That is exactly the poll this bot posts: is_anonymous and type default to `true`
@@ -60,8 +62,8 @@ public sealed class TelebotChatSender(ITelegramClient client) : IChatSender
                     poll.ChatId, poll.Question,
                     poll.Options.Select(o => new InputPollOption(o)).ToList()),
                 ct);
-            return sent.MessageId;
-        }, ct);
+            return SendOutcome.Delivered(sent.MessageId);
+        }, SendFailed, ct);
 
     // Returns `true`, not a message – there is nothing to carry a message id, and the
     // port's MessageId stays 0 the way it does for the hand-rolled client.
@@ -76,16 +78,29 @@ public sealed class TelebotChatSender(ITelegramClient client) : IChatSender
                 new AnswerCallbackQueryRequestParams(answer.CallbackQueryId, answer.Text,
                     ShowAlert: null, Url: null, CacheTime: null),
                 ct);
-            return 0;
-        }, ct);
+            return SendOutcome.Delivered(0);
+        }, SendFailed, ct);
+
+    // The call that kept DilemmaService on the concrete client until 0.0.75 grew this
+    // method. The tally comes back as Poll.Options in option order, which is the exact
+    // shape the reveal zips against the scenario's options.
+    public Task<PollOutcome> StopPollAsync(ChatPollStop stop, CancellationToken ct) =>
+        CallAsync(async () =>
+        {
+            var poll = await client.StopPollAsync(
+                new StopPollRequestParams(stop.ChatId, checked((int)stop.MessageId)), ct);
+            return PollOutcome.Closed([.. poll.Options.Select(o => o.VoterCount)]);
+        }, PollOutcome.Failed, ct);
 
     // The one place that turns "this client throws" into "the port returns an outcome".
-    // Every method funnels through it so a new one cannot forget to.
-    private static async Task<SendOutcome> CallAsync(Func<Task<long>> call, CancellationToken ct)
+    // Every method funnels through it so a new one cannot forget to. What a failure looks
+    // like is the method's own business – a send distinguishes a migration, a poll stop
+    // does not – so the failure shape travels with the call.
+    private static async Task<T> CallAsync<T>(Func<Task<T>> call, Func<string, T> failed, CancellationToken ct)
     {
         try
         {
-            return SendOutcome.Delivered(await call());
+            return await call();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -101,11 +116,16 @@ public sealed class TelebotChatSender(ITelegramClient client) : IChatSender
             // Telebot signals every failure by throwing – protocol errors, HTTP status
             // codes, deserialization problems. The port promises an outcome, so they all
             // become one here.
-            return MigrateToChatIdOf(ex.Message) is { } newChatId
-                ? SendOutcome.Migrated(newChatId, ex.Message)
-                : SendOutcome.Failed(ex.Message);
+            return failed(ex.Message);
         }
     }
+
+    // SendOutcome's failure shape, apart from the shared core because a send can be told
+    // to migrate and a poll stop cannot.
+    private static SendOutcome SendFailed(string message) =>
+        MigrateToChatIdOf(message) is { } newChatId
+            ? SendOutcome.Migrated(newChatId, message)
+            : SendOutcome.Failed(message);
 
     private static InlineKeyboardMarkup? Markup(string? json) =>
         json is null ? null : JsonSerializer.Deserialize<InlineKeyboardMarkup>(json);

@@ -27,6 +27,15 @@ public sealed class BotApiChatSender(TelegramClient tg) : IChatSender
     public async Task<SendOutcome> AnswerCallbackAsync(CallbackAnswer answer, CancellationToken ct) =>
         Outcome(await tg.AnswerCallbackQueryAsync(answer.CallbackQueryId, answer.Text, ct));
 
+    public async Task<PollOutcome> StopPollAsync(ChatPollStop stop, CancellationToken ct) =>
+        await tg.StopPollAsync(stop.ChatId, stop.MessageId, ct) is { } votes
+            ? PollOutcome.Closed(votes)
+            // The hand-rolled client flattens every stopPoll failure to a null tally and
+            // keeps no reason – that is its shape, pinned in TelegramClientWireTests, and
+            // it is why the reveal treats a missing tally as "publish without the numbers"
+            // rather than as something to retry on.
+            : PollOutcome.Failed("stopPoll вернул пустой результат");
+
     // The stored JSON round-trips through JsonElement back to the same JSON it was
     // serialized from, so the keyboard survives the queue byte for byte.
     private static object? Markup(string? json) =>

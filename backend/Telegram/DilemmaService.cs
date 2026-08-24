@@ -14,14 +14,12 @@ namespace TeamleadsBackend.Telegram;
 // type in a chat full of their colleagues still take part. The reveal a day later is
 // the second act: it gives everyone who voted a reason to come back and argue, and it
 // carries the archive link into the discussion instead of advertising it separately.
-// `chat` is the port; `tg` is here for stopPoll alone, which Bucketlab.Telebot does not
-// implement. The reveal's percentages are the only reason this service still names a
-// concrete client – see IChatSender.
+// Until the package behind `chat` grew stopPoll (0.0.75) this service also held the
+// concrete TelegramClient for that one call – see IChatSender.
 public sealed class DilemmaService(
     AppDbContext db,
     BotDataClient archive,
     IChatSender chat,
-    TelegramClient tg,
     SettingsService settings,
     IOptions<TelegramOptions> options,
     ILogger<DilemmaService> log)
@@ -102,9 +100,13 @@ public sealed class DilemmaService(
         }
 
         // stopPoll gives the final tally. If it fails (poll already closed, message
-        // deleted) we still publish the outcomes – the reveal matters more than the numbers.
-        // The one call that has not moved to the port: no package equivalent exists.
-        var votes = await tg.StopPollAsync(post.ChatId, post.MessageId, ct);
+        // deleted) we still publish the outcomes – the reveal matters more than the
+        // numbers, so the reason is logged and dropped rather than retried.
+        var stopped = await chat.StopPollAsync(new ChatPollStop(post.ChatId, post.MessageId), ct);
+        if (!stopped.Ok)
+            log.LogWarning("stopPoll on message {MessageId} in {ChatId} failed: {Error}",
+                post.MessageId, post.ChatId, stopped.Error);
+        var votes = stopped.Ok ? stopped.Votes : null;
         var sent = await chat.SendMessageAsync(new ChatMessage(post.ChatId, Reveal(scenario, votes)), ct);
 
         // Only settle it when the reveal actually landed. Marking it done on failure

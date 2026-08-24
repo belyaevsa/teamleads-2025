@@ -81,6 +81,23 @@ public sealed class FakeChatSender : IChatSender
         return this;
     }
 
+    // Poll stops script their own queue: the outcome they produce is a different type, so
+    // a test closing a poll cannot accidentally feed the sends' queue and vice versa.
+    // Defaults to "closed, nobody voted", which is the reveal with no chat percentages.
+    private readonly Queue<PollOutcome> _stops = [];
+
+    public FakeChatSender StopsPoll(params int[] voterCounts)
+    {
+        _stops.Enqueue(PollOutcome.Closed(voterCounts));
+        return this;
+    }
+
+    public FakeChatSender FailsToStopPoll(string error)
+    {
+        _stops.Enqueue(PollOutcome.Failed(error));
+        return this;
+    }
+
     public Task<SendOutcome> SendMessageAsync(ChatMessage message, CancellationToken ct)
     {
         Sent.Add(message);
@@ -106,6 +123,12 @@ public sealed class FakeChatSender : IChatSender
     {
         Calls.Add(new PortCall("answerCallback", Text: answer.Text, CallbackQueryId: answer.CallbackQueryId));
         return Task.FromResult(Next(new ChatMessage(0, answer.Text ?? "")));
+    }
+
+    public Task<PollOutcome> StopPollAsync(ChatPollStop stop, CancellationToken ct)
+    {
+        Calls.Add(new PortCall("stopPoll", stop.ChatId, MessageId: stop.MessageId));
+        return Task.FromResult(_stops.Count > 0 ? _stops.Dequeue() : PollOutcome.Closed([]));
     }
 
     // Default to success, so a test asserting only on what was sent needs no setup. The

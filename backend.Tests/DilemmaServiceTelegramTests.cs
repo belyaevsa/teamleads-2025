@@ -179,22 +179,20 @@ public class DilemmaServiceTelegramTests
     {
         using var host = await HostAsync();
         await PostedYesterdayAsync(host);
-        host.Api.RespondsOk(rawResult: """{"options":[{"voter_count":3},{"voter_count":1}]}""");   // stopPoll
-        host.Chat.Delivers(556);                                                        // sendMessage
+        host.Chat.StopsPoll(3, 1);                                                          // stopPoll
+        host.Chat.Delivers(556);                                                            // sendMessage
 
         var answer = await host.Dilemmas(Archive).FollowUpAsync(TimeSpan.FromHours(20), default);
 
         Assert.Equal("Раскрыта дилемма handover.", answer);
 
-        // stopPoll is the one call in this service still on the concrete client – the
-        // package behind the port has no method for it – so it is asserted on the socket.
-        var stop = Assert.Single(host.Api.Calls);
-        Assert.Equal("stopPoll", stop.Method);
-        Assert.Equal(Community, stop.Long("chat_id"));
-        Assert.Equal(555, stop.Long("message_id"));
+        // stopPoll went through the port when the package grew it (0.0.75), so the
+        // service's calls are asserted on the port alone – no socket is involved.
+        var stop = host.Chat.Calls.Single(c => c.Method == "stopPoll");
+        Assert.Equal(Community, stop.ChatId);
+        Assert.Equal(555, stop.MessageId);
 
-        var reveal = Assert.Single(host.Chat.Calls);
-        Assert.Equal("sendMessage", reveal.Method);
+        var reveal = host.Chat.Calls.Single(c => c.Method == "sendMessage");
         Assert.Equal(Community, reveal.ChatId);
         // 3 of 4 votes and 1 of 4. The percentages are the whole reason stopPoll is called;
         // a client that loses the counts turns the reveal into a text the chat has read.
@@ -212,13 +210,13 @@ public class DilemmaServiceTelegramTests
     {
         using var host = await HostAsync();
         await PostedYesterdayAsync(host);
-        host.Api.RespondsError("Bad Request: poll has already been closed");   // stopPoll
+        host.Chat.FailsToStopPoll("Bad Request: poll has already been closed");
         host.Chat.Delivers(556);
 
         var answer = await host.Dilemmas(Archive).FollowUpAsync(TimeSpan.FromHours(20), default);
 
         Assert.Equal("Раскрыта дилемма handover.", answer);
-        var reveal = Assert.Single(host.Chat.Calls);
+        var reveal = Assert.Single(host.Chat.Calls, c => c.Method == "sendMessage");
         Assert.DoesNotContain("чат:", reveal.Text);
         // The site's own votes are a separate source and survive a lost tally.
         Assert.Contains("сайт: 61%", reveal.Text);
@@ -232,7 +230,7 @@ public class DilemmaServiceTelegramTests
     {
         using var host = await HostAsync();
         await PostedYesterdayAsync(host);
-        host.Api.RespondsOk(rawResult: """{"options":[{"voter_count":3},{"voter_count":1}]}""");
+        host.Chat.StopsPoll(3, 1);
         host.Chat.Fails("Bad Request: have no rights to send a message");
 
         var answer = await host.Dilemmas(Archive).FollowUpAsync(TimeSpan.FromHours(20), default);

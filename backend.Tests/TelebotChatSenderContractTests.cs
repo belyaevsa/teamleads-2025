@@ -45,6 +45,9 @@ public sealed class TelebotChatSenderContractTests : ChatSenderContractTests
             HTTP error 400: {"ok":false,"error_code":400,"description":"Bad Request: group chat was upgraded to a supergroup chat","parameters":{"migrate_to_chat_id":{{{newChatId}}}}}
             """));
 
+    protected override void GivenStopsPoll(TestHost host, int[] voterCounts) =>
+        For(host).StopsPoll(voterCounts);
+
     protected override IReadOnlyDictionary<string, string> SentFields(TestHost host) =>
         For(host).LastFields;
 
@@ -98,6 +101,9 @@ public sealed class TelebotChatSenderContractTests : ChatSenderContractTests
 
         await sender.SendPollAsync(new ChatPoll(-100500, "?", ["а", "б"]), default);
         AssertNoNulls(host, "sendPoll");
+
+        await sender.StopPollAsync(new ChatPollStop(-100500, 42), default);
+        AssertNoNulls(host, "stopPoll");
 
         await sender.AnswerCallbackAsync(new CallbackAnswer("cb1"), default);
         AssertNoNulls(host, "answerCallbackQuery with no text");

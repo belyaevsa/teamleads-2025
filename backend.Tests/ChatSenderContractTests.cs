@@ -32,6 +32,9 @@ public abstract class ChatSenderContractTests
     /// a supergroup: a refusal that carries the chat's new id.
     protected abstract void GivenChatMigrated(TestHost host, long newChatId);
 
+    /// Make the next stopPoll succeed, closing the poll with this tally per option.
+    protected abstract void GivenStopsPoll(TestHost host, int[] voterCounts);
+
     /// The reply markup the adapter passed on, as JSON – null if it sent none.
     protected abstract JsonElement? SentReplyMarkup(TestHost host);
 
@@ -367,6 +370,46 @@ public abstract class ChatSenderContractTests
         Assert.False(outcome.Ok);
         Assert.NotNull(outcome.Error);
     }
+
+    // ── stopping a poll ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task A_stop_closes_the_poll_it_names_and_returns_its_tally()
+    {
+        using var host = new TestHost();
+        GivenStopsPoll(host, [3, 1]);
+
+        var outcome = await CreateSender(host).StopPollAsync(
+            new ChatPollStop(-100500, 555), CancellationToken.None);
+
+        Assert.True(outcome.Ok);
+        // In option order, because the reveal zips these counts against the scenario's
+        // options by position – an adapter that sorts or drops them prints the wrong
+        // percentages next to the wrong labels.
+        Assert.Equal(new[] { 3, 1 }, outcome.Votes);
+        Assert.Equal("stopPoll", SentMethod(host));
+
+        var fields = SentFields(host);
+        Assert.Equal("-100500", fields["chat_id"]);
+        Assert.Equal("555", fields["message_id"]);
+    }
+
+    // Someone closed the poll by hand, or deleted the message. The reveal goes out
+    // regardless, so this must arrive as "no tally" rather than as an exception that
+    // takes the whole follow-up down.
+    [Fact]
+    public async Task A_stop_on_a_poll_that_cannot_be_closed_becomes_a_failed_outcome()
+    {
+        using var host = new TestHost();
+        GivenApiError(host, "Bad Request: poll has already been closed");
+
+        var outcome = await CreateSender(host).StopPollAsync(
+            new ChatPollStop(-100500, 555), CancellationToken.None);
+
+        Assert.False(outcome.Ok);
+        Assert.Null(outcome.Votes);
+        Assert.NotNull(outcome.Error);
+    }
 }
 
 // The adapter in use today: IChatSender over the hand-rolled TelegramClient, driven
@@ -389,6 +432,11 @@ public sealed class BotApiChatSenderContractTests : ChatSenderContractTests
         host.Api.Responds(System.Net.HttpStatusCode.BadRequest, $$$"""
             {"ok":false,"error_code":400,"description":"Bad Request: group chat was upgraded to a supergroup chat","parameters":{"migrate_to_chat_id":{{{newChatId}}}}}
             """);
+
+    // The result shape stopPoll really returns: a poll whose options carry voter_count.
+    protected override void GivenStopsPoll(TestHost host, int[] voterCounts) =>
+        host.Api.RespondsOk(rawResult: JsonSerializer.Serialize(
+            new { options = voterCounts.Select(v => new { voter_count = v }) }));
 
     protected override JsonElement? SentReplyMarkup(TestHost host) =>
         host.Api.LastCall.Json.TryGetProperty("reply_markup", out var m) ? m : null;

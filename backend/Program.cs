@@ -111,8 +111,9 @@ builder.Services.AddSingleton<Telebot.ITelegramClient>(_ =>
         tgOptions.BotToken ?? string.Empty));
 
 // Everything that can go through the port does, and this is the line that decides which
-// client that is. See IChatSender.cs for the two calls that cannot – stopPoll and
-// answerInlineQuery – and why; they take TelegramClient directly.
+// client that is. See IChatSender.cs for the one call that cannot – answerInlineQuery –
+// and why it takes TelegramClient directly; stopPoll was the second until 0.0.75 put it
+// behind the port and DilemmaService gave up its concrete client.
 // BotApiChatSender (the hand-rolled client behind the same port) stays available, is what
 // TelegramClientWireTests pins, and is the fallback if this package has to be backed out.
 builder.Services.AddScoped<IChatSender, TelebotChatSender>();

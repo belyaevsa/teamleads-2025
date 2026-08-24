@@ -68,9 +68,9 @@ public sealed class TestHost : IDisposable
     // tests is what the service asks Telegram for, and a container would hide the seam
     // behind a registration the test never states.
     //
-    // They take `Chat`, the port. DilemmaService also takes the concrete client, because
-    // stopPoll has no equivalent in the package behind the port – it is the one call in
-    // the app still asserted against the stub socket rather than against the port.
+    // They take `Chat`, the port, and nothing else. DilemmaService used to also take the
+    // concrete client for stopPoll alone; the package behind the port grew that method in
+    // 0.0.75 and the dependency went away with it.
 
     public const string WebhookSecret = "s3cret";
 
@@ -79,7 +79,7 @@ public sealed class TestHost : IDisposable
             NullLogger<AnonService>.Instance);
 
     public DilemmaService Dilemmas(string archiveJson) =>
-        new(Db, Archive(archiveJson), Chat, Telegram, Settings, Options.Create(TgOptions),
+        new(Db, Archive(archiveJson), Chat, Settings, Options.Create(TgOptions),
             NullLogger<DilemmaService>.Instance);
 
     public QuestionService Questions(string archiveJson) =>

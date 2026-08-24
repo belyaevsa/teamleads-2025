@@ -9,20 +9,22 @@ namespace TeamleadsBackend.Telegram;
 // existed, a PR replacing the client broke the test project's compile, because the
 // vendor type WAS the seam.
 //
-// Four methods, not the Bot API. Each one is here because a feature moved onto it:
+// Five methods, not the Bot API. Each one is here because a feature moved onto it:
 // sendMessage for the outbox, editMessageText for the moderation card, sendPoll for the
-// weekly dilemma, answerCallbackQuery for the spinner on an admin's button.
+// weekly dilemma, answerCallbackQuery for the spinner on an admin's button, stopPoll for
+// the dilemma reveal's tally.
 //
-// Two calls are deliberately NOT here, and still go through TelegramClient directly:
+// One call is deliberately NOT here, and still goes through TelegramClient directly:
 //
-//   stopPoll             – the dilemma reveal's vote tally.
 //   answerInlineQuery    – archive search from the inline strip.
 //
-// Bucketlab.Telebot 0.0.72 implements neither, so putting them on the port would only buy
-// an adapter that throws. They move the day the package grows them; nothing above the port
-// has to change when they do. A threaded reply was a third exception under 0.0.7 – the
-// package could only express it through an object it filled with nulls – and stopped being
-// one in 0.0.72, which is what ReplyToMessageId below is doing back on the port.
+// Bucketlab.Telebot 0.0.75 has no method for it, so putting it on the port would only buy
+// an adapter that throws. It moves the day the package grows it; nothing above the port
+// has to change when it does. That is not a hypothetical promise: stopPoll was the second
+// such exception until 0.0.75 grew it and DilemmaService dropped its concrete client, and
+// a threaded reply was a third under 0.0.7 – the package could only express it through an
+// object it filled with nulls, which stopped in 0.0.72 and is what ReplyToMessageId below
+// is doing back on the port.
 public interface IChatSender
 {
     Task<SendOutcome> SendMessageAsync(ChatMessage message, CancellationToken ct);
@@ -32,6 +34,8 @@ public interface IChatSender
     Task<SendOutcome> SendPollAsync(ChatPoll poll, CancellationToken ct);
 
     Task<SendOutcome> AnswerCallbackAsync(CallbackAnswer answer, CancellationToken ct);
+
+    Task<PollOutcome> StopPollAsync(ChatPollStop stop, CancellationToken ct);
 }
 
 // What to send, in our vocabulary rather than any library's.
@@ -88,6 +92,26 @@ public sealed record ChatPoll(
 public sealed record CallbackAnswer(
     string CallbackQueryId,
     string? Text = null);
+
+// Closing a poll that is already in a chat, to read its final tally. Named like the poll
+// it closes rather than the poll it creates, because the two carry different facts: a
+// ChatPoll says what to ask, a ChatPollStop says which posted message to end.
+public sealed record ChatPollStop(
+    long ChatId,
+    long MessageId);
+
+// A stopPoll attempt's outcome. A result rather than an exception for the same reason as
+// SendOutcome – a poll someone closed by hand or a message someone deleted is an expected
+// condition, not a crash – but a separate type, because what it carries is different:
+// there is no message id to report and no migration to act on (the caller is the reveal,
+// which repoints nothing), only the tally or the reason it is missing.
+public readonly record struct PollOutcome(bool Ok, int[]? Votes, string? Error)
+{
+    public static PollOutcome Closed(int[] votes) => new(true, votes, null);
+
+    // Error is non-null by construction, same as SendOutcome.Failed.
+    public static PollOutcome Failed(string error) => new(false, null, error);
+}
 
 // A delivery attempt's outcome. A result rather than an exception, because a Telegram
 // outage, a rate limit or a bot kicked from the chat are all expected conditions here –
