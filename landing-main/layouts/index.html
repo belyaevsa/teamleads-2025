@@ -42,6 +42,20 @@
   scroll-margin-top: 112px; /* clear the sticky nav when jumped to via #anchor */ }
 .lab-p { color: var(--gray-600); line-height: 1.8; margin-bottom: var(--space-md); }
 
+/* founder card inside #about */
+.lab-founder { display: flex; gap: var(--space-md); align-items: flex-start;
+  margin: var(--space-lg) 0 var(--space-xl); padding: var(--space-lg);
+  background: var(--white); border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+.lab-founder-photo { flex: 0 0 auto; width: 56px; height: 56px;
+  border-radius: var(--radius-full); border: 2px solid var(--primary-light); object-fit: cover; }
+.lab-founder-name { display: flex; align-items: center; gap: var(--space-sm);
+  font-weight: 700; color: var(--gray-900); }
+.lab-founder-mvp { width: 22px; height: 22px; border-radius: 4px; }
+.lab-founder-note { margin: 4px 0 6px; color: var(--gray-600); line-height: 1.6; }
+.lab-founder-link { font-weight: 600; color: var(--primary-dark); }
+.lab-founder-link:hover { text-decoration: underline; }
+
 /* reference lists mirroring the homepage sections */
 .lab-rail { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-sm); margin: var(--space-md) 0; }
 .lab-rail a { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-sm);
@@ -157,6 +171,20 @@
       казахстанского IT обмениваются опытом и поддерживают друг друга. Реальные кейсы,
       честные ответы, никаких теорий – только практика от тех, кто прошёл через это.
     </p>
+    <div class="lab-founder">
+      <img class="lab-founder-photo" src="/images/articles/andrii-kurdiumov.jpg" alt="Андрей Курдюмов" width="56" height="56" loading="lazy">
+      <div>
+        <div class="lab-founder-name">
+          Андрей Курдюмов
+          <img class="lab-founder-mvp" src="/images/articles/andrii-mvp-badge.svg" alt="Microsoft MVP" title="Microsoft Most Valuable Professional" width="22" height="22" loading="lazy">
+        </div>
+        <p class="lab-founder-note">
+          Основатель сообщества. Microsoft MVP в категории Developer Technologies (.NET) –
+          за двадцать лет с платформой и за то, что делится найденным в её тёмных углах.
+        </p>
+        <a class="lab-founder-link" href="/articles/andrii-kurdiumov-mvp/">Читать: как kant2002 получил MVP</a>
+      </div>
+    </div>
     <p class="lab-p">
       Прокрутите страницу: терминал остаётся на месте. Его можно закрыть крестиком –
       тогда контент займёт всю ширину, а вернуть терминал можно кнопкой внизу справа.

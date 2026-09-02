@@ -855,6 +855,40 @@ img {
     gap: var(--space-xl);
 }
 
+/* founder card inside the classic about section */
+.about-founder {
+    display: flex;
+    gap: var(--space-lg);
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: var(--space-2xl);
+    padding: var(--space-xl) var(--space-2xl);
+    background: var(--gray-50);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius-xl);
+}
+.about-founder-photo {
+    flex: 0 0 auto;
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-full);
+    border: 2px solid var(--primary-light);
+    object-fit: cover;
+}
+.about-founder-body { min-width: 240px; }
+.about-founder-name {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--gray-900);
+}
+.about-founder-mvp { width: 24px; height: 24px; border-radius: 4px; }
+.about-founder-note { margin: 6px 0; color: var(--gray-600); line-height: 1.6; }
+.about-founder-link { font-weight: 600; color: var(--primary-dark); }
+.about-founder-link:hover { text-decoration: underline; }
+
 .feature-card {
     padding: var(--space-xl);
     background: var(--gray-50);
