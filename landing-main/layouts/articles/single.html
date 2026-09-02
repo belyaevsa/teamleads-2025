@@ -96,10 +96,19 @@
     "image": "{{ (partial "og-image.html" .).Permalink }}",
     "datePublished": "{{ .Date.Format "2006-01-02" }}",
     "dateModified": "{{ .Lastmod.Format "2006-01-02" }}",
+    {{- $authorName := .Params.author | default "Тимлид не кодит" -}}
+    {{- if findRE "\\(" $authorName 1 }}{{ $authorName = trim (index (split $authorName "(") 0) " " }}{{ end -}}
+    {{- $isOrg := findRE "(Сообщество|сообщество)" $authorName 1 -}}
     "author": {
+        {{- if $isOrg }}
         "@type": "Organization",
-        "name": "Тимлид не кодит",
+        "name": "{{ $authorName }}",
         "url": "{{ .Site.BaseURL }}"
+        {{- else }}
+        "@type": "Person",
+        "name": "{{ $authorName }}"{{ with .Params.authorSameAs }},
+        "sameAs": {{ . | jsonify | safeJS }}{{ end }}
+        {{- end }}
     },
     "publisher": {
         "@type": "Organization",

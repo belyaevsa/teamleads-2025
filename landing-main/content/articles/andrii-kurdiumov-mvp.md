@@ -4,6 +4,9 @@ description: "Андрей Курдюмов (kant2002), основатель «�
 date: 2026-09-02
 tags: ["MVP", ".NET", "сообщество", "карьера", "Казахстан"]
 author: "Андрей Курдюмов (kant2002)"
+authorSameAs:
+  - "https://mvp.microsoft.com/en-US/MVP/profile/07d19b07-9e4c-47db-b8f3-c926fcb61c5f"
+  - "https://github.com/kant2002"
 readingTime: 6
 cardTitle: "kant2002 – теперь Microsoft MVP"
 cardDesc: "20 лет с .NET, 8 000 сообщений в чате и статус MVP. Как сообщество аукнулось"
