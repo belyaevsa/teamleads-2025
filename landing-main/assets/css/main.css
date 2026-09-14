@@ -2744,6 +2744,36 @@ a.pagination-link:hover {
     border-bottom-color: var(--primary);
 }
 
+/* Сквозные темы дайджестов (threads) */
+.topic-threads {
+    margin: var(--space-sm) 0 0;
+    font-size: 0.8125rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    align-items: center;
+}
+
+.topic-thread-chip {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+}
+
+.topic-thread-first {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+}
+
+.topic-related-period {
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+}
+
 .github-pr-card {
     display: flex;
     align-items: center;

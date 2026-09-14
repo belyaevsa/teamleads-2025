@@ -39,6 +39,9 @@
 
             <div class="report-container">
 
+                {{ $cur := . }}
+                {{ $threadLabels := site.Data.insight_threads.threads }}
+                {{ $allInsights := (where site.RegularPages "Section" "insights").ByDate.Reverse }}
                 {{ with .Params.topics }}
                 <div class="report-topics">
                     <h2>Ключевые темы</h2>
@@ -99,6 +102,67 @@
                             </ul>
                         </div>
                         {{ end }}
+                        {{ end }}
+                        {{/* Сквозные темы: threads из data/insight_threads.yaml. Ищем те же slug в других дайджестах. */}}
+                        {{ with $topic.threads }}
+                        {{/* Первый slug – главная тема: совпадения по ней идут раньше остальных */}}
+                        {{ $primary := index $topic.threads 0 }}
+                        {{ $olderP := slice }}{{ $olderS := slice }}
+                        {{ $newerP := slice }}{{ $newerS := slice }}
+                        {{ range $allInsights }}
+                            {{ $pg := . }}
+                            {{ if ne $pg.RelPermalink $cur.RelPermalink }}
+                            {{ range $j, $t := $pg.Params.topics }}
+                                {{ if and $t.threads (intersect $t.threads $topic.threads) }}
+                                    {{ $item := dict "url" (printf "%s#topic-%d" $pg.RelPermalink (add $j 1)) "period" $pg.Params.period "title" $t.title }}
+                                    {{ $isP := in $t.threads $primary }}
+                                    {{ if $pg.Date.Before $cur.Date }}
+                                        {{ if $isP }}{{ $olderP = $olderP | append $item }}{{ else }}{{ $olderS = $olderS | append $item }}{{ end }}
+                                    {{ else }}
+                                        {{ if $isP }}{{ $newerP = $newerP | append $item }}{{ else }}{{ $newerS = $newerS | append $item }}{{ end }}
+                                    {{ end }}
+                                {{ end }}
+                            {{ end }}
+                            {{ end }}
+                        {{ end }}
+                        {{ $older := $olderP | append $olderS }}
+                        {{ $newer := ($newerP | collections.Reverse) | append ($newerS | collections.Reverse) }}
+                        <div class="topic-threads">
+                            <span class="topic-links-label">Сквозные темы:</span>
+                            {{ range . }}<span class="topic-thread-chip">{{ index $threadLabels . | default . }}</span>{{ end }}
+                            {{ if not $older }}<span class="topic-thread-first">впервые в чате</span>{{ end }}
+                        </div>
+                        {{ if $older }}
+                        <div class="topic-links topic-related">
+                            <span class="topic-links-label">Раньше в чате:</span>
+                            <ul>
+                            {{ range first 6 $older }}
+                                <li><a href="{{ .url }}">{{ .title }}</a> <span class="topic-related-period">({{ .period }})</span></li>
+                            {{ end }}
+                            </ul>
+                        </div>
+                        {{ end }}
+                        {{ if $newer }}
+                        <div class="topic-links topic-related">
+                            <span class="topic-links-label">Продолжение темы:</span>
+                            <ul>
+                            {{ range first 6 $newer }}
+                                <li><a href="{{ .url }}">{{ .title }}</a> <span class="topic-related-period">({{ .period }})</span></li>
+                            {{ end }}
+                            </ul>
+                        </div>
+                        {{ end }}
+                        {{ end }}
+                        {{/* Ручные ссылки на прошлые обсуждения – когда slug не передает связь (например, противоположный вывод) */}}
+                        {{ with $topic.related }}
+                        <div class="topic-links topic-related">
+                            <span class="topic-links-label">См. также:</span>
+                            <ul>
+                            {{ range . }}
+                                <li><a href="{{ .url | relURL }}">{{ .title }}</a></li>
+                            {{ end }}
+                            </ul>
+                        </div>
                         {{ end }}
                         <a href="{{ $.Site.Params.telegram }}/{{ with $topic.messageId }}{{ . }}{{ end }}" class="msg-link" target="_blank" rel="noopener">Читать в чате →</a>
                     </div>
