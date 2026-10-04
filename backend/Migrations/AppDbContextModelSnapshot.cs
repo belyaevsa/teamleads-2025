@@ -124,6 +124,9 @@ namespace TeamleadsBackend.Migrations
                     b.Property<DateTimeOffset>("PostedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Tally")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PostedAt");
@@ -317,6 +320,41 @@ namespace TeamleadsBackend.Migrations
                     b.HasKey("Key");
 
                     b.ToTable("Settings");
+                });
+
+            modelBuilder.Entity("TeamleadsBackend.Data.SimAnswer", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ClientHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OptionIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("OptionsKey")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("ScenarioId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScenarioId", "ClientHash");
+
+                    b.ToTable("SimAnswers");
                 });
 
             modelBuilder.Entity("TeamleadsBackend.Data.Submission", b =>

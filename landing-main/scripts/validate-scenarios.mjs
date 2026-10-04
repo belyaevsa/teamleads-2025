@@ -8,9 +8,10 @@
  *
  *     hugo --quiet && node scripts/validate-scenarios.mjs
  *
- * Checks, per scenario: unique id · 3–4 options · exactly one good · votes are
- * integers summing to 90–110 · prompt/lesson present · link resolves to a real
- * page that the shell can actually `cat`. Exits non-zero on any failure.
+ * Checks, per scenario: unique id · 3–4 options · exactly one good · no `votes`
+ * (answer counts are real and come from the backend, never from the deck) ·
+ * prompt/lesson present · link resolves to a real page that the shell can
+ * actually `cat`. Exits non-zero on any failure.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -57,17 +58,15 @@ scenarios.forEach((s, i) => {
   if (opts.length < 2 || opts.length > 4) errs.push(tag + ': needs 2–4 options, has ' + opts.length);
   const good = opts.filter(o => o && o.good === true).length;
   if (good !== 1) errs.push(tag + ': must have exactly one good option, has ' + good);
-  let sum = 0;
   opts.forEach((o, j) => {
     if (!o || !o.label) errs.push(tag + ' opt[' + j + ']: missing label');
     if (!o || !o.outcome) errs.push(tag + ' opt[' + j + ']: missing outcome');
-    if (o && typeof o.votes === 'number') sum += o.votes; else errs.push(tag + ' opt[' + j + ']: votes must be a number');
+    if (o && 'votes' in o) errs.push(tag + ' opt[' + j + ']: remove `votes` – answer counts come from real answers (/api/sim/stats), not from the deck');
   });
-  if (opts.length && (sum < 90 || sum > 110)) errs.push(tag + ': votes sum to ' + sum + ' (want 90–110)');
   if (!s.link) errs.push(tag + ': missing link');
   else if (!pages.has(s.link)) errs.push(tag + ': link "' + s.link + '" does not resolve to a page');
   if (/—/.test(JSON.stringify(s))) errs.push(tag + ': contains an em-dash (—); use en-dash (–)');
 });
 
 if (errs.length) { console.error('✗ scenarios invalid:\n  - ' + errs.join('\n  - ')); process.exit(1); }
-console.log('✓ ' + scenarios.length + ' scenarios valid (ids unique, one good each, votes ~100%, links resolve)');
+console.log('✓ ' + scenarios.length + ' scenarios valid (ids unique, one good each, no invented votes, links resolve)');

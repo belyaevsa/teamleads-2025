@@ -69,6 +69,8 @@ public sealed class WebhookHost : IAsyncDisposable
         builder.Services.AddScoped<AnonService>();
         builder.Services.AddScoped<DilemmaService>();
         builder.Services.AddScoped<QuestionService>();
+        builder.Services.AddMemoryCache();
+        builder.Services.AddScoped<TeamleadsBackend.Sim.SimVotes>();
         builder.Services.AddSingleton(_ => TestHost.Archive("""{"scenarios":[],"quizzes":[],"questions":[]}"""));
 
         var app = builder.Build();

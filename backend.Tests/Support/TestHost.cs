@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -8,6 +9,7 @@ using TeamleadsBackend.BotData;
 using TeamleadsBackend.Data;
 using TeamleadsBackend.Search;
 using TeamleadsBackend.Settings;
+using TeamleadsBackend.Sim;
 using TeamleadsBackend.Telegram;
 
 namespace TeamleadsBackend.Tests.Support;
@@ -79,8 +81,14 @@ public sealed class TestHost : IDisposable
             NullLogger<AnonService>.Instance);
 
     public DilemmaService Dilemmas(string archiveJson) =>
-        new(Db, Archive(archiveJson), Chat, Settings, Options.Create(TgOptions),
+        new(Db, Archive(archiveJson), Chat, Settings, Votes(archiveJson), Options.Create(TgOptions),
             NullLogger<DilemmaService>.Instance);
+
+    // Real answer counts over the same store. A fresh cache per call: the one-minute stats
+    // cache is RecordAsync's to invalidate, and a test asserting a count should not
+    // depend on which instance happened to read first.
+    public SimVotes Votes(string archiveJson) =>
+        new(Db, Archive(archiveJson), new MemoryCache(new MemoryCacheOptions()));
 
     public QuestionService Questions(string archiveJson) =>
         new(Db, Archive(archiveJson), Chat, Settings, Options.Create(TgOptions),

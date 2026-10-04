@@ -19,4 +19,8 @@ public class BotPost
     public DateTimeOffset PostedAt { get; set; }
     public DateTimeOffset? FollowedUpAt { get; set; }   // null => follow-up still owed
     public string? Payload { get; set; }                // JSON snapshot of what was posted
+
+    // The poll's final count per option (JSON int[]), saved at the reveal. Before this the
+    // tally was printed once and dropped, so the site had nothing real to show.
+    public string? Tally { get; set; }
 }

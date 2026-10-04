@@ -26,8 +26,8 @@ public class DilemmaServiceTelegramTests
               "lesson": "Передача – это процесс, а не встреча.",
               "link": { "title": "Разбор на митапе", "url": "https://teamleads.kz/events/handover/" },
               "options": [
-                { "label": "Посадить рядом джуна", "good": true, "votes": 61, "outcome": "Дорого, но знание остается." },
-                { "label": "Попросить написать доку", "good": false, "votes": 39, "outcome": "Док никто не прочитает." }
+                { "label": "Посадить рядом джуна", "good": true, "outcome": "Дорого, но знание остается." },
+                { "label": "Попросить написать доку", "good": false, "outcome": "Док никто не прочитает." }
               ]
             }
           ]
@@ -145,7 +145,7 @@ public class DilemmaServiceTelegramTests
               "scenarios": [{
                 "id": "handover",
                 "prompt": "Разработчик уходит через две недели.",
-                "options": [{ "label": "Посадить рядом джуна", "good": true, "votes": 61, "outcome": "" }]
+                "options": [{ "label": "Посадить рядом джуна", "good": true, "outcome": "" }]
               }]
             }
             """;
@@ -196,8 +196,9 @@ public class DilemmaServiceTelegramTests
         Assert.Equal(Community, reveal.ChatId);
         // 3 of 4 votes and 1 of 4. The percentages are the whole reason stopPoll is called;
         // a client that loses the counts turns the reveal into a text the chat has read.
-        Assert.Contains("чат: 75%", reveal.Text);
-        Assert.Contains("чат: 25%", reveal.Text);
+        // Four votes is below the percentage threshold, so the counts are given as counts.
+        Assert.Contains("чат: 3 из 4", reveal.Text);
+        Assert.Contains("чат: 1 из 4", reveal.Text);
         Assert.Contains("Дорого, но знание остается.", reveal.Text);
         Assert.Contains("💡 Передача – это процесс", reveal.Text);
         Assert.Contains("https://teamleads.kz/events/handover/", reveal.Text);
@@ -218,9 +219,57 @@ public class DilemmaServiceTelegramTests
         Assert.Equal("Раскрыта дилемма handover.", answer);
         var reveal = Assert.Single(host.Chat.Calls, c => c.Method == "sendMessage");
         Assert.DoesNotContain("чат:", reveal.Text);
-        // The site's own votes are a separate source and survive a lost tally.
-        Assert.Contains("сайт: 61%", reveal.Text);
-        Assert.NotNull(host.NewDbContext().BotPosts.Single().FollowedUpAt);
+        var post = host.NewDbContext().BotPosts.Single();
+        Assert.NotNull(post.FollowedUpAt);
+        Assert.Null(post.Tally);
+    }
+
+    // The tally used to be printed once and dropped. It is what the site shows as the
+    // chat's answer, so it has to outlive the message.
+    [Fact]
+    public async Task The_reveal_keeps_the_tally_it_printed()
+    {
+        using var host = await HostAsync();
+        await PostedYesterdayAsync(host);
+        host.Chat.StopsPoll(3, 1);
+        host.Chat.Delivers(556);
+
+        await host.Dilemmas(Archive).FollowUpAsync(TimeSpan.FromHours(20), default);
+
+        Assert.Equal("[3,1]", host.NewDbContext().BotPosts.Single().Tally);
+    }
+
+    // No site answers, no site column – the reveal must never print a number nobody gave.
+    [Fact]
+    public async Task The_reveal_shows_site_answers_only_when_there_are_some()
+    {
+        using var host = await HostAsync();
+        await PostedYesterdayAsync(host);
+        host.Chat.StopsPoll(3, 1);
+        host.Chat.Delivers(556);
+
+        await host.Dilemmas(Archive).FollowUpAsync(TimeSpan.FromHours(20), default);
+
+        Assert.DoesNotContain("сайт:", host.Chat.Calls.Single(c => c.Method == "sendMessage").Text);
+    }
+
+    [Fact]
+    public async Task The_reveal_shows_real_site_answers_next_to_the_chat()
+    {
+        using var host = await HostAsync();
+        await PostedYesterdayAsync(host);
+        var votes = host.Votes(Archive);
+        await votes.RecordAsync("handover", 1, "a", default);
+        await votes.RecordAsync("handover", 1, "b", default);
+        await votes.RecordAsync("handover", 0, "c", default);
+        host.Chat.StopsPoll(3, 1);
+        host.Chat.Delivers(556);
+
+        await host.Dilemmas(Archive).FollowUpAsync(TimeSpan.FromHours(20), default);
+
+        var text = host.Chat.Calls.Single(c => c.Method == "sendMessage").Text;
+        Assert.Contains("Посадить рядом джуна · чат: 3 из 4 · сайт: 1 из 3", text);
+        Assert.Contains("Попросить написать доку · чат: 1 из 4 · сайт: 2 из 3", text);
     }
 
     // Settling on a failed send would leave the chat with a closed poll and no

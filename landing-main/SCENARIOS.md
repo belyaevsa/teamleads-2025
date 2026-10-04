@@ -40,15 +40,12 @@ say so in the summary.
     options:                              # 3 (occasionally 4); exactly ONE good: true
       - label: "The action a lead might take"
         good: true                        # the defensible best answer
-        votes: 55                         # integers; the three sum to ~100…
         outcome: "The consequence — constructive even when wrong."
       - label: "Tempting but worse"
         good: false
-        votes: 30                         # …and the good one is NOT always the highest
         outcome: "Why it backfires."
       - label: "Third path"
         good: false
-        votes: 15
         outcome: "..."
     lesson: "One line — the principle behind the best answer."
     link: "events/meetup-2026-06-24"      # the page THIS run just created
@@ -57,8 +54,12 @@ say so in the summary.
 ### Field rules
 - **`id`** — unique across the whole file. Convention: the content slug + a short theme.
 - **`prompt`** — 2 lines, concrete, second person, anonymized. Block scalar `|-`.
-- **`options`** — 3 (max 4). Exactly one `good: true`. `votes` are integers summing to
-  90–110; deliberately make the good answer *not* always the most-voted (realism).
+- **`options`** — 3 (max 4). Exactly one `good: true`. **No `votes`.** How people
+  answered is measured, not written: the backend counts first picks in the shell sim
+  (`POST /api/sim/answer`) and keeps the final tally of each weekly chat poll, and the sim
+  and the bot's reveal show those (`GET /api/sim/stats`). Counts are stored by option
+  position plus a hash of the labels, so **rewording or reordering a published scenario's
+  options resets its count** – fix typos sparingly.
 - **`outcome`** — the result of that choice; keep wrong answers instructive, not punishing.
 - **`lesson`** — the takeaway in one sentence.
 - **`link`** — `events/<slug>` or `insights/<slug>` for the page produced this run, so the
@@ -75,6 +76,6 @@ Append new items to the **end** of `scenarios:` (don't reorder existing). Then, 
 hugo --quiet && node scripts/validate-scenarios.mjs
 ```
 
-The validator checks unique ids, one good option each, votes ~100%, en-dashes, and that every
+The validator checks unique ids, one good option each, no `votes` field, en-dashes, and that every
 `link` resolves to a real page. Fix anything it flags before finishing, and list the added
 scenarios (or "none — no genuine dilemma this run") in the run summary.

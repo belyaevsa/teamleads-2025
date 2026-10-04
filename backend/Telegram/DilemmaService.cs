@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using TeamleadsBackend.BotData;
 using TeamleadsBackend.Data;
 using TeamleadsBackend.Settings;
+using TeamleadsBackend.Sim;
 
 namespace TeamleadsBackend.Telegram;
 
@@ -21,6 +22,7 @@ public sealed class DilemmaService(
     BotDataClient archive,
     IChatSender chat,
     SettingsService settings,
+    SimVotes votes,
     IOptions<TelegramOptions> options,
     ILogger<DilemmaService> log)
 {
@@ -106,13 +108,16 @@ public sealed class DilemmaService(
         if (!stopped.Ok)
             log.LogWarning("stopPoll on message {MessageId} in {ChatId} failed: {Error}",
                 post.MessageId, post.ChatId, stopped.Error);
-        var votes = stopped.Ok ? stopped.Votes : null;
-        var sent = await chat.SendMessageAsync(new ChatMessage(post.ChatId, Reveal(scenario, votes)), ct);
+        var tally = stopped.Ok ? stopped.Votes : null;
+        var site = await votes.SiteCountsAsync(scenario, ct);
+        var sent = await chat.SendMessageAsync(new ChatMessage(post.ChatId, Reveal(scenario, tally, site)), ct);
 
         // Only settle it when the reveal actually landed. Marking it done on failure
         // would leave the chat with a closed poll and no consequences, permanently.
         if (!sent.Ok) return $"Не отправилось, попробуем на следующем тике: {sent.Error}";
 
+        // Kept, not just printed: the site shows the chat's answers next to its own.
+        if (tally is not null) post.Tally = JsonSerializer.Serialize(tally);
         post.FollowedUpAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
         return $"Раскрыта дилемма {post.Key}.";
@@ -128,21 +133,23 @@ public sealed class DilemmaService(
 
     private static string Question(BotDataClient.Scenario s) => $"🎯 Дилемма недели\n\n{s.Prompt}\n\nВаши действия?";
 
-    private static string Reveal(BotDataClient.Scenario s, int[]? votes)
+    private static string Reveal(BotDataClient.Scenario s, int[]? tally, SimVotes.OptionCounts? site)
     {
-        var total = votes?.Sum() ?? 0;
+        var chatTotal = tally?.Sum() ?? 0;
         var lines = new List<string> { "🎯 Дилемма недели – последствия", "", s.Prompt, "" };
 
         for (var i = 0; i < s.Options.Count; i++)
         {
             var o = s.Options[i];
-            var chat = votes is not null && i < votes.Length && total > 0
-                ? $" · чат: {100 * votes[i] / total}%"
+            var inChat = tally is not null && i < tally.Length && chatTotal > 0
+                ? $" · чат: {SimVotes.Share(tally[i], chatTotal)}"
                 : "";
-            // `Votes` is how the site's own visitors answered – a second opinion to
-            // argue with, which is usually more interesting than the "right" answer.
-            var site = o.Votes > 0 ? $" · сайт: {o.Votes}%" : "";
-            lines.Add($"{(o.Good ? "✅" : "▫️")} {o.Label}{chat}{site}");
+            // Real first picks from the site's simulator – a second audience to argue with.
+            // Absent until someone has actually answered there.
+            var onSite = site is not null && i < site.Counts.Length
+                ? $" · сайт: {SimVotes.Share(site.Counts[i], site.Total)}"
+                : "";
+            lines.Add($"{(o.Good ? "✅" : "▫️")} {o.Label}{inChat}{onSite}");
             if (!string.IsNullOrWhiteSpace(o.Outcome)) lines.Add($"    {o.Outcome}");
         }
 

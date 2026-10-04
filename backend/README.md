@@ -211,6 +211,8 @@ break that only appears in a real build – minification is its own rendering pa
 | POST   | `/api/anon`          | public²     | `{ text, source? }` → 201 `{ publicId }` – anonymous question |
 | GET    | `/api/anon`          | `X-Api-Key` | audit list (`?status=&take=`); never returns author data |
 | POST   | `/api/tg/webhook/{secret}` | secret³ | Telegram updates: DM submissions + admin moderation buttons |
+| POST   | `/api/sim/answer`    | public⁴     | `{ scenarioId, option, client? }` → 204 – first pick in the shell simulator |
+| GET    | `/api/sim/stats`     | public      | real answer counts per scenario: `site` (sim picks) and `chat` (last poll tally) |
 | GET    | `/api/settings`      | `X-Api-Key` | runtime tunables with their effective value and source |
 | PUT    | `/api/settings/{key}`| `X-Api-Key` | change one (validated against the catalog) |
 
@@ -225,6 +227,12 @@ moderation decision.
 back off. It is gated by the unguessable path segment **and** the
 `X-Telegram-Bot-Api-Secret-Token` header, both constant-time compared, both equal to
 `TG_WEBHOOK_SECRET`.
+
+⁴ `/api/sim/answer` is limited to 20/min/IP (a sim run is six picks in a minute or two).
+It accepts only scenario ids and option positions that exist in the live feed, and counts a
+browser once per scenario: `client` is a random id the shell keeps in localStorage, stored
+salted and hashed. Counts are tied to a hash of the option labels, so rewording a
+scenario's options starts its count over. See `Sim/SimVotes.cs`.
 
 ## Anonymous requests
 

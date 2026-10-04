@@ -11,9 +11,71 @@ export function makeSim(S) {
       sections = S.sections, pool = S.pool, SCEN = S.SCEN, QUIZZES = S.QUIZZES, TG = S.TG, copyText = S.copyText, run = S.run;
   var keysBar = S.root.querySelector('[data-term-keys]');
 
-  var simSt = null;   // { list, idx, score, phase: 'choice'|'outcome'|'done', chosen }
+  var simSt = null;   // { list, idx, score, phase: 'choice'|'outcome'|'done', chosen, votes }
   var SIM = null;     // active dataset (SCEN for sim, a quiz for `quiz`); set in simStart
   var simToastT = null;
+
+  // ── real answers ──
+  // How visitors and the chat actually answered (backend/Sim/SimVotes.cs). The deck used
+  // to carry hand-written percentages; now nothing is shown that nobody gave. Only the
+  // first pick per scenario per browser is sent, before the outcome is on screen.
+  var SIM_API = w.TEAMLEADS_SIM_API || '/api/sim';
+  var simStatsP = null;
+  function simStore(fn) { try { return fn(w.localStorage); } catch (e) { return null; } }
+  function simCid() {
+    return simStore(function (ls) {
+      var v = ls.getItem('tnk_sim_cid');
+      if (!v) { v = (w.crypto && w.crypto.randomUUID) ? w.crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2)); ls.setItem('tnk_sim_cid', v); }
+      return v;
+    });
+  }
+  function simAnswered(id, mark) {
+    return simStore(function (ls) {
+      var list = JSON.parse(ls.getItem('tnk_sim_answered') || '[]');
+      if (!mark) return list.indexOf(id) >= 0;
+      if (list.indexOf(id) < 0) { list.push(id); ls.setItem('tnk_sim_answered', JSON.stringify(list.slice(-500))); }
+      return true;
+    });
+  }
+  function simStats(fresh) {
+    if (!simStatsP || fresh) {
+      simStatsP = w.fetch(SIM_API + '/stats').then(function (r) { return r.ok ? r.json() : null; })['catch'](function () { return null; });
+    }
+    return simStatsP;
+  }
+  // Sends the pick (once per scenario) and resolves with fresh stats that include it.
+  function simVote(s, i) {
+    if (SIM !== SCEN || !s.id || !w.fetch) return Promise.resolve(null);
+    if (simAnswered(s.id)) return simStats(false);
+    return w.fetch(SIM_API + '/answer', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scenarioId: s.id, option: i, client: simCid() })
+    }).then(function (r) { if (r.ok) simAnswered(s.id, true); return simStats(true); },
+            function () { return simStats(false); });
+  }
+  function simShare(n, total, from) { return total >= from ? Math.round(100 * n / total) + '%' : n + ' из ' + total; }
+  function simVotesFill(box, s, chosen, p) {
+    p.then(function (st) {
+      var v = st && st.scenarios && st.scenarios[s.id];
+      if (!v || !box.isConnected) return;
+      var from = st.percentFrom || 15;
+      [['site', 'на сайте'], ['chat', 'в чате, опрос']].forEach(function (src) {
+        var c = v[src[0]]; if (!c || !c.total) return;
+        var grp = el('div', 'sim-votes');
+        grp.appendChild(el('p', 'sim-votehead', 'Как ответили ' + src[1] + ' · ' + c.total));
+        s.options.forEach(function (o, i) {
+          var n = c.counts[i] || 0;
+          var row = el('div', 'sim-voterow' + (i === chosen ? ' is-mine' : ''));
+          row.appendChild(el('span', 'sim-opt-key', String.fromCharCode(97 + i)));
+          var bar = el('span', 'sim-votebar'), f = el('span'); f.style.width = Math.round(100 * n / c.total) + '%'; bar.appendChild(f);
+          row.appendChild(bar);
+          row.appendChild(el('span', 'sim-votenum', simShare(n, c.total, from)));
+          grp.appendChild(row);
+        });
+        box.appendChild(grp);
+      });
+    });
+  }
 
   function simLink(ref) {
     if (!ref) return null;
@@ -56,6 +118,7 @@ export function makeSim(S) {
     if (!simSt || simSt.phase !== 'choice') return;
     var o = simSt.list[simSt.idx].options[i]; if (!o) return;
     simSt.chosen = i; if (o.good) simSt.score++;
+    simSt.votes = simVote(simSt.list[simSt.idx], i);
     simSt.phase = 'outcome'; simRender();
   }
   function simAdvance() {
@@ -63,7 +126,7 @@ export function makeSim(S) {
     if (simSt.phase === 'outcome') {
       simSt.idx++;
       if (simSt.idx >= simSt.list.length) simSt.phase = 'done';
-      else { simSt.phase = 'choice'; simSt.chosen = null; }
+      else { simSt.phase = 'choice'; simSt.chosen = null; simSt.votes = null; }
       simRender();
     } else if (simSt.phase === 'done') simStart(SIM);
   }
@@ -122,12 +185,7 @@ export function makeSim(S) {
     verdict.appendChild(d.createTextNode(' ' + o.outcome));
     res.appendChild(verdict);
     if (s.lesson) { var ls = el('p', 'sim-lesson'); ls.appendChild(d.createTextNode('💡 ' + s.lesson)); res.appendChild(ls); }
-    if (o.votes != null) {
-      var vr = el('div', 'sim-votes');
-      var vbar = el('span', 'sim-votebar'), vf = el('span'); vf.style.width = o.votes + '%'; vbar.appendChild(vf);
-      vr.appendChild(vbar); vr.appendChild(el('span', 'sim-votenum', 'так выбрали ' + o.votes + '%'));
-      res.appendChild(vr);
-    }
+    if (simSt.votes) { var vb = el('div', 'sim-votebox'); res.appendChild(vb); simVotesFill(vb, s, simSt.chosen, simSt.votes); }
     var hit = simLink(s.link);
     if (hit) { var rm = el('div', 'sim-readmore'); rm.appendChild(el('span', 'dim', 'разбор → ')); rm.appendChild(link(hit.u, hit.t)); res.appendChild(rm); }
     simPanel.appendChild(res);

@@ -98,7 +98,7 @@ public sealed class BotDataClient(HttpClient http, IConfiguration cfg, ILogger<B
         string? Lesson,
         ArchiveLink? Link);
 
-    public sealed record ScenarioOption(string Label, bool Good, int Votes, string? Outcome);
+    public sealed record ScenarioOption(string Label, bool Good, string? Outcome);
 
     public sealed record ArchiveLink(string? Title, string? Url);
 

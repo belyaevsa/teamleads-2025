@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Paste> Pastes => Set<Paste>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
+    public DbSet<SimAnswer> SimAnswers => Set<SimAnswer>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -59,6 +60,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Key).HasMaxLength(128).IsRequired();
             e.HasIndex(x => new { x.Kind, x.Key });
             e.HasIndex(x => x.PostedAt);
+        });
+
+        b.Entity<SimAnswer>(e =>
+        {
+            e.Property(x => x.ScenarioId).HasMaxLength(128).IsRequired();
+            e.Property(x => x.OptionsKey).HasMaxLength(16).IsRequired();
+            e.Property(x => x.ClientHash).HasMaxLength(64);
+            // Stats group by scenario; the duplicate check looks up (scenario, client).
+            e.HasIndex(x => new { x.ScenarioId, x.ClientHash });
         });
 
         b.Entity<OutboxMessage>(e =>

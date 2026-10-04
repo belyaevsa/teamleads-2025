@@ -3610,10 +3610,15 @@ button.term-dot:focus-visible{outline:2px solid #39c5cf;outline-offset:2px}
 .sim-outcome.is-good{color:#3fb950}.sim-outcome.is-bad{color:#f85149}
 .sim-mark{font-weight:700;margin-right:4px}
 .sim-lesson{margin:0 0 10px;color:#c9d1d9}
-.sim-votes{display:flex;align-items:center;gap:10px;margin:0 0 10px}
-.sim-votebar{flex:0 0 130px;height:8px;background:#21262d;border-radius:4px;overflow:hidden}
-.sim-votebar>span{display:block;height:100%;background:#FEC50C;border-radius:4px}
-.sim-votenum{color:#8b949e;font-size:13px}
+.sim-votes{margin:0 0 12px}
+.sim-votehead{margin:0 0 6px;color:#8b949e;font-size:13px}
+.sim-voterow{display:flex;align-items:center;gap:10px;margin:0 0 4px;opacity:.75}
+.sim-voterow.is-mine{opacity:1}
+.sim-voterow .sim-opt-key{flex:0 0 auto}
+.sim-votebar{flex:0 1 130px;min-width:60px;height:8px;background:#21262d;border-radius:4px;overflow:hidden}
+.sim-votebar>span{display:block;height:100%;background:#8b949e;border-radius:4px}
+.sim-voterow.is-mine .sim-votebar>span{background:#FEC50C}
+.sim-votenum{color:#8b949e;font-size:13px;white-space:nowrap}
 .sim-readmore a{color:#39c5cf;text-decoration:none;border-bottom:1px dotted #39c5cf}
 .sim-readmore a:hover{color:#FEC50C;border-bottom-color:#FEC50C}
 .sim-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}

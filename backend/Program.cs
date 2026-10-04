@@ -7,6 +7,7 @@ using TeamleadsBackend.Endpoints;
 using TeamleadsBackend.Search;
 using TeamleadsBackend.Security;
 using TeamleadsBackend.Settings;
+using TeamleadsBackend.Sim;
 using TeamleadsBackend.Telegram;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -76,6 +77,11 @@ builder.Services.AddRateLimiter(o =>
             partitionKey: ClientFingerprint.ClientIp(http),
             _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
 
+    o.AddPolicy(Policies.SimPost, http =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ClientFingerprint.ClientIp(http),
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
     o.AddPolicy("paste_post", http =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: ClientFingerprint.ClientIp(http),
@@ -123,6 +129,8 @@ builder.Services.AddScoped<Outbox>();
 builder.Services.AddScoped<AnonService>();
 builder.Services.AddScoped<DilemmaService>();
 builder.Services.AddScoped<QuestionService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<SimVotes>();
 
 // Archive feed (/bot-data.json) & search index (/shell-index.json): the bot reads content
 // from the site rather than keeping its own copy. See BotData/BotDataClient.cs and Search/ShellIndexClient.cs.
@@ -160,6 +168,7 @@ api.MapAnon();
 api.MapSettings();
 api.MapTelegramWebhook();
 api.MapPastes();
+api.MapSim();
 
 // Paste viewing pages at clean /p/{id} URLs.
 PasteEndpoints.MapPastePage(app);

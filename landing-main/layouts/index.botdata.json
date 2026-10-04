@@ -22,7 +22,6 @@
     {{- $options = $options | append (dict
         "label" .label
         "good" (.good | default false)
-        "votes" (.votes | default 0)
         "outcome" (.outcome | default "")) -}}
   {{- end -}}
   {{- $scenarios = $scenarios | append (dict

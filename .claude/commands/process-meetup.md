@@ -146,7 +146,7 @@ Follow the schema and quality gate in `landing-main/data/SCENARIOS.md`. In short
 - **Best material:** the `opinions` rows (each explicit disagreement is a ready-made fork) and `takeaways` (reverse-engineer the dilemma a takeaway resolves). `nextQuestions` are usually too open-ended.
 - **Only add a scenario when there's a real choice** with a defensible best answer and *tempting* wrong options. A meeting with no genuine dilemma adds nothing – that's a valid outcome.
 - **Read the existing `scenarios.yaml` first** and skip themes already covered (bus-factor, навязанные решения, метрики, «наслабо», ответственность джуна, …) unless the angle is genuinely new.
-- Each scenario: unique `id` (`meetup-YYYY-MM-DD-<theme>`), 2-line anonymized `prompt` (second person, «вы»), 3 `options` – exactly one `good: true`, integer `votes` summing to ~100 with the good one **not** always highest, an `outcome` per option – a one-line `lesson`, and `link: "events/meetup-YYYY-MM-DD"` (the page you just created).
+- Each scenario: unique `id` (`meetup-YYYY-MM-DD-<theme>`), 2-line anonymized `prompt` (second person, «вы»), 3 `options` – exactly one `good: true` and an `outcome` per option (**no `votes`** – answer counts are real and come from the backend; the validator rejects the field) – a one-line `lesson`, and `link: "events/meetup-YYYY-MM-DD"` (the page you just created).
 - En-dashes (–), guillemets « », no real names.
 
 Append to the **end** of `scenarios:` (don't reorder existing), then validate from `landing-main/`:
@@ -155,7 +155,7 @@ Append to the **end** of `scenarios:` (don't reorder existing), then validate fr
 hugo --quiet && node scripts/validate-scenarios.mjs
 ```
 
-Fix anything the validator flags (votes sum, missing/extra good option, unresolved link, duplicate id, em-dashes). Report which scenarios you added – or that none fit – in the final summary.
+Fix anything the validator flags (an invented `votes` field, missing/extra good option, unresolved link, duplicate id, em-dashes). Report which scenarios you added – or that none fit – in the final summary.
 
 ## Step 7: Review and update the questions backlog
 
