@@ -107,6 +107,9 @@ public static partial class LanguageDetector
         if (Regex.IsMatch(sample, @"^\|.*\|\s*$", RegexOptions.Multiline)
             && Regex.IsMatch(sample, @"^\|?[\s:|-]*-{3,}[\s:|-]*$", RegexOptions.Multiline))
             return true;
+        // Two or more headings set off by blank lines: a document split into sections.
+        // A "# comment" sits right on top of the code it describes, so it does not count.
+        if (CountMatches(sample, @"(?:\A|\n[ \t]*\n)#{1,6} \S[^\n]*\n[ \t]*\n") >= 2) return true;
 
         var signals = 0;
         // "# Заголовок", not a bare "#" and not a "#!" shebang or a "#tag".
@@ -114,7 +117,12 @@ public static partial class LanguageDetector
         if (Regex.IsMatch(sample, @"^\s*([-*+]|\d+\.) \S", RegexOptions.Multiline)) signals++;
         if (Regex.IsMatch(sample, @"!?\[[^\]\n]+\]\([^)\n]+\)")) signals++;
         if (Regex.IsMatch(sample, @"\*\*\S[^*\n]*\S\*\*|__\S[^_\n]*\S__")) signals++;
+        // "*Курсивная фраза.*" – a phrase of words, so a "*tmp*" glob does not count.
+        if (Regex.IsMatch(sample, @"(?<![*\w])[*_]\p{L}[^*_\n]* [^*_\n]*[^\s*_][*_](?![*\w])")) signals++;
         if (Regex.IsMatch(sample, @"^> \S", RegexOptions.Multiline)) signals++;
+        // A "---" rule between blank lines. A YAML document separator sits right on
+        // top of its keys, so it does not count.
+        if (Regex.IsMatch(sample, @"\n\s*\n(---|\*\*\*|___)\s*\n\s*\n")) signals++;
 
         return signals >= 2;
     }

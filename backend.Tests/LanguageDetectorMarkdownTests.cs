@@ -15,6 +15,10 @@ public class LanguageDetectorMarkdownTests
     [InlineData("Заметка\n\n```bash\ndocker ps\n```\n")]
     [InlineData("| ключ | значение |\n|------|----------|\n| a    | 1        |\n")]
     [InlineData("> Цитата из чата\n\n**Вывод:** так делать не надо\n")]
+    // A transcript: heading, italic subtitle, a rule, then long paragraphs of prose.
+    [InlineData("# Голосовое сообщение\n\n*Расшифровка, около 8 минут.*\n\n---\n\nНу, в общем, я периодически занимаюсь реверс-инжинирингом.\n")]
+    // Only section headings, the rest is plain paragraphs.
+    [InlineData("## Как проверяли подрядчика\n\nПроверку проводили несколько раз.\n\n## Что сделал хакер\n\nДали ему неделю.\n")]
     public void Documents_are_detected_as_markdown(string content)
         => Assert.Equal("markdown", LanguageDetector.Detect(content));
 
@@ -25,6 +29,9 @@ public class LanguageDetectorMarkdownTests
     [InlineData("{\n  \"name\": \"app\",\n  \"version\": \"1.0\"\n}\n")]
     [InlineData("SELECT id, name FROM users WHERE active = true;\n")]
     [InlineData("def main():\n    print(1)\n")]
+    [InlineData("# clean up\nrm -rf *tmp* build_dir_old\n")]
+    [InlineData("# app config\n---\nname: app\n")]
+    [InlineData("# build\ndocker build -t app .\n\n# push\ndocker push app\n")]
     public void Code_and_config_are_not_mistaken_for_markdown(string content)
         => Assert.NotEqual("markdown", LanguageDetector.Detect(content));
 
