@@ -11,9 +11,9 @@ namespace TeamleadsBackend.Tests.Support;
 // so the real client now builds the real request objects and this records them. The
 // difference is not cosmetic: request construction is exactly where an upgrade breaks.
 //
-// 0.0.75 added DownloadAsync to the same interface, for getFile's DownloadFileAsync. No
-// call in this app downloads files, so the stub answers it with the one thing a test can
-// do with an unimplemented path: fail loudly.
+// 0.0.75 added DownloadAsync to the same interface, for getFile's DownloadFileAsync. The
+// voice transcription downloads through it; `Downloads` scripts what the file server
+// returns, and without it the download fails loudly.
 public sealed class StubTelebotTransport : ITelegramTransport
 {
     private readonly Queue<Func<TelegramRequest, object>> _responses = new();
@@ -69,8 +69,24 @@ public sealed class StubTelebotTransport : ITelegramTransport
         return Task.FromResult((T)result);
     }
 
-    public Task<Stream> DownloadAsync(Telebot.Models.File file, string token, CancellationToken cancellationToken) =>
-        throw new NotSupportedException("No test downloads files.");
+    // What getFile answers: a File with a path on the file server.
+    public StubTelebotTransport ResolvesFile(string filePath)
+    {
+        _responses.Enqueue(r => new Telebot.Models.File(r.GetRequestFields().First(f => f.Name == "file_id").Value!, "uniq", null, filePath));
+        return this;
+    }
+
+    public byte[]? Downloads { get; set; }
+
+    public List<Telebot.Models.File> DownloadedFiles { get; } = [];
+
+    public Task<Stream> DownloadAsync(Telebot.Models.File file, string token, CancellationToken cancellationToken)
+    {
+        DownloadedFiles.Add(file);
+        return Downloads is { } bytes
+            ? Task.FromResult<Stream>(new MemoryStream(bytes))
+            : throw new NotSupportedException("No download scripted – set Downloads.");
+    }
 
     // Only MessageId and Text are ever read back; the rest of the 16 members exist because
     // the record demands them.

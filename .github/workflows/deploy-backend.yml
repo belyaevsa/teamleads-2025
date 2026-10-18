@@ -68,6 +68,7 @@ jobs:
           IP_SALT: ${{ secrets.BACKEND_IP_HASH_SALT }}
           TG_TOKEN: ${{ secrets.BACKEND_TG_BOT_TOKEN }}
           TG_SECRET: ${{ secrets.BACKEND_TG_WEBHOOK_SECRET }}
+          OPENROUTER_KEY: ${{ secrets.BACKEND_OPENROUTER_API_KEY }}
         run: |
           install -d -m 700 "$ENV_DIR"
           umask 077
@@ -78,6 +79,8 @@ jobs:
             printf 'IP_HASH_SALT=%s\n' "$IP_SALT"
             printf 'TG_BOT_TOKEN=%s\n' "$TG_TOKEN"
             printf 'TG_WEBHOOK_SECRET=%s\n' "$TG_SECRET"
+            # Voice transcription via OpenRouter. Empty = /paste on a voice says it is off.
+            printf 'OPENROUTER_API_KEY=%s\n' "$OPENROUTER_KEY"
             # Chat ids live in the Settings table (seeded by migration, edited via /set).
             # Archive feed: read the landing deploy dir on this host, no network hop.
             printf 'BOT_DATA_PATH=/opt/teamleads.kz/latest/bot-data.json\n'

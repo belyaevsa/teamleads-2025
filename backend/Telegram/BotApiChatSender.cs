@@ -36,6 +36,11 @@ public sealed class BotApiChatSender(TelegramClient tg) : IChatSender
             // rather than as something to retry on.
             : PollOutcome.Failed("stopPoll вернул пустой результат");
 
+    public async Task<FileOutcome> DownloadFileAsync(string fileId, CancellationToken ct) =>
+        await tg.DownloadFileAsync(fileId, ct) is var (content, error) && content is not null
+            ? FileOutcome.Downloaded(content)
+            : FileOutcome.Failed(error ?? "unknown");
+
     // The stored JSON round-trips through JsonElement back to the same JSON it was
     // serialized from, so the keyboard survives the queue byte for byte.
     private static object? Markup(string? json) =>

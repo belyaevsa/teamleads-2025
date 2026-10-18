@@ -602,7 +602,7 @@ public static class PasteEndpoints
         _ => "text",
     };
 
-    private static async Task<string> GeneratePublicIdAsync(AppDbContext db, CancellationToken ct)
+    internal static async Task<string> GeneratePublicIdAsync(AppDbContext db, CancellationToken ct)
     {
         for (var attempt = 0; attempt < 5; attempt++)
         {

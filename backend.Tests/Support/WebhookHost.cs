@@ -71,6 +71,11 @@ public sealed class WebhookHost : IAsyncDisposable
         builder.Services.AddScoped<QuestionService>();
         builder.Services.AddMemoryCache();
         builder.Services.AddScoped<TeamleadsBackend.Sim.SimVotes>();
+        // The voice intake only: it never calls OpenRouter, so the options say "configured"
+        // and nothing more. The worker that does the calls has its own tests.
+        builder.Services.AddSingleton(Options.Create(host.OpenRouter));
+        builder.Services.AddSingleton<TeamleadsBackend.Transcription.VoiceQueueSignal>();
+        builder.Services.AddScoped<TeamleadsBackend.Transcription.VoicePasteService>();
         builder.Services.AddSingleton(_ => TestHost.Archive("""{"scenarios":[],"quizzes":[],"questions":[]}"""));
 
         var app = builder.Build();

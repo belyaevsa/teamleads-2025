@@ -27,6 +27,7 @@ backend/
   Telegram/               IChatSender port + two adapters, AnonService, DilemmaService, BotScheduler
   BotData/                archive feed client (/bot-data.json) + Telegram poll-text limits
   Settings/               runtime settings: closed catalog + 5-minute cached service
+  Transcription/          /paste on a voice: OpenRouter client, intake checks, job worker
   Security/               ApiKey filter, ClientFingerprint (IP from X-Forwarded-For + salted hash)
   Migrations/             EF Core migrations (committed)
   Dockerfile, run.sh, set-webhook.sh, backend.env.example
@@ -45,6 +46,9 @@ backend.Tests/            xUnit suite (sibling project, not shipped in the image
   DilemmaServiceTelegram… sendPoll / stopPoll / the reveal that renders the tally
   QuestionServiceTelegram… the weekly question: one message, recorded on what was sent
   TelegramWebhookTests    every call the webhook makes, driven by a real update over HTTP
+  VoicePasteWebhookTests  /paste on a voice: gates, limits, dedupe, the queued job
+  VoiceTranscriberTests   the worker: download → speech to text → markdown → paste → link
+  Support/StubOpenRouter  fake OpenRouter socket – captures the multipart and chat requests
 
 compose.yaml              local dev stack (repo root) – db + api + hugo + stub Bot API
 compose.stg.yaml          staging overlay: Production env, built site, feed read off disk
@@ -328,6 +332,40 @@ than a setting that silently does nothing.
 `source` in the GET response is `db` once a key is seeded, `default` if it is not in the
 table yet – useful for spotting a seed that did not run.
 
+## Voice transcription
+
+`/paste` sent as a reply to a voice message turns it into a markdown paste: speech to
+text with `voice.stt_model` (MAI-Transcribe 2), then `voice.llm_model` (DeepSeek V4.1
+Flash) restructures it into a titled document with a few `##` sections and the filler
+words removed. Both go through OpenRouter on `OPENROUTER_API_KEY`. Measured on a real
+7:41 voice: ~25 s end to end, ~$0.015.
+
+Two halves, because Telegram gives the webhook a few seconds and this takes up to a minute:
+
+- **Intake** (`Transcription/VoicePasteService.cs`, inside the webhook) answers every
+  check in the chat: feature on (`voice.enabled` + key), chat allowed (a group on
+  `voice.chats`; in a DM, a member of one of those groups via `getChatMember`, cached
+  10 min), not already transcribed, length ≤ `voice.max_minutes`, file ≤ 20 MB (the Bot
+  API's download cap). Then it writes a `VoiceTranscriptions` row and replies
+  «Расшифровываю…» under the voice.
+- **Worker** (`VoiceTranscriptionWorker` → `VoiceTranscriber`) downloads the file through
+  the chat port, makes the two calls, publishes the paste (`markdown`, 30 days, authored by
+  whoever *spoke*) and edits the «Расшифровываю…» reply into the link. Woken at once by the
+  intake, plus a 30 s tick for retries. Recognition and download failures retry twice
+  (30 s, 3 min), then the chat gets an honest «не получилось»; a failed restructuring is
+  asked once more and then falls back to publishing the unedited transcript, marked so.
+
+Dedupe is on Telegram's `file_unique_id` (unique index), which survives forwarding: ten
+`/paste` replies to one voice, or the same voice forwarded to the bot's DM, cost one
+transcription and all get the same link. A failed job, or one whose paste has expired,
+starts over on the next `/paste`.
+
+The audio goes to OpenRouter and is never stored; the job row keeps ids, duration, cost
+and the paste id, never the words. Logs keep the usual rule: sizes, ids and cost only.
+
+Off until `/set voice.enabled true`. The migration seeds `voice.chats` with the community
+chat; add more with `/set voice.chats -100…,-100…`.
+
 ## Weekly dilemma
 
 `Telegram/DilemmaService.cs` posts one simulator scenario as an anonymous poll and reveals
@@ -373,6 +411,7 @@ Double-underscore maps to nested keys. See `backend.env.example`.
 | `TG_WEBHOOK_SECRET`          | no¹ | webhook path suffix + secret-token header |
 | `TG_ADMIN_CHAT_ID`           | no¹ | private admin chat that receives moderation cards |
 | `TG_COMMUNITY_CHAT_ID`       | no¹ | main chat where approved questions are published |
+| `OPENROUTER_API_KEY`         | no  | voice transcription; empty → `/paste` on a voice says it is off |
 
 ¹ Required together for anonymous requests. With any of them missing the feature degrades
 quietly: the webhook 404s, `/api/anon` still accepts and stores requests, the rest of the

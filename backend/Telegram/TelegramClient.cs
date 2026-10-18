@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 
 namespace TeamleadsBackend.Telegram;
 
-// Minimal Bot API client: the four methods this feature needs, over the typed
+// Minimal Bot API client: the handful of methods the bot needs, over the typed
 // HttpClient registered in Program.cs. Not worth a third-party dependency.
 //
 // Every call returns a result object instead of throwing – a Telegram outage or
@@ -106,6 +106,52 @@ public sealed class TelegramClient(HttpClient http, IOptions<TelegramOptions> op
             cache_time = cacheTime,
             button,
         }, ct);
+
+    // getFile, then a plain GET on the file server (/file/bot<token>/<file_path>) – the one
+    // Bot API resource that is not a POST of JSON. Telegram refuses getFile outright for
+    // anything over 20 MB, which is the cap the voice feature checks for up front.
+    public async Task<(byte[]? Content, string? Error)> DownloadFileAsync(string fileId, CancellationToken ct = default)
+    {
+        var (ok, result, error, _) = await CallJsonAsync("getFile", new { file_id = fileId }, ct);
+        if (!ok) return (null, error);
+        if (result is not { ValueKind: JsonValueKind.Object } file
+            || !file.TryGetProperty("file_path", out var path) || path.GetString() is not { Length: > 0 } filePath)
+            return (null, "getFile returned no file_path");
+
+        try
+        {
+            // Same leading-slash rule as CallJsonAsync: the token has a colon in it.
+            using var resp = await http.GetAsync($"/file/bot{_opt.BotToken}/{filePath}", ct);
+            if (!resp.IsSuccessStatusCode) return (null, $"file download: HTTP {(int)resp.StatusCode}");
+            return (await resp.Content.ReadAsByteArrayAsync(ct), null);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            log.LogWarning(ex, "Telegram file download threw.");
+            return (null, ex.Message);
+        }
+    }
+
+    // Whether a user is in a chat right now. Null when Telegram would not say – the bot is
+    // not in that chat, or the call failed – which the caller treats as "no": an allowlist
+    // that cannot be checked must not open up.
+    //
+    // `restricted` is a member with limits (muted, say) or someone already gone, and only
+    // is_member tells the two apart.
+    public async Task<bool?> IsChatMemberAsync(long chatId, long userId, CancellationToken ct = default)
+    {
+        var (ok, result, _, _) = await CallJsonAsync("getChatMember", new { chat_id = chatId, user_id = userId }, ct);
+        if (!ok || result is not { ValueKind: JsonValueKind.Object } member
+            || !member.TryGetProperty("status", out var status))
+            return null;
+
+        return status.GetString() switch
+        {
+            "creator" or "administrator" or "member" => true,
+            "restricted" => member.TryGetProperty("is_member", out var m) && m.ValueKind == JsonValueKind.True,
+            _ => false,
+        };
+    }
 
     public Task<Result> SetWebhookAsync(string url, string secretToken, CancellationToken ct = default) =>
         CallAsync("setWebhook", new

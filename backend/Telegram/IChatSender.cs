@@ -9,16 +9,18 @@ namespace TeamleadsBackend.Telegram;
 // existed, a PR replacing the client broke the test project's compile, because the
 // vendor type WAS the seam.
 //
-// Five methods, not the Bot API. Each one is here because a feature moved onto it:
+// Six methods, not the Bot API. Each one is here because a feature moved onto it:
 // sendMessage for the outbox, editMessageText for the moderation card, sendPoll for the
 // weekly dilemma, answerCallbackQuery for the spinner on an admin's button, stopPoll for
-// the dilemma reveal's tally.
+// the dilemma reveal's tally, and getFile plus the download behind it for the voice
+// message /paste turns into a transcript.
 //
-// One call is deliberately NOT here, and still goes through TelegramClient directly:
+// Two calls are deliberately NOT here, and still go through TelegramClient directly:
 //
 //   answerInlineQuery    – archive search from the inline strip.
+//   getChatMember        – "is this DM user in one of the voice chats?"
 //
-// Bucketlab.Telebot 0.0.75 has no method for it, so putting it on the port would only buy
+// Bucketlab.Telebot 0.0.75 has no method for either, so putting them on the port would only buy
 // an adapter that throws. It moves the day the package grows it; nothing above the port
 // has to change when it does. That is not a hypothetical promise: stopPoll was the second
 // such exception until 0.0.75 grew it and DilemmaService dropped its concrete client, and
@@ -36,6 +38,18 @@ public interface IChatSender
     Task<SendOutcome> AnswerCallbackAsync(CallbackAnswer answer, CancellationToken ct);
 
     Task<PollOutcome> StopPollAsync(ChatPollStop stop, CancellationToken ct);
+
+    Task<FileOutcome> DownloadFileAsync(string fileId, CancellationToken ct);
+}
+
+// A downloaded file, whole, in memory. Voice messages are the only files this bot reads,
+// and Telegram caps what a bot may download at 20 MB, so a buffer is the honest shape –
+// the next stop is an HTTP upload that wants the bytes anyway.
+public readonly record struct FileOutcome(bool Ok, byte[]? Content, string? Error)
+{
+    public static FileOutcome Downloaded(byte[] content) => new(true, content, null);
+
+    public static FileOutcome Failed(string error) => new(false, null, error);
 }
 
 // What to send, in our vocabulary rather than any library's.

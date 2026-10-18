@@ -16,7 +16,9 @@ namespace TeamleadsBackend.Settings;
 // Adding a key here means adding it to a migration too (see 20260730133138_SeedSettings).
 public static class SettingsCatalog
 {
-    public enum ValueKind { Bool, Int, Long }
+    // Text is an identifier (a model id), not prose: one token, no spaces. LongList is
+    // comma-separated chat ids, for "which chats may use this" – empty means none.
+    public enum ValueKind { Bool, Int, Long, Text, LongList }
 
     public sealed record Entry(
         string Key,
@@ -54,6 +56,21 @@ public static class SettingsCatalog
 
         new("anon.max_pending_per_author", ValueKind.Int, "5",
             "Сколько анонимных запросов от одного автора может ждать модерации.", Min: 1, Max: 100),
+
+        new("voice.enabled", ValueKind.Bool, "false",
+            "Расшифровка голосовых по /paste. Выключатель на случай, если надо срезать расходы на OpenRouter."),
+
+        new("voice.chats", ValueKind.LongList, "",
+            "Группы, где работает расшифровка голосовых, через запятую (0 – нигде). В личке – только участникам этих групп."),
+
+        new("voice.max_minutes", ValueKind.Int, "15",
+            "Максимальная длина голосового для расшифровки, в минутах.", Min: 1, Max: 60),
+
+        new("voice.stt_model", ValueKind.Text, "microsoft/mai-transcribe-2",
+            "Модель OpenRouter для распознавания речи."),
+
+        new("voice.llm_model", ValueKind.Text, "deepseek/deepseek-v4.1-flash",
+            "Модель OpenRouter, которая превращает расшифровку в markdown с разделами."),
     ];
 
     private static readonly Dictionary<string, Entry> ByKey =
@@ -68,8 +85,22 @@ public static class SettingsCatalog
         ValueKind.Bool when !bool.TryParse(value, out _) => "ожидается true или false",
         ValueKind.Int when !int.TryParse(value, out _) => "ожидается целое число",
         ValueKind.Long when !long.TryParse(value, out _) => "ожидается целое число",
+        ValueKind.Text when value.Length is 0 or > 200 || value.Any(char.IsWhiteSpace)
+            => "ожидается идентификатор без пробелов, до 200 символов",
+        ValueKind.LongList when !TryParseLongList(value, out _) => "ожидаются целые числа через запятую",
         ValueKind.Int when int.Parse(value) < entry.Min || int.Parse(value) > entry.Max
             => $"допустимый диапазон: {entry.Min}–{entry.Max}",
         _ => null,
     };
+
+    public static bool TryParseLongList(string value, out long[] items)
+    {
+        items = [];
+        var parts = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var parsed = new long[parts.Length];
+        for (var i = 0; i < parts.Length; i++)
+            if (!long.TryParse(parts[i], out parsed[i])) return false;
+        items = parsed;
+        return true;
+    }
 }

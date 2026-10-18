@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<SimAnswer> SimAnswers => Set<SimAnswer>();
+    public DbSet<VoiceTranscription> VoiceTranscriptions => Set<VoiceTranscription>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -94,6 +95,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Source).HasMaxLength(16).IsRequired();
             e.HasIndex(x => x.PublicId).IsUnique();
             e.HasIndex(x => x.CreatedAt);
+        });
+
+        b.Entity<VoiceTranscription>(e =>
+        {
+            e.Property(x => x.FileUniqueId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.FileId).HasMaxLength(256).IsRequired();
+            e.Property(x => x.AuthorName).HasMaxLength(120).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            e.Property(x => x.PastePublicId).HasMaxLength(12);
+            e.Property(x => x.LastError).HasMaxLength(512);
+            e.Property(x => x.CostUsd).HasPrecision(12, 6);
+            // Unique: two /paste replies racing on the same voice must not both pay for it.
+            // The loser's insert fails and it answers "уже расшифровываю" instead.
+            e.HasIndex(x => x.FileUniqueId).IsUnique();
+            // The worker's only query: pending jobs that are due.
+            e.HasIndex(x => new { x.Status, x.NextAttemptAt });
         });
 
         b.Entity<Setting>(e =>

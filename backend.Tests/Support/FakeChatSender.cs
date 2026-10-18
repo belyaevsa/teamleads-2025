@@ -131,6 +131,18 @@ public sealed class FakeChatSender : IChatSender
         return Task.FromResult(_stops.Count > 0 ? _stops.Dequeue() : PollOutcome.Closed([]));
     }
 
+    // Files a test has put "on Telegram's file server", by file_id. A download of anything
+    // else fails the way a real expired or unknown file_id does.
+    public Dictionary<string, byte[]> Files { get; } = [];
+
+    public Task<FileOutcome> DownloadFileAsync(string fileId, CancellationToken ct)
+    {
+        Calls.Add(new PortCall("downloadFile", Text: fileId));
+        return Task.FromResult(Files.TryGetValue(fileId, out var content)
+            ? FileOutcome.Downloaded(content)
+            : FileOutcome.Failed("Bad Request: invalid file_id"));
+    }
+
     // Default to success, so a test asserting only on what was sent needs no setup. The
     // queue is shared across all four methods on purpose: a test scripting "the publish
     // fails" should not have to know how many card edits follow it.

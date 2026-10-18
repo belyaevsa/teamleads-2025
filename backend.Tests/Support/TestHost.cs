@@ -34,6 +34,10 @@ public sealed class TestHost : IDisposable
     public SettingsService Settings { get; }
     public TelegramClient Telegram { get; }
 
+    // A key so the voice feature counts as configured; the base is never reached by the
+    // webhook tests, and the transcriber tests point their own client at a stub.
+    public TeamleadsBackend.Transcription.OpenRouterOptions OpenRouter { get; } = new() { ApiKey = "sk-or-test" };
+
     // The same options object the services under test read. Enabled is derived from the
     // token, so `new TestHost(botToken: null)` is how a test says "bot not configured".
     public TelegramOptions TgOptions { get; }

@@ -10,6 +10,7 @@ using TeamleadsBackend.Search;
 using TeamleadsBackend.Security;
 using TeamleadsBackend.Settings;
 using TeamleadsBackend.Telegram;
+using TeamleadsBackend.Transcription;
 
 namespace TeamleadsBackend.Endpoints;
 
@@ -37,6 +38,10 @@ public static class TelegramWebhookEndpoints
            • прямо в общем чате: ответьте на чужую простыню командой /paste – ссылка встанет под ней, автором останется тот, кто ее написал.
            Paste не модерируется и рядом с ним видно имя автора – этим он и отличается от анонимного вопроса.
 
+        🎙 Голосовые: ответьте на голосовое командой /paste – я расшифрую его, разложу по разделам и пришлю ссылку.
+           • работает в чате сообщества, а в личке – для его участников; голосовые до 15 минут;
+           • звук уходит на распознавание в OpenRouter и не сохраняется, хранится только текст с именем автора голосового.
+
         🎭 Анонимные вопросы: через меня можно задать вопрос в общий чат анонимно.
 
         Как работают анонимные вопросы:
@@ -59,6 +64,7 @@ public static class TelegramWebhookEndpoints
             DilemmaService dilemmas,
             QuestionService questions,
             SearchService search,
+            VoicePasteService voice,
             AppDbContext db,
             SettingsService settings,
             IChatSender chat,
@@ -109,7 +115,7 @@ public static class TelegramWebhookEndpoints
                 // the anonymity promise has to hold in the log file too.
                 if (update?.InlineQuery is { } inline) await HandleInlineQueryAsync(inline, search, tg, log, ct);
                 else if (update?.CallbackQuery is { } cb) await HandleCallbackAsync(cb, anon, chat, adminChat, log, ct);
-                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, questions, search, db, settings, chat, adminChat, cfg, log, ct);
+                else if (update?.Message is { } msg) await HandleMessageAsync(msg, anon, dilemmas, questions, search, voice, db, settings, chat, adminChat, cfg, log, ct);
                 else log.LogInformation("Update ignored: no message, callback or inline_query (edit, poll answer or reaction).");
             }
             catch (Exception ex)
@@ -143,7 +149,7 @@ public static class TelegramWebhookEndpoints
 
     private static async Task HandleMessageAsync(
         Message msg, AnonService anon, DilemmaService dilemmas, QuestionService questions, SearchService search,
-        AppDbContext db,
+        VoicePasteService voice, AppDbContext db,
         SettingsService settings, IChatSender chat,
         long adminChat, IConfiguration cfg, ILogger log, CancellationToken ct)
     {
@@ -154,6 +160,18 @@ public static class TelegramWebhookEndpoints
         var plainText = msg.Text?.Trim();
         if (string.IsNullOrEmpty(text))
         {
+            // A voice sent straight to the bot is almost always "please transcribe this".
+            // Say how, rather than going quiet – in a DM only: in the community chat the
+            // bot sees every voice, and answering each one would be noise.
+            if (msg.Voice is not null && string.Equals(msg.Chat.Type, "private", StringComparison.Ordinal))
+            {
+                log.LogInformation("DM: bare voice message, explained /paste.");
+                await SayAsync(chat, msg.Chat.Id,
+                    "Чтобы расшифровать голосовое, ответьте на него командой /paste.",
+                    replyToMessageId: msg.MessageId, ct: ct);
+                return;
+            }
+
             log.LogInformation("Message skipped: neither text nor caption (sticker, voice, service update or bare media).");
             return;
         }
@@ -186,7 +204,7 @@ public static class TelegramWebhookEndpoints
         // never ordinary group messages.
         if (text.StartsWith("/paste", StringComparison.Ordinal))
         {
-            await HandlePasteWebhookAsync(msg, text, db, cfg, chat, log, ct);
+            await HandlePasteWebhookAsync(msg, text, voice, db, cfg, chat, log, ct);
             return;
         }
 
@@ -539,12 +557,32 @@ public static class TelegramWebhookEndpoints
     // ── paste ────────────────────────────────────────────────────────────────
 
     private static async Task HandlePasteWebhookAsync(
-        Message msg, string text, AppDbContext db, IConfiguration cfg, IChatSender chat, ILogger log, CancellationToken ct)
+        Message msg, string text, VoicePasteService voice, AppDbContext db, IConfiguration cfg, IChatSender chat, ILogger log, CancellationToken ct)
     {
         // "/paste <текст>" pastes what the sender typed; a bare "/paste" in reply to a
         // message pastes THAT message. The second form is the one used in the community
         // chat, and it is also why authorship has to follow the content, not the command.
         var parts = text.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        // A bare "/paste" on a voice message transcribes it. Inline text still wins – an
+        // explicit "/paste <текст>" means that text, whatever the command replies to.
+        if (parts.Length < 2 && msg.ReplyToMessage is { Voice: { } recorded } voiceMessage)
+        {
+            var speaker = voiceMessage.From ?? new User(0);
+            await voice.HandleAsync(new VoiceRequest(
+                ChatId: msg.Chat.Id,
+                ChatType: msg.Chat.Type,
+                CommandMessageId: msg.MessageId,
+                VoiceMessageId: voiceMessage.MessageId,
+                FileId: recorded.FileId,
+                FileUniqueId: recorded.FileUniqueId,
+                DurationSeconds: recorded.Duration,
+                FileSize: recorded.FileSize,
+                RequesterId: msg.From?.Id,
+                AuthorId: voiceMessage.From?.Id,
+                AuthorName: speaker.GetDisplayName().Truncate(120)), ct);
+            return;
+        }
         // Body, not Text: a screenshot of a stack trace with the trace pasted underneath
         // keeps that text in `caption`, and that is exactly what people reply to.
         var replied = msg.ReplyToMessage?.Body;
@@ -567,7 +605,7 @@ public static class TelegramWebhookEndpoints
                     : "present with text");
 
             var reason = msg.ReplyToMessage is { Body: null }
-                ? "В том сообщении нет текста – ни подписи, ни сообщения. Стикер или голосовое в paste не свернуть."
+                ? "В том сообщении нет текста – ни подписи, ни сообщения. Стикер или картинку без подписи в paste не свернуть."
                 : isPrivate
                     ? "Отправьте текст сразу командой:\n\n/paste ваш код, лог или конфиг"
                     : "Текст сообщения, на которое вы ответили, до меня не дошел – в группе Telegram отдает мне только саму команду.\n\nПока работает так: /paste и текст одним сообщением. Чтобы ловить ответы на чужие сообщения, у бота нужно выключить privacy mode или сделать его админом чата.";
@@ -678,6 +716,7 @@ public static class TelegramWebhookEndpoints
         "sql" => "SQL",
         "rust" => "Rust",
         "bash" => "Bash",
+        "markdown" => "Markdown",
         "plaintext" => "code",
         _ => "text",
     };
@@ -688,7 +727,7 @@ public static class TelegramWebhookEndpoints
     // the editor's rHash makes t.me/iv?url=…&rhash=… work for everyone, so the setting
     // is a stopgap: clear the env var after approval and the plain url gets IV natively.
     // Template lives in backend/paste.instant-view.rules.
-    private static string PasteLink(string publicId, IConfiguration cfg)
+    internal static string PasteLink(string publicId, IConfiguration cfg)
     {
         var url = $"https://teamleads.kz/p/{publicId}/";
         var rhash = cfg["PASTE_IV_RHASH"];
@@ -725,11 +764,19 @@ public static class TelegramWebhookEndpoints
         // A photo, document or video carries its text here, not in `text` – and that
         // includes any command typed alongside the attachment.
         [property: JsonPropertyName("caption")] string? Caption,
-        [property: JsonPropertyName("reply_to_message")] Message? ReplyToMessage)
+        [property: JsonPropertyName("reply_to_message")] Message? ReplyToMessage,
+        [property: JsonPropertyName("voice")] Voice? Voice = null)
     {
         // What a human would call "the text of this message", wherever Telegram put it.
         public string? Body => string.IsNullOrWhiteSpace(Text) ? Caption : Text;
     }
+
+    // file_unique_id survives forwarding, file_id may not – see VoiceTranscription.
+    private sealed record Voice(
+        [property: JsonPropertyName("file_id")] string FileId,
+        [property: JsonPropertyName("file_unique_id")] string FileUniqueId,
+        [property: JsonPropertyName("duration")] int Duration,
+        [property: JsonPropertyName("file_size")] long? FileSize = null);
 
     private sealed record Chat(
         [property: JsonPropertyName("id")] long Id,

@@ -48,6 +48,16 @@ public sealed class TelebotChatSenderContractTests : ChatSenderContractTests
     protected override void GivenStopsPoll(TestHost host, int[] voterCounts) =>
         For(host).StopsPoll(voterCounts);
 
+    protected override void GivenFile(TestHost host, string filePath, byte[] content)
+    {
+        For(host).ResolvesFile(filePath);
+        For(host).Downloads = content;
+    }
+
+    protected override (string? FileId, string? DownloadedPath) SentDownload(TestHost host) =>
+        (For(host).Requests.Last(r => r.Endpoint == "getFile").GetRequestFields().First(f => f.Name == "file_id").Value,
+         For(host).DownloadedFiles.LastOrDefault()?.FilePath);
+
     protected override IReadOnlyDictionary<string, string> SentFields(TestHost host) =>
         For(host).LastFields;
 

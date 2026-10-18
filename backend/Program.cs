@@ -9,6 +9,7 @@ using TeamleadsBackend.Security;
 using TeamleadsBackend.Settings;
 using TeamleadsBackend.Sim;
 using TeamleadsBackend.Telegram;
+using TeamleadsBackend.Transcription;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -139,6 +140,22 @@ builder.Services.AddHttpClient<ShellIndexClient>(c => c.Timeout = TimeSpan.FromS
 builder.Services.AddSingleton<SearchService>();
 builder.Services.AddHostedService<BotScheduler>();
 builder.Services.AddHostedService<OutboxDispatcher>();
+
+// ── Voice transcription (/paste on a voice message) ─────────────────────────
+// OpenRouter for both model calls. Without OPENROUTER_API_KEY the feature answers that it
+// is off and nothing else changes. The timeout is the provider's own 60s per request plus
+// the upload of up to 20 MB – this runs in the worker, never inside the webhook.
+var openRouterOptions = OpenRouterOptions.FromConfiguration(builder.Configuration);
+builder.Services.AddSingleton(Options.Create(openRouterOptions));
+builder.Services.AddHttpClient<OpenRouterClient>(c =>
+{
+    c.BaseAddress = new Uri(openRouterOptions.ApiBase);
+    c.Timeout = TimeSpan.FromSeconds(150);
+});
+builder.Services.AddSingleton<VoiceQueueSignal>();
+builder.Services.AddScoped<VoicePasteService>();
+builder.Services.AddScoped<VoiceTranscriber>();
+builder.Services.AddHostedService<VoiceTranscriptionWorker>();
 
 // In Development the Hugo dev server (localhost:1313) calls us cross-origin.
 // In production nginx makes everything same-origin, so CORS is dev-only.

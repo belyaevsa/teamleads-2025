@@ -16,9 +16,10 @@ namespace TeamleadsBackend.Telegram;
 // serializing unset members as explicit nulls, which is what made a threaded reply safe to
 // send – under 0.0.7 reply_parameters went out with seven nulls in it and Telegram refuses
 // a request holding one. 0.0.75 grew stopPoll, taking the dilemma reveal's tally off
-// TelegramClient. What is still out of reach: answerInlineQuery, which the package has no
-// method for at all (getFile and DownloadFileAsync arrived in the same 0.0.75 and stay
-// unused – nothing in this app reads files back). See IChatSender.
+// TelegramClient. getFile and DownloadFileAsync arrived in the same 0.0.75 and sat unused
+// until /paste learned to transcribe voice messages. What is still out of reach:
+// answerInlineQuery and getChatMember, which the package has no method for at all. See
+// IChatSender.
 public sealed class TelebotChatSender(ITelegramClient client) : IChatSender
 {
     public Task<SendOutcome> SendMessageAsync(ChatMessage message, CancellationToken ct) =>
@@ -91,6 +92,19 @@ public sealed class TelebotChatSender(ITelegramClient client) : IChatSender
                 new StopPollRequestParams(stop.ChatId, checked((int)stop.MessageId)), ct);
             return PollOutcome.Closed([.. poll.Options.Select(o => o.VoterCount)]);
         }, PollOutcome.Failed, ct);
+
+    // Two calls: getFile resolves the id to a path on Telegram's file server, the download
+    // fetches it. Through the same transport as everything else, so the same 15-second
+    // timeout – a 20 MB file (Telegram's cap for bots) comes off their CDN well inside it.
+    public Task<FileOutcome> DownloadFileAsync(string fileId, CancellationToken ct) =>
+        CallAsync(async () =>
+        {
+            var file = await client.GetFileAsync(new GetFileRequestParams(fileId), ct);
+            await using var stream = await client.DownloadFileAsync(file, ct);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, ct);
+            return FileOutcome.Downloaded(buffer.ToArray());
+        }, FileOutcome.Failed, ct);
 
     // The one place that turns "this client throws" into "the port returns an outcome".
     // Every method funnels through it so a new one cannot forget to. What a failure looks

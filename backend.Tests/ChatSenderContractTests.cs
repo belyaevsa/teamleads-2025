@@ -35,6 +35,12 @@ public abstract class ChatSenderContractTests
     /// Make the next stopPoll succeed, closing the poll with this tally per option.
     protected abstract void GivenStopsPoll(TestHost host, int[] voterCounts);
 
+    /// Make the next getFile resolve to this path, and the file server answer with these bytes.
+    protected abstract void GivenFile(TestHost host, string filePath, byte[] content);
+
+    /// The file_id the last getFile asked for, and the path then fetched from the file server.
+    protected abstract (string? FileId, string? DownloadedPath) SentDownload(TestHost host);
+
     /// The reply markup the adapter passed on, as JSON – null if it sent none.
     protected abstract JsonElement? SentReplyMarkup(TestHost host);
 
@@ -394,6 +400,40 @@ public abstract class ChatSenderContractTests
         Assert.Equal("555", fields["message_id"]);
     }
 
+    // A voice message, end to end through the adapter: the id resolves to a path and the
+    // bytes behind that path come back untouched – a transcoding or truncating adapter
+    // would hand the speech recognition a file it cannot read.
+    [Fact]
+    public async Task A_download_resolves_the_file_and_returns_its_bytes()
+    {
+        using var host = new TestHost();
+        var bytes = "OggS\u0000voice"u8.ToArray();
+        GivenFile(host, "voice/file_7.oga", bytes);
+
+        var outcome = await CreateSender(host).DownloadFileAsync("AwACAgIAAxkB", CancellationToken.None);
+
+        Assert.True(outcome.Ok);
+        Assert.Equal(bytes, outcome.Content);
+        var (fileId, path) = SentDownload(host);
+        Assert.Equal("AwACAgIAAxkB", fileId);
+        Assert.EndsWith("voice/file_7.oga", path);
+    }
+
+    // An expired or foreign file_id. The worker retries on this and then tells the chat –
+    // which it can only do if it arrives as an outcome.
+    [Fact]
+    public async Task A_download_that_is_refused_becomes_a_failed_outcome()
+    {
+        using var host = new TestHost();
+        GivenApiError(host, "Bad Request: wrong file_id or the file is temporarily unavailable");
+
+        var outcome = await CreateSender(host).DownloadFileAsync("gone", CancellationToken.None);
+
+        Assert.False(outcome.Ok);
+        Assert.Null(outcome.Content);
+        Assert.Contains("file_id", outcome.Error);
+    }
+
     // Someone closed the poll by hand, or deleted the message. The reveal goes out
     // regardless, so this must arrive as "no tally" rather than as an exception that
     // takes the whole follow-up down.
@@ -437,6 +477,16 @@ public sealed class BotApiChatSenderContractTests : ChatSenderContractTests
     protected override void GivenStopsPoll(TestHost host, int[] voterCounts) =>
         host.Api.RespondsOk(rawResult: JsonSerializer.Serialize(
             new { options = voterCounts.Select(v => new { voter_count = v }) }));
+
+    // getFile's real result, then the file server's raw body – a GET, not the JSON envelope.
+    protected override void GivenFile(TestHost host, string filePath, byte[] content)
+    {
+        host.Api.RespondsOk(rawResult: JsonSerializer.Serialize(new { file_id = "x", file_unique_id = "u", file_path = filePath }));
+        host.Api.Responds(System.Net.HttpStatusCode.OK, System.Text.Encoding.UTF8.GetString(content));
+    }
+
+    protected override (string? FileId, string? DownloadedPath) SentDownload(TestHost host) =>
+        (host.Api.Calls.Last(c => c.Method == "getFile").String("file_id"), host.Api.LastCall.Path);
 
     protected override JsonElement? SentReplyMarkup(TestHost host) =>
         host.Api.LastCall.Json.TryGetProperty("reply_markup", out var m) ? m : null;

@@ -40,6 +40,11 @@ public sealed class SettingsService(IServiceScopeFactory scopes, ILogger<Setting
             ? v
             : int.Parse(SettingsCatalog.Find(key)?.Default ?? "0");
 
+    // A malformed stored list (written by SQL past the validator) reads as empty: for an
+    // allowlist, "nobody" is the safe way to be wrong.
+    public async Task<IReadOnlyList<long>> GetLongListAsync(string key, CancellationToken ct) =>
+        SettingsCatalog.TryParseLongList(await GetRawAsync(key, ct), out var items) ? items : [];
+
     public async Task<string> GetRawAsync(string key, CancellationToken ct)
     {
         var entry = SettingsCatalog.Find(key)
