@@ -19,7 +19,9 @@ public sealed class StubOpenRouter : HttpMessageHandler
 
     public List<Call> Calls { get; } = [];
 
-    public sealed record Call(string Path, string? Authorization, string? ContentType, string Body);
+    // ContentTypeHeader is the header as sent, parameters and quoting included – the
+    // boundary's quoting is part of what OpenRouter accepts or refuses.
+    public sealed record Call(string Path, string? Authorization, string? ContentType, string Body, string? ContentTypeHeader = null);
 
     public StubOpenRouter Transcribes(string text, decimal cost = 0.0128m) =>
         Responds(HttpStatusCode.OK, JsonSerializer.Serialize(new { text, usage = new { seconds = 461, cost } }));
@@ -52,7 +54,7 @@ public sealed class StubOpenRouter : HttpMessageHandler
     {
         var body = request.Content is null ? "" : await request.Content.ReadAsStringAsync(ct);
         Calls.Add(new Call(request.RequestUri!.AbsolutePath, request.Headers.Authorization?.ToString(),
-            request.Content?.Headers.ContentType?.MediaType, body));
+            request.Content?.Headers.ContentType?.MediaType, body, request.Content?.Headers.ContentType?.ToString()));
 
         var (status, json) = _responses.Count > 0
             ? _responses.Dequeue()

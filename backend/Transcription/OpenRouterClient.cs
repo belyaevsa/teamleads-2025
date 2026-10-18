@@ -35,11 +35,24 @@ public sealed class OpenRouterClient(HttpClient http, IOptions<OpenRouterOptions
     // Kazakh and English mid-sentence, which a fixed language would transcribe worse.
     public async Task<Result> TranscribeAsync(byte[] audio, string fileName, string model, CancellationToken ct)
     {
-        using var form = new MultipartFormDataContent();
+        // Shaped like curl's body, not .NET's default. Out of the box MultipartFormDataContent
+        // quotes the boundary, leaves `name=` unquoted and adds a `filename*=` – and
+        // OpenRouter answers that with "Invalid multipart/form-data body" for small uploads
+        // (a 9-second voice) while accepting large ones, which is how it got past a live
+        // test on a 7-minute file and failed on the first real voice in the chat.
+        var boundary = $"----teamleads{Guid.NewGuid():N}";
+        using var form = new MultipartFormDataContent(boundary);
+        form.Headers.ContentType = MediaTypeHeaderValue.Parse($"multipart/form-data; boundary={boundary}");
+
         var file = new ByteArrayContent(audio);
         file.Headers.ContentType = new MediaTypeHeaderValue("audio/ogg");
-        form.Add(file, "file", fileName);
-        form.Add(new StringContent(model), "model");
+        file.Headers.TryAddWithoutValidation("Content-Disposition", $"form-data; name=\"file\"; filename=\"{fileName}\"");
+        form.Add(file);
+
+        var modelPart = new StringContent(model);
+        modelPart.Headers.ContentType = null;
+        modelPart.Headers.TryAddWithoutValidation("Content-Disposition", "form-data; name=\"model\"");
+        form.Add(modelPart);
 
         var (ok, body, error) = await PostAsync("audio/transcriptions", form, model, ct);
         if (!ok) return Result.Fail(error!);

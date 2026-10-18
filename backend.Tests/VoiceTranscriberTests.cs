@@ -98,9 +98,9 @@ public sealed class VoiceTranscriberTests : IDisposable
         Assert.Equal("/api/v1/audio/transcriptions", stt.Path);
         Assert.Equal("Bearer sk-or-test", stt.Authorization);
         Assert.Equal("multipart/form-data", stt.ContentType);
-        Assert.Contains("name=model", stt.Body);
+        Assert.Contains("name=\"model\"", stt.Body);
         Assert.Contains("openai/whisper-large-v3", stt.Body);
-        Assert.Contains("filename=voice.oga", stt.Body);
+        Assert.Contains("filename=\"voice.oga\"", stt.Body);
         Assert.Contains("OggS", stt.Body);
 
         var llm = _openRouter.Calls[1];
@@ -112,6 +112,24 @@ public sealed class VoiceTranscriberTests : IDisposable
         var messages = body.RootElement.GetProperty("messages");
         Assert.Equal(VoiceTranscriber.Prompt, messages[0].GetProperty("content").GetString());
         Assert.Equal("Текст голосового сообщения.", messages[1].GetProperty("content").GetString());
+    }
+
+    // The body format OpenRouter accepts for every size. .NET's default – quoted boundary,
+    // unquoted name, an extra filename* – was refused as "Invalid multipart/form-data body"
+    // for a 9-second voice in production while a 7-minute one went through.
+    [Fact]
+    public async Task The_audio_upload_is_shaped_the_way_openrouter_parses_it()
+    {
+        await QueuedAsync();
+        _openRouter.Transcribes("Текст.").Completes(Restructured);
+
+        await Transcriber().ProcessDueAsync(CancellationToken.None);
+
+        var stt = _openRouter.Calls[0];
+        Assert.Matches("^multipart/form-data; boundary=[^\"]+$", stt.ContentTypeHeader);
+        Assert.Contains("Content-Disposition: form-data; name=\"file\"; filename=\"voice.oga\"", stt.Body);
+        Assert.Contains("Content-Disposition: form-data; name=\"model\"", stt.Body);
+        Assert.DoesNotContain("filename*", stt.Body);
     }
 
     // The speech recognition was paid for; a failed edit must not throw that away.
