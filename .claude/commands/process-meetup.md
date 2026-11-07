@@ -5,8 +5,10 @@ Process a meeting transcript into a full event report, Hugo landing page, and up
 The user provides:
 - Path to transcript file (e.g. `transcript_20260522_123321_92d1f3b3.txt`)
 - Meeting date (e.g. `21-05-2026`)
+- Optional: when the recording started, with time zone. Google Meet filenames carry it,
+  e.g. `pxm-dwce-qhn (2026-11-05 19_15 GMT+5).mp4` → 19:15 GMT+5. Needed for Step 4c.
 
-If not provided, ask the user for both.
+If transcript or date is not provided, ask the user for both.
 
 ## Step 1: Read reference materials
 
@@ -42,6 +44,7 @@ Create `2026/events-reports/meetup-YYYY-MM-DD/report.md` following the exact str
 ## Подтемы и их суть
 ### 1. ...
 ### 2. ...
+## Параллельно в чате        (only if Step 4c found something – see there)
 ## Различные мнения (table)
 ## Основные выводы
 ## Вопросы для дальнейшего обсуждения
@@ -96,6 +99,7 @@ Rules for the structured fields:
 - `opinions.values` must have exactly one entry per name in `opinions.columns`; use `"–"` when a participant didn't weigh in
 - Set `wide: true` on at most one takeaway (typically the last) for the full-width card
 - Use « » (guillemets) for quotes and – (en-dash) in all strings, same as elsewhere
+- Optional `chat:` block and `chat: <thread-id>` on topics – see Step 4c
 - After creating the file, run `hugo --quiet` in `landing-main/` to confirm it builds cleanly
 
 ## Step 4b: Audio player + timestamped transcript (when a recording exists)
@@ -133,6 +137,76 @@ step entirely if there's no audio to publish – the layout degrades gracefully 
 
 5. Run `hugo --quiet` and confirm the rendered page contains `data-audio-player` and one
    `ap-chapter` per topic with a `start`.
+
+## Step 4c: Link the meeting with the community chat
+
+The chat (`t.me/teamleads_kz`, public) keeps running during the call: people post the
+slides or photos they mention, links, and side threads. Always check it – speakers
+often say «я скину в чат», «вот фотки слайдов», «Никита в чате спрашивает».
+
+1. **Fetch the window.** Recording start → end, plus ~15 min on each side, in UTC
+   (19:15 GMT+5 = 14:15Z). No DB access or login needed – the script reads the public
+   t.me embed and finds message ids by date:
+   ```bash
+   cd landing-main && node scripts/chat-window.mjs \
+     --from 2026-11-05T14:00Z --to 2026-11-05T16:30Z \
+     --photos <scratchpad>/chat-photos > <scratchpad>/chat.jsonl
+   ```
+   Output: one JSON line per message `{id, dt, author, reply, text, photos, link}`.
+   An album is several consecutive messages, one photo each, so each photo has its
+   own link. Look at the photos (Read them; tile with ffmpeg if many) – OCR or read
+   slide titles to caption them.
+
+2. **Calibrate the clock.** The filename time is when the Meet room was set up, not
+   when recording began (5 Nov: filename 19:15, recording actually ~19:18). Find a
+   remark in the transcript that refers to a specific chat message («Никита в чате
+   спрашивает, сидим ли мы» at 82:44 ↔ message at 15:40:44Z) and derive
+   `recording_start = message_time − offset`. Then every message maps to a minute
+   of the recording: `offset = message_time − recording_start`.
+
+3. **Pick what belongs.** Keep messages that the conversation references or that
+   run in parallel on the same subject (photos of slides someone talks about, a link
+   that feeds the security discussion). Drop small talk, bot digests (`#итогидня`)
+   and anything personal: disputes or accusations about named people stay out even
+   if the call touched them – ask the user when unsure.
+
+4. **Report** (`report.md`): add a `## Параллельно в чате` section after «Подтемы»:
+   local time (GMT+5) and ≈ minute of the recording per thread, which subtopic it
+   belongs to, a table of photos with captions + message links, and bullet lists of
+   messages as `[71568](https://t.me/teamleads_kz/71568) – Автор: суть`. Save photos
+   to `2026/events-reports/meetup-YYYY-MM-DD/photos/<id>-<slug>.jpg` and embed them
+   as `![](photos/<id>-<slug>.jpg)`. Inside subtopic text, link the message inline
+   where it is mentioned.
+
+5. **Site page:** copy the same photos to
+   `landing-main/static/images/events/meetup-YYYY-MM-DD/` and add a `chat:` block
+   (rendered by `layouts/partials/report/chat.html` as «Параллельно в чате», with a
+   contents entry):
+   ```yaml
+   chat:
+     intro: "Пока шел звонок, в чате … Время местное (GMT+5), запись началась около 19:18."
+     threads:
+       - id: slides                      # anchor #chat-slides
+         title: "Слайды доклада …"
+         time: "20:23"                   # local time, free text
+         start: 3917                     # optional – seconds into the recording, ▶ seek button
+         note: "Who posted what and where the call refers to it."
+         photos:
+           - { src: "/images/events/meetup-YYYY-MM-DD/71548-title.jpg", id: 71548, caption: "Титул доклада" }
+       - id: sshhole
+         title: "…"
+         time: "20:46–21:09"
+         messages:
+           - { id: 71568, author: "LSTR Unit", text: "Short paraphrase or quote" }
+   ```
+   On each related topic add `chat: <thread id>` – it renders «↓ В чате: <title>».
+   Message links are built from `site.Params.telegram` + `/<id>`. Thread `start`
+   only seeks when the page has `audio:`.
+
+6. `hugo --quiet`, then check the built page has one `chat-photo` per photo, the
+   message links and the `topic-chat-link`s.
+
+Skip the step (no section, no `chat:`) when nothing relevant was posted.
 
 ## Step 5: Homepage and OG image (auto-generated)
 
@@ -184,6 +258,7 @@ After creating both files and updating questions, present a summary:
 - Number of subtopics covered
 - Audio player: whether a recording + timestamped transcript was published, and how many topics got `start:` chapters (or "no recording")
 - Number of participants identified
+- Parallel chat: threads linked, photos saved, which topics point to them, the calibrated recording start – and what was left out on purpose (or "nothing relevant in chat")
 - Simulator scenarios added to the deck (ids + one-line each), or "none – no genuine dilemma"
 - Questions answered from previous meetings (if any)
 - New open questions added
