@@ -1,0 +1,71 @@
+{{- /*
+  «Параллельно в чате» – what happened in the community chat during the meeting.
+  Renders only when .Params.chat is set. Shape:
+
+  chat:
+    intro: "optional paragraph"
+    threads:
+      - id: slides                 # anchor (#chat-slides); topics can point here via `chat: slides`
+        title: "Thread title"
+        time: "20:23"              # local time, free text
+        start: 3917                # optional – seconds into the recording, renders a seek button
+        note: "optional paragraph"
+        messages:                  # optional – each links to t.me/<chat>/<id>
+          - id: 71568
+            author: "Name"
+            text: "Short paraphrase or quote"
+        photos:                    # optional – files under /static
+          - src: "/images/events/<slug>/71548-title.jpg"
+            id: 71548              # message the photo was posted in
+            caption: "Slide title"
+
+  Message links use .Params.chatUrl, else site.Params.telegram.
+*/ -}}
+{{- $page := . -}}
+{{- $base := strings.TrimSuffix "/" ($page.Params.chatUrl | default site.Params.telegram) -}}
+{{- with $page.Params.chat }}
+<div class="report-chat" id="chat">
+    <h2>Параллельно в чате</h2>
+    {{- with .intro }}<p class="chat-intro">{{ . }}</p>{{ end }}
+    {{- range .threads }}
+    {{- $seek := and $page.Params.audio (ne .start nil) }}
+    <section class="chat-thread"{{ with .id }} id="chat-{{ . }}"{{ end }}>
+        <header class="chat-thread-head">
+            <h3>{{ .title }}</h3>
+            <div class="chat-thread-meta">
+                {{- with .time }}<span class="chat-time">{{ . }}</span>{{ end }}
+                {{- if $seek }}
+                <button type="button" class="chat-seek" data-ap-seek="{{ .start }}" title="Слушать этот момент записи">▶&nbsp;<span data-ap-fmt="{{ .start }}">{{ .start }}</span></button>
+                {{- end }}
+            </div>
+        </header>
+        {{- with .note }}<p class="chat-note">{{ . }}</p>{{ end }}
+        {{- with .messages }}
+        <ul class="chat-messages">
+            {{- range . }}
+            <li>
+                <a class="chat-msg-link" href="{{ printf "%s/%v" $base .id }}" target="_blank" rel="noopener">#{{ .id }}</a>
+                {{- with .author }} <strong>{{ . }}:</strong>{{ end }} {{ .text }}
+            </li>
+            {{- end }}
+        </ul>
+        {{- end }}
+        {{- with .photos }}
+        <div class="chat-gallery">
+            {{- range . }}
+            <figure class="chat-photo">
+                <a href="{{ .src | relURL }}" target="_blank" rel="noopener">
+                    <img src="{{ .src | relURL }}" alt="{{ .caption }}" loading="lazy" width="600" height="800">
+                </a>
+                <figcaption>
+                    {{ .caption }}
+                    {{- with .id }} · <a href="{{ printf "%s/%v" $base . }}" target="_blank" rel="noopener">#{{ . }}</a>{{ end }}
+                </figcaption>
+            </figure>
+            {{- end }}
+        </div>
+        {{- end }}
+    </section>
+    {{- end }}
+</div>
+{{- end }}

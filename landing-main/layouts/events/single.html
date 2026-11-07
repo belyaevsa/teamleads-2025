@@ -39,6 +39,7 @@
                 <ol>
                     {{- with .Params.audio }}<li><a href="#listen">Слушать запись</a></li>{{- end }}
                     {{- with .Params.topics }}<li><a href="#topics">Подтемы</a></li>{{- end }}
+                    {{- with .Params.chat }}<li><a href="#chat">Параллельно в чате</a></li>{{- end }}
                     {{- with .Params.participants }}<li><a href="#participants">Участники</a></li>{{- end }}
                     {{- with .Params.opinions }}<li><a href="#opinions">Различные мнения</a></li>{{- end }}
                     {{- with .Params.takeaways }}<li><a href="#takeaways">Основные выводы</a></li>{{- end }}
@@ -73,12 +74,20 @@
                             <div class="topic-body">
                                 <h3>{{ $t.title }}</h3>
                                 <p>{{ $t.body }}</p>
+                                {{- with $t.chat }}
+                                {{- $ref := . }}
+                                {{- range where ($.Params.chat.threads | default slice) "id" $ref }}
+                                <a class="topic-chat-link" href="#chat-{{ $ref }}">↓ В чате: {{ .title }}</a>
+                                {{- end }}
+                                {{- end }}
                             </div>
                         </li>
                         {{ end }}
                     </ol>
                 </div>
                 {{ end }}
+
+                {{ partial "report/chat.html" . }}
 
                 {{ with .Params.participants }}
                 <div class="report-participants" id="participants">
